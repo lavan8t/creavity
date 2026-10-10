@@ -144,7 +144,7 @@ fun CanvasBottomToolbar(
                         icon = penIcon,
                         tooltip = "Pen (long-press for options)",
                         isSelected = isPen,
-                        tint = if (isPen) uiState.currentColor else null,
+                        tint = if (isPen && uiState.currentColor != Color.Unspecified) uiState.currentColor else null,
                         onClick = {
                             onToggleCallout("")
                             onAction(OotbAction.SelectTool(DrawingTool.PEN))

@@ -2,14 +2,25 @@ package com.kd.brevity.presentation.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -22,8 +33,27 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +62,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke as DrawScopeStroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -53,6 +78,8 @@ import com.kd.brevity.presentation.ui.components.BoardActionsSheet
 import com.kd.brevity.presentation.ui.components.BoardEditMetadataSheet
 import com.kd.brevity.presentation.ui.components.BoardExportSheet
 import com.kd.brevity.presentation.ui.components.BoardMetadataBadges
+import com.kd.brevity.presentation.ui.components.BoardThumbnailPreview
+import com.kd.brevity.presentation.ui.components.DeleteConfirmDialog
 import com.kd.brevity.presentation.ui.components.GroupFolderFilterRow
 import com.kd.brevity.presentation.ui.components.LibraryNavDrawer
 import com.kd.brevity.presentation.ui.components.MaterialSymbol
@@ -72,7 +99,7 @@ enum class LibrarySortOrder(val label: String) {
 fun Modifier.drawListScrollbar(state: LazyListState, color: Color): Modifier = this.drawWithContent {
     drawContent()
     val (total, visible) = state.layoutInfo.totalItemsCount to state.layoutInfo.visibleItemsInfo.size
-    if (total > visible && visible > 0) {
+    if (visible in 1..<total) {
         val barH = (size.height * (visible.toFloat() / total)).coerceAtLeast(32.dp.toPx())
         val barY = (size.height - barH) * (state.firstVisibleItemIndex.toFloat() / (total - visible).coerceAtLeast(1))
         drawRoundRect(color, Offset(size.width - 4.dp.toPx(), barY), Size(3.dp.toPx(), barH), CornerRadius(2.dp.toPx(), 2.dp.toPx()))
@@ -82,119 +109,21 @@ fun Modifier.drawListScrollbar(state: LazyListState, color: Color): Modifier = t
 fun Modifier.drawGridScrollbar(state: LazyGridState, color: Color): Modifier = this.drawWithContent {
     drawContent()
     val (total, visible) = state.layoutInfo.totalItemsCount to state.layoutInfo.visibleItemsInfo.size
-    if (total > visible && visible > 0) {
+    if (visible in 1..<total) {
         val barH = (size.height * (visible.toFloat() / total)).coerceAtLeast(32.dp.toPx())
         val barY = (size.height - barH) * (state.firstVisibleItemIndex.toFloat() / (total - visible).coerceAtLeast(1))
         drawRoundRect(color, Offset(size.width - 4.dp.toPx(), barY), Size(3.dp.toPx(), barH), CornerRadius(2.dp.toPx(), 2.dp.toPx()))
     }
 }
 
-@Composable
-fun BoardThumbnailPreview(
-    board: Board,
-    modifier: Modifier = Modifier
-) {
-    val page = board.pages.getOrNull(board.activePageIndex) ?: board.pages.firstOrNull()
-    val strokes = page?.strokes ?: emptyList()
-    val stickyNotes = page?.stickyNotes ?: emptyList()
-
-    Box(
-        modifier = modifier
-            .background(Color(board.backgroundColor)),
-        contentAlignment = Alignment.Center
-    ) {
-        if (strokes.isEmpty() && stickyNotes.isEmpty()) {
-            MaterialSymbol(
-                name = "brush",
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f),
-                size = 28.dp
-            )
-        } else {
-            // Precompute bounds and paths once per board version outside draw pass
-            val thumbnailData = remember(board.id, board.modifiedAt, strokes.size, stickyNotes.size) {
-                var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
-                var maxX = Float.MIN_VALUE; var maxY = Float.MIN_VALUE
-                val previewStrokes = strokes.take(40)
-                for (s in previewStrokes) {
-                    for (pt in s.points) {
-                        minX = minOf(minX, pt.x); minY = minOf(minY, pt.y)
-                        maxX = maxOf(maxX, pt.x); maxY = maxOf(maxY, pt.y)
-                    }
-                }
-                for (sn in stickyNotes) {
-                    minX = minOf(minX, sn.x); minY = minOf(minY, sn.y)
-                    maxX = maxOf(maxX, sn.x + sn.width); maxY = maxOf(maxY, sn.y + sn.height)
-                }
-                if (minX == Float.MAX_VALUE) { minX = 0f; minY = 0f; maxX = 1920f; maxY = 1080f }
-                val spanX = (maxX - minX).coerceAtLeast(1f)
-                val spanY = (maxY - minY).coerceAtLeast(1f)
-                val paths = previewStrokes.mapNotNull { stroke ->
-                    if (stroke.points.size > 1) {
-                        val path = Path().apply {
-                            moveTo(stroke.points[0].x, stroke.points[0].y)
-                            for (i in 1 until stroke.points.size) lineTo(stroke.points[i].x, stroke.points[i].y)
-                        }
-                        Triple(path, Color(stroke.color), stroke.strokeWidth)
-                    } else null
-                }
-                val notes = stickyNotes.map { floatArrayOf(it.x, it.y, it.width, it.height, it.color.toFloat()) }
-                Triple(floatArrayOf(minX, minY, spanX, spanY), paths, notes)
-            }
-
-            Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
-                val (bounds, paths, notes) = thumbnailData
-                val minX = bounds[0]
-                val minY = bounds[1]
-                val spanX = bounds[2]
-                val spanY = bounds[3]
-                val scale = minOf(size.width / spanX, size.height / spanY).coerceIn(0.01f, 1.0f)
-                val offsetX = (size.width - spanX * scale) / 2f
-                val offsetY = (size.height - spanY * scale) / 2f
-
-                // Draw sticky notes preview
-                notes.forEach { noteData ->
-                    val nx = (noteData[0] - minX) * scale + offsetX
-                    val ny = (noteData[1] - minY) * scale + offsetY
-                    val nw = (noteData[2] * scale).coerceAtLeast(4f)
-                    val nh = (noteData[3] * scale).coerceAtLeast(4f)
-                    drawRoundRect(
-                        color = Color(noteData[4].toLong()),
-                        topLeft = Offset(nx, ny),
-                        size = androidx.compose.ui.geometry.Size(nw, nh),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
-                    )
-                }
-
-                // Draw pre-cached stroke paths with GPU translate/scale
-                withTransform({
-                    translate(offsetX - minX * scale, offsetY - minY * scale)
-                    scale(scale, scale, pivot = Offset.Zero)
-                }) {
-                    paths.forEach { (path, color, strokeWidth) ->
-                        drawPath(
-                            path = path,
-                            color = color,
-                            style = DrawScopeStroke(
-                                width = strokeWidth.coerceAtLeast(1.5f),
-                                cap = StrokeCap.Round,
-                                join = StrokeJoin.Round
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BoardsLibraryScreen(
+    modifier: Modifier = Modifier,
     uiState: WhiteboardUiState,
     onAction: (OotbAction) -> Unit,
     onNavigateToCanvas: () -> Unit,
     onNavigateToDestination: (NavDestination) -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -212,6 +141,8 @@ fun BoardsLibraryScreen(
     var boardToExport by remember { mutableStateOf<Board?>(null) }
     var isSelectionMode by rememberSaveable { mutableStateOf(false) }
     var selectedBoardIds by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var boardIdToDeleteWithConfirm by remember { mutableStateOf<String?>(null) }
+    var showBatchDeleteConfirm by remember { mutableStateOf(false) }
 
     BackHandler(enabled = isSelectionMode) {
         isSelectionMode = false
@@ -301,7 +232,7 @@ fun BoardsLibraryScreen(
                                     },
                                     modifier = Modifier.size(40.dp)
                                 ) {
-                                    MaterialSymbol(name = "close", size = 22.dp, tint = MaterialTheme.colorScheme.onSurface)
+                                    MaterialSymbol(name = "close", size = 22.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
 
@@ -356,7 +287,7 @@ fun BoardsLibraryScreen(
                                     MaterialSymbol(
                                         name = if (allStarred) "star" else "star_outline",
                                         filled = allStarred,
-                                        tint = if (allStarred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (selectedBoardIds.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                         size = 22.dp
                                     )
                                 }
@@ -376,29 +307,25 @@ fun BoardsLibraryScreen(
                                 ) {
                                     MaterialSymbol(
                                         name = "edit",
-                                        tint = if (selectedBoardIds.size == 1) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                        tint = if (selectedBoardIds.size == 1) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                                         size = 22.dp
                                     )
                                 }
                             }
 
-                            // Delete / Move to Bin
-                            TooltipHint(text = "Move to bin") {
+                            // Delete / Move to Trash
+                            TooltipHint(text = "Move to trash") {
                                 IconButton(
                                     enabled = selectedBoardIds.isNotEmpty(),
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        selectedBoardIds.forEach { id ->
-                                            onAction(OotbAction.MoveBoardToBin(id))
-                                        }
-                                        selectedBoardIds = emptySet()
-                                        isSelectionMode = false
+                                        showBatchDeleteConfirm = true
                                     },
                                     modifier = Modifier.size(38.dp)
                                 ) {
                                     MaterialSymbol(
                                         name = "delete",
-                                        tint = if (selectedBoardIds.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error.copy(alpha = 0.38f),
+                                        tint = if (selectedBoardIds.isNotEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
                                         size = 22.dp
                                     )
                                 }
@@ -742,7 +669,7 @@ fun BoardsLibraryScreen(
                                             MaterialSymbol(
                                                 name = if (board.isStarred) "star" else "star_outline",
                                                 filled = board.isStarred,
-                                                tint = if (board.isStarred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 size = 18.dp
                                             )
                                         }
@@ -874,7 +801,7 @@ fun BoardsLibraryScreen(
                                         MaterialSymbol(
                                             name = if (board.isStarred) "star" else "star_outline",
                                             filled = board.isStarred,
-                                            tint = if (board.isStarred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             size = 20.dp
                                         )
                                     }
@@ -956,7 +883,7 @@ fun BoardsLibraryScreen(
             }
         )
 
-        // Board Actions Sheet (Star, Rename, Duplicate, Export, Move to Bin)
+        // Board Actions Sheet (Star, Rename, Duplicate, Export, Move to Trash)
         BoardActionsSheet(
             board = selectedBoardForActions,
             onDismiss = { selectedBoardForActions = null },
@@ -964,7 +891,10 @@ fun BoardsLibraryScreen(
             onRename = { board -> boardToEditMetadata = board },
             onDuplicate = { board -> onAction(OotbAction.DuplicateBoard(board.id)) },
             onExport = { board -> boardToExport = board },
-            onMoveToBin = { board -> onAction(OotbAction.MoveBoardToBin(board.id)) }
+            onMoveToBin = { board ->
+                boardIdToDeleteWithConfirm = board.id
+                selectedBoardForActions = null
+            }
         )
 
         // Board Export Format Picker Sheet
@@ -973,6 +903,37 @@ fun BoardsLibraryScreen(
             onDismiss = { boardToExport = null },
             onFormatSelected = { format -> boardToExport?.let { b -> BoardExporter.shareBoard(context, b, format) } }
         )
+
+        if (showBatchDeleteConfirm) {
+            DeleteConfirmDialog(
+                title = "Move to Trash?",
+                text = "Are you sure you want to move ${selectedBoardIds.size} boards to Trash?",
+                confirmText = "Move to Trash",
+                onConfirm = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    selectedBoardIds.forEach { onAction(OotbAction.MoveBoardToBin(it)) }
+                    selectedBoardIds = emptySet()
+                    isSelectionMode = false
+                    showBatchDeleteConfirm = false
+                },
+                onDismiss = { showBatchDeleteConfirm = false }
+            )
+        }
+
+        if (boardIdToDeleteWithConfirm != null) {
+            val targetId = boardIdToDeleteWithConfirm!!
+            DeleteConfirmDialog(
+                title = "Move to Trash?",
+                text = "Are you sure you want to move this board to Trash?",
+                confirmText = "Move to Trash",
+                onConfirm = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onAction(OotbAction.MoveBoardToBin(targetId))
+                    boardIdToDeleteWithConfirm = null
+                },
+                onDismiss = { boardIdToDeleteWithConfirm = null }
+            )
+        }
     }
 }
 }

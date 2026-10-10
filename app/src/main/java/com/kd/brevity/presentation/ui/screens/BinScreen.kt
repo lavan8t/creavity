@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.brevity.presentation.ui.OotbAction
+import com.kd.brevity.presentation.ui.components.DeleteConfirmDialog
 import com.kd.brevity.presentation.ui.components.MaterialSymbol
 import com.kd.brevity.presentation.viewmodel.WhiteboardUiState
 import java.text.SimpleDateFormat
@@ -71,6 +72,7 @@ fun BinScreen(
     }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault()) }
     var showEmptyBinConfirmation by remember { mutableStateOf(false) }
+    var boardIdToDeletePermanently by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier
@@ -80,7 +82,7 @@ fun BinScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Recycle Bin",
+                        text = "Trash",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -116,7 +118,7 @@ fun BinScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Text(
-                                text = "Empty Bin",
+                                text = "Empty Trash",
                                 color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -161,7 +163,7 @@ fun BinScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Bin is empty",
+                                text = "Trash is empty",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -208,7 +210,7 @@ fun BinScreen(
                                         )
                                         val dateStr = board.binnedAt?.let {
                                             dateFormat.format(Date(it))
-                                        } ?: "In Bin"
+                                        } ?: "In Trash"
                                         Text(
                                             text = dateStr,
                                             style = MaterialTheme.typography.bodySmall,
@@ -239,7 +241,7 @@ fun BinScreen(
                                     Button(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onAction(OotbAction.DeleteBoardPermanently(board.id))
+                                            boardIdToDeletePermanently = board.id
                                         },
                                         shape = RoundedCornerShape(50),
                                         colors = ButtonDefaults.buttonColors(
@@ -261,53 +263,31 @@ fun BinScreen(
     }
 
     if (showEmptyBinConfirmation) {
-        ModalBottomSheet(
-            onDismissRequest = { showEmptyBinConfirmation = false },
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Empty Recycle Bin?",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "All whiteboards in the bin will be permanently deleted. This action cannot be undone.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = { showEmptyBinConfirmation = false }) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onAction(OotbAction.EmptyBin)
-                            showEmptyBinConfirmation = false
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Text("Delete Forever", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
+        DeleteConfirmDialog(
+            title = "Empty Trash?",
+            text = "All items will be permanently deleted.",
+            confirmText = "Delete",
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onAction(OotbAction.EmptyBin)
+                showEmptyBinConfirmation = false
+            },
+            onDismiss = { showEmptyBinConfirmation = false }
+        )
+    }
+
+    if (boardIdToDeletePermanently != null) {
+        val targetId = boardIdToDeletePermanently!!
+        DeleteConfirmDialog(
+            title = "Are you sure you want to permanently delete this board?",
+            text = "This action cannot be undone.",
+            confirmText = "Delete",
+            onConfirm = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onAction(OotbAction.DeleteBoardPermanently(targetId))
+                boardIdToDeletePermanently = null
+            },
+            onDismiss = { boardIdToDeletePermanently = null }
+        )
     }
 }

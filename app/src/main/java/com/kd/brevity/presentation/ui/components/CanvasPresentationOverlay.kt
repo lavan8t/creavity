@@ -52,7 +52,7 @@ fun CanvasPresentationOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF0D0E12))
+                .background(MaterialTheme.colorScheme.surface)
         ) {
             val hasGoogleSlides = !uiState.presentationUrl.isNullOrBlank()
 

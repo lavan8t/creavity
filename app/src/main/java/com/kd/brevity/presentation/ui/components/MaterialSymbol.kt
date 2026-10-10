@@ -5,6 +5,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CellTower
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Deselect
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
@@ -26,7 +36,8 @@ fun MaterialSymbol(
     val imageVector: ImageVector = when (name) {
         "draw", "pen" -> if (filled) draw_filled else draw
         "brush" -> if (filled) brush_filled else brush
-        "pencil", "edit" -> if (filled) edit_filled else edit
+        "edit", "pencil" -> if (filled) Icons.Filled.Edit else Icons.Outlined.Edit
+        "edit_outline" -> Icons.Outlined.Edit
         "highlighter", "ink_highlighter" -> if (filled) ink_highlighter_filled else ink_highlighter
         "border_color" -> if (filled) border_color_filled else border_color
         "line", "horizontal_rule" -> if (filled) horizontal_rule_filled else horizontal_rule
@@ -46,6 +57,10 @@ fun MaterialSymbol(
         "rect_select", "crop_free", "box_select" -> if (filled) crop_free_filled else crop_free
         "select_move", "move", "select", "pan_tool_alt" -> if (filled) pan_tool_alt_filled else pan_tool_alt
         "lasso", "lasso_select", "gesture", "freeform" -> if (filled) gesture_filled else gesture
+        "select_all" -> Icons.Default.SelectAll
+        "deselect" -> Icons.Default.Deselect
+        "checklist" -> Icons.Default.Checklist
+        "check_circle" -> Icons.Filled.CheckCircle
         "menu" -> if (filled) menu_filled else menu
         "undo" -> if (filled) undo_filled else undo
         "redo" -> if (filled) redo_filled else redo
@@ -53,7 +68,8 @@ fun MaterialSymbol(
         "chevron_left" -> if (filled) chevron_left_filled else chevron_left
         "chevron_right" -> if (filled) chevron_right_filled else chevron_right
         "add" -> if (filled) add_filled else add
-        "delete" -> if (filled) delete_filled else delete
+        "delete", "bin", "trash" -> if (filled) Icons.Filled.Delete else Icons.Outlined.Delete
+        "delete_outline" -> Icons.Outlined.Delete
         "delete_sweep" -> if (filled) delete_sweep_filled else delete_sweep
         "close" -> if (filled) close_filled else close
         "arrow_back", "back" -> if (filled) arrow_back_filled else arrow_back
@@ -79,7 +95,8 @@ fun MaterialSymbol(
         "vibration" -> if (filled) vibration_filled else vibration
         "auto_awesome" -> if (filled) auto_awesome_filled else auto_awesome
         "more_vert", "dots", "more" -> if (filled) more_vert_filled else more_vert
-        "star" -> if (filled) star_filled else star
+        "star", "favorite" -> if (filled) Icons.Filled.Star else Icons.Outlined.StarOutline
+        "star_outline" -> Icons.Outlined.StarOutline
         "note_add", "file_present" -> if (filled) note_add_filled else note_add
         "sticky_note_2" -> if (filled) sticky_note_2_filled else sticky_note_2
         "image" -> if (filled) image_filled else image

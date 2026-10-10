@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -48,11 +47,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.blur.BlurRadiusSpec
 import androidx.compose.ui.graphics.blur.BlurStop
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -91,6 +90,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class MinimapCorner(val alignment: Alignment) {
     TOP_START(Alignment.TopStart),
@@ -184,10 +184,10 @@ private fun fitAllCanvasContent(
 
 @Composable
 fun CanvasViewportScreen(
+    modifier: Modifier = Modifier,
     uiState: WhiteboardUiState,
     onAction: (OotbAction) -> Unit,
     onNavigateToDestination: (NavDestination) -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
@@ -236,6 +236,10 @@ fun CanvasViewportScreen(
     var showGoogleSlidesDialog by remember { mutableStateOf(false) }
     var googleSlidesUrlInput by remember { mutableStateOf(uiState.presentationUrl ?: "") }
 
+    val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
+    val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
+    val effectivePenColor = if (uiState.currentColor == Color.Unspecified || (uiState.currentColor == Color.White && !isDarkCanvas) || (uiState.currentColor == Color.Black && isDarkCanvas)) MaterialTheme.colorScheme.onSurface else uiState.currentColor
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -248,10 +252,10 @@ fun CanvasViewportScreen(
             imageElements = uiState.imageElements,
             stickyNotes = uiState.stickyNotes,
             peerPresences = uiState.livePeerPresences,
-            currentColor = uiState.currentColor,
+            currentColor = effectivePenColor,
             currentWidth = uiState.currentWidth,
             selectedTool = uiState.selectedTool,
-            backgroundColor = uiState.backgroundColor,
+            backgroundColor = effectiveCanvasBg,
             backgroundPattern = uiState.backgroundPattern,
             hapticsEnabled = uiState.hapticsEnabled,
             zoom = uiState.zoom,
@@ -270,7 +274,7 @@ fun CanvasViewportScreen(
                 } else {
                     hideMinimapJob?.cancel()
                     hideMinimapJob = coroutineScope.launch {
-                        delay(900L)
+                        delay(900L.milliseconds)
                         isTransforming = false
                     }
                 }
@@ -296,7 +300,7 @@ fun CanvasViewportScreen(
                             text = inlineTextContent,
                             x = activeInlineTextPoint!!.x,
                             y = activeInlineTextPoint!!.y,
-                            color = uiState.currentColor,
+                            color = effectivePenColor,
                             fontSize = textFontSize,
                             fontName = "Google Sans Flex"
                         )
@@ -319,24 +323,6 @@ fun CanvasViewportScreen(
                     )
                     edgeTreatment = BlurredEdgeTreatment.Unbounded
                 }
-        )
-
-        // Top Surface Fade Scrim
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(124.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                            Color.Transparent
-                        )
-                    )
-                )
         )
 
         // 1.5 Inline Canvas Text Editor (Directly on canvas, no dialogs or bottom sheets)
@@ -371,11 +357,11 @@ fun CanvasViewportScreen(
                         value = inlineTextContent,
                         onValueChange = { inlineTextContent = it },
                         textStyle = TextStyle(
-                            color = uiState.currentColor,
+                            color = effectivePenColor,
                             fontSize = (textFontSize * uiState.zoom).coerceIn(14f, 48f).sp,
                             fontWeight = FontWeight.Medium
                         ),
-                        cursorBrush = SolidColor(uiState.currentColor),
+                        cursorBrush = SolidColor(effectivePenColor),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = {
@@ -385,7 +371,7 @@ fun CanvasViewportScreen(
                                             text = inlineTextContent,
                                             x = activeInlineTextPoint!!.x,
                                             y = activeInlineTextPoint!!.y,
-                                            color = uiState.currentColor,
+                                            color = effectivePenColor,
                                             fontSize = textFontSize,
                                             fontName = "Google Sans Flex"
                                         )
@@ -408,7 +394,7 @@ fun CanvasViewportScreen(
                                         text = inlineTextContent,
                                         x = activeInlineTextPoint!!.x,
                                         y = activeInlineTextPoint!!.y,
-                                        color = uiState.currentColor,
+                                        color = effectivePenColor,
                                         fontSize = textFontSize,
                                         fontName = "Google Sans Flex"
                                     )
@@ -654,7 +640,7 @@ fun CanvasViewportScreen(
                 onAction(OotbAction.DuplicateElements(selectedStrokes, selectedTexts))
             },
             onRecolor = {
-                onAction(OotbAction.RecolorElements(selectedStrokes, selectedTexts, uiState.currentColor))
+                onAction(OotbAction.RecolorElements(selectedStrokes, selectedTexts, effectivePenColor))
             },
             onDelete = {
                 selectedStrokes.forEach { onAction(OotbAction.DeleteStroke(it)) }
@@ -693,7 +679,7 @@ fun CanvasViewportScreen(
                 visible = activeCalloutTool == "PEN",
                 selectedTool = uiState.selectedTool,
                 currentWidth = uiState.currentWidth,
-                currentColor = uiState.currentColor,
+                currentColor = effectivePenColor,
                 onSelectTool = { tool ->
                     onAction(OotbAction.SelectTool(tool))
                 },
@@ -736,24 +722,6 @@ fun CanvasViewportScreen(
                 onRedo = { onAction(OotbAction.Redo) }
             )
         }
-
-        // Bottom Surface Fade Scrim
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(136.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
-                        )
-                    )
-                )
-        )
 
         // 7. Material 3 Expressive Horizontal Floating Toolbar with FAB
         CanvasBottomToolbar(

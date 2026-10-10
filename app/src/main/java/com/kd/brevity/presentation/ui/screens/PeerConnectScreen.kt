@@ -27,6 +27,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -178,8 +179,7 @@ fun PeerConnectScreen(
                         modifier = Modifier
                             .size(76.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = userEmoji, fontSize = 38.sp)
@@ -196,10 +196,20 @@ fun PeerConnectScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                showEditSheet = true
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.width(IntrinsicSize.Max)
                         ) {
                             Text(
                                 text = rawName,
@@ -209,25 +219,20 @@ fun PeerConnectScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    showEditSheet = true
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                MaterialSymbol(name = "edit", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 18.dp)
-                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .width(140.dp)
-                                .height(1.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        MaterialSymbol(
+                            name = "edit",
+                            filled = true,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            size = 18.dp
                         )
                     }
                 }
@@ -253,8 +258,8 @@ fun PeerConnectScreen(
                             )
                         } else {
                             ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
@@ -263,7 +268,7 @@ fun PeerConnectScreen(
                         MaterialSymbol(
                             name = if (uiState.isAdvertising) "sensors" else "cell_tower",
                             size = 18.dp,
-                            tint = if (uiState.isAdvertising) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                            tint = if (uiState.isAdvertising) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -282,13 +287,13 @@ fun PeerConnectScreen(
                         },
                         colors = if (uiState.isDiscovering) {
                             ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary
                             )
                         } else {
                             ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
@@ -297,7 +302,7 @@ fun PeerConnectScreen(
                         MaterialSymbol(
                             name = if (uiState.isDiscovering) "radar" else "hub",
                             size = 18.dp,
-                            tint = if (uiState.isDiscovering) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                            tint = if (uiState.isDiscovering) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -373,12 +378,11 @@ fun PeerConnectScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Box(
-                                modifier = Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                MaterialSymbol(name = "devices", tint = MaterialTheme.colorScheme.primary, size = 28.dp)
-                            }
+                            MaterialSymbol(
+                                name = "devices",
+                                tint = MaterialTheme.colorScheme.primary,
+                                size = 36.dp
+                            )
                             Text(
                                 text = "Nearby Whiteboard Sharing",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),

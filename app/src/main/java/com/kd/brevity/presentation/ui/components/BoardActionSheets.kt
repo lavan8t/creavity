@@ -44,7 +44,8 @@ fun BoardActionsSheet(
     onRename: (Board) -> Unit,
     onDuplicate: (Board) -> Unit,
     onExport: (Board) -> Unit,
-    onMoveToBin: (Board) -> Unit
+    onMoveToBin: (Board) -> Unit,
+    onMoveToTrash: (Board) -> Unit = onMoveToBin
 ) {
     if (board == null) return
 
@@ -164,15 +165,14 @@ fun BoardActionsSheet(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
 
-            // 5. Move to Bin
+            // 5. Move to Trash
             BoardActionItem(
                 icon = "delete",
-                label = "Move to Bin",
-                textColor = MaterialTheme.colorScheme.error,
-                iconTint = MaterialTheme.colorScheme.error,
+                label = "Move to Trash",
+                isDestructive = true,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onMoveToBin(board)
+                    onMoveToTrash(board)
                     onDismiss()
                 }
             )
@@ -297,8 +297,9 @@ private fun BoardActionItem(
     icon: String,
     label: String,
     onClick: () -> Unit,
-    textColor: Color = MaterialTheme.colorScheme.onSurface,
-    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant
+    isDestructive: Boolean = false,
+    textColor: Color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+    iconTint: Color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Row(
         modifier = Modifier

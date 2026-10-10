@@ -63,41 +63,13 @@ fun LibraryNavDrawer(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Header: breVITy branding
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            MaterialSymbol(
-                                name = "draw",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                size = 24.dp
-                            )
-                        }
-
-                        Column {
-                            Text(
-                                text = "breVITy",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Whiteboard Library",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Text(
+                        text = "breVITy",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+                    )
 
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -106,14 +78,6 @@ fun LibraryNavDrawer(
 
                     // 1. Whiteboards
                     NavigationDrawerItem(
-                        icon = {
-                            MaterialSymbol(
-                                name = "folder",
-                                filled = true,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                size = 22.dp
-                            )
-                        },
                         label = {
                             Text(
                                 text = "Whiteboards",
@@ -132,18 +96,11 @@ fun LibraryNavDrawer(
                         )
                     )
 
-                    // 2. Recycle Bin
+                    // 2. Trash
                     NavigationDrawerItem(
-                        icon = {
-                            MaterialSymbol(
-                                name = "delete",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 22.dp
-                            )
-                        },
                         label = {
                             Text(
-                                text = "Recycle Bin",
+                                text = "Trash",
                                 fontWeight = FontWeight.Medium
                             )
                         },
@@ -178,13 +135,6 @@ fun LibraryNavDrawer(
 
                     // 3. Settings
                     NavigationDrawerItem(
-                        icon = {
-                            MaterialSymbol(
-                                name = "settings",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 22.dp
-                            )
-                        },
                         label = {
                             Text(
                                 text = "Settings",
@@ -207,13 +157,6 @@ fun LibraryNavDrawer(
 
                     // 4. About
                     NavigationDrawerItem(
-                        icon = {
-                            MaterialSymbol(
-                                name = "info",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 22.dp
-                            )
-                        },
                         label = {
                             Text(
                                 text = "About",

@@ -10,8 +10,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.delay
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -21,11 +24,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -55,10 +60,10 @@ fun WhiteboardCanvas(
     imageElements: List<ImageElement> = emptyList(),
     stickyNotes: List<StickyNote> = emptyList(),
     peerPresences: Map<String, PeerPresence> = emptyMap(),
-    currentColor: Color = Color.White,
+    currentColor: Color = MaterialTheme.colorScheme.onSurface,
     currentWidth: Float = 6.0f,
     selectedTool: DrawingTool = DrawingTool.PEN,
-    backgroundColor: Color = Color(0xFF18181C),
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
     backgroundPattern: CanvasBackgroundPattern = CanvasBackgroundPattern.ISOMETRIC_DOTS,
     hapticsEnabled: Boolean = true,
     zoom: Float = 1.0f,
@@ -85,6 +90,9 @@ fun WhiteboardCanvas(
     val textMeasurer = rememberTextMeasurer()
     val pathCache = remember { HashMap<String, Path>() }
     val imageBitmapCache = remember { HashMap<String, ImageBitmap>() }
+    val strokeBoundsCache = remember { HashMap<String, Rect>() }
+    val textLayoutCache = remember { HashMap<String, TextLayoutResult>() }
+    val stickyTextLayoutCache = remember { HashMap<String, TextLayoutResult>() }
 
     val hapticFeedback = LocalHapticFeedback.current
     val drawingHaptics = remember(hapticFeedback) { DrawingHaptics(hapticFeedback) }
@@ -125,21 +133,46 @@ fun WhiteboardCanvas(
         }
     }
 
+    val effectiveBg = if (backgroundColor == Color.Unspecified) MaterialTheme.colorScheme.surface else backgroundColor
+    val isDark = effectiveBg.luminance() < 0.5f
+    val effectiveColor = if (currentColor == Color.Unspecified || (currentColor == Color.White && !isDark) || (currentColor == Color.Black && isDark)) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        currentColor
+    }
+    val selectionPrimary = MaterialTheme.colorScheme.primary
+    val m3Surface = MaterialTheme.colorScheme.surface
+    val m3OnSurface = MaterialTheme.colorScheme.onSurface
+    val m3SurfaceContainerHighest = MaterialTheme.colorScheme.surfaceContainerHighest
+    val peerColorPalette = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.error,
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.secondaryContainer,
+        MaterialTheme.colorScheme.tertiaryContainer
+    )
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer {
+                // Hardware acceleration GPU backing
+                clip = true
+            }
             .onSizeChanged { size ->
                 controller.viewWidth = size.width.toFloat()
                 controller.viewHeight = size.height.toFloat()
             }
-            .background(if (isInfiniteCanvas) backgroundColor else Color(0xFF101115))
+            .background(if (isInfiniteCanvas) effectiveBg else MaterialTheme.colorScheme.surfaceContainerLowest)
             .pointerInteropFilter { event ->
                 controller.handleTouchEvent(
                     event = event,
                     panOffset = panOffset,
                     zoom = zoom,
                     selectedTool = selectedTool,
-                    currentColor = currentColor,
+                    currentColor = effectiveColor,
                     currentWidth = currentWidth,
                     strokes = strokes,
                     textElements = textElements,
@@ -168,7 +201,7 @@ fun WhiteboardCanvas(
                     size = Size(canvasWidth + 8f, canvasHeight + 8f)
                 )
                 drawRect(
-                    color = backgroundColor,
+                    color = effectiveBg,
                     topLeft = Offset.Zero,
                     size = Size(canvasWidth, canvasHeight)
                 )
@@ -176,26 +209,36 @@ fun WhiteboardCanvas(
 
             // 1. GPU-batched Background Grid Pattern
             with(BackgroundDrawer) {
-                drawCanvasPattern(backgroundPattern, backgroundColor, zoom, panOffset)
+                drawCanvasPattern(backgroundPattern, effectiveBg, zoom, panOffset)
             }
 
             if (!isInfiniteCanvas) {
                 // Draw page boundary border
                 drawRect(
-                    color = Color(0xFFDC5F00).copy(alpha = 0.4f),
+                    color = selectionPrimary.copy(alpha = 0.4f),
                     topLeft = Offset.Zero,
                     size = Size(canvasWidth, canvasHeight),
                     style = CanvasStrokeStyle(width = 2f / zoom)
                 )
             }
 
+            // Visible viewport in canvas space for GPU/CPU culling
+            val vLeft = -panOffset.x / zoom - 64f
+            val vTop = -panOffset.y / zoom - 64f
+            val vRight = vLeft + (size.width / zoom) + 128f
+            val vBottom = vTop + (size.height / zoom) + 128f
+
             val movingStrokeMap = if (controller.movingStrokes.isNotEmpty()) controller.movingStrokes.associateBy { it.id } else emptyMap()
             val movingTextMap = if (controller.movingTexts.isNotEmpty()) controller.movingTexts.associateBy { it.id } else emptyMap()
             val movingImageMap = if (controller.movingImages.isNotEmpty()) controller.movingImages.associateBy { it.id } else emptyMap()
 
-            // 2. Draw Image Elements
+            // 2. Draw Image Elements (Culled to visible viewport)
             imageElements.forEach { img ->
                 val activeImg = movingImageMap[img.id] ?: img
+                if (activeImg.x + activeImg.width < vLeft || activeImg.x > vRight ||
+                    activeImg.y + activeImg.height < vTop || activeImg.y > vBottom) {
+                    return@forEach
+                }
                 val bitmap = imageBitmapCache.getOrPut(activeImg.path) {
                     try {
                         BitmapFactory.decodeFile(activeImg.path)?.asImageBitmap() ?: ImageBitmap(1, 1)
@@ -212,14 +255,34 @@ fun WhiteboardCanvas(
                 }
             }
 
-            // 3. Draw Completed Strokes
+            // 3. Draw Completed Strokes (Culled to visible viewport)
             strokes.forEach { stroke ->
                 val activeStroke = movingStrokeMap[stroke.id] ?: stroke
+                if (activeStroke.points.isEmpty()) return@forEach
+
+                val bounds = strokeBoundsCache.getOrPut("${activeStroke.id}_${activeStroke.points.size}") {
+                    var minX = Float.MAX_VALUE
+                    var minY = Float.MAX_VALUE
+                    var maxX = Float.MIN_VALUE
+                    var maxY = Float.MIN_VALUE
+                    activeStroke.points.forEach { p ->
+                        if (p.x < minX) minX = p.x
+                        if (p.x > maxX) maxX = p.x
+                        if (p.y < minY) minY = p.y
+                        if (p.y > maxY) maxY = p.y
+                    }
+                    val pad = activeStroke.strokeWidth * 2f
+                    Rect(minX - pad, minY - pad, maxX + pad, maxY + pad)
+                }
+                if (bounds.right < vLeft || bounds.left > vRight || bounds.bottom < vTop || bounds.top > vBottom) {
+                    return@forEach
+                }
+
                 val path = pathCache.getOrPut("${activeStroke.id}_${activeStroke.points.size}") {
                     PathUtils.createToolPath(activeStroke.tool, activeStroke.points)
                 }
                 val baseColor = Color(activeStroke.color)
-                val drawColor = if (activeStroke.isEraser) backgroundColor else baseColor
+                val drawColor = if (activeStroke.isEraser) effectiveBg else baseColor
 
                 with(StrokeDrawer) {
                     drawStyledStroke(
@@ -242,7 +305,7 @@ fun WhiteboardCanvas(
                         PathUtils.createToolPath(pending.tool, pending.points)
                     }
                     val baseColor = Color(pending.color)
-                    val drawColor = if (pending.isEraser) backgroundColor else baseColor
+                    val drawColor = if (pending.isEraser) effectiveBg else baseColor
                     with(StrokeDrawer) {
                         drawStyledStroke(
                             points = pending.points,
@@ -255,12 +318,17 @@ fun WhiteboardCanvas(
                 }
             }
 
-            // 4. Draw Text Elements
+            // 4. Draw Text Elements (Culled & Layout Cached)
             textElements.forEach { elem ->
                 val activeElem = movingTextMap[elem.id] ?: elem
-                if (activeElem.text.isNotBlank()) {
-                    val fontFam = getGoogleFontFamily(activeElem.fontName)
-                    val result = textMeasurer.measure(
+                if (activeElem.text.isBlank()) return@forEach
+                if (activeElem.x + 800f < vLeft || activeElem.x > vRight ||
+                    activeElem.y + 200f < vTop || activeElem.y > vBottom) {
+                    return@forEach
+                }
+                val fontFam = getGoogleFontFamily(activeElem.fontName)
+                val result = textLayoutCache.getOrPut("${activeElem.id}_${activeElem.text}_${activeElem.fontSize}_${activeElem.color}") {
+                    textMeasurer.measure(
                         text = AnnotatedString(activeElem.text),
                         style = TextStyle(
                             fontFamily = fontFam,
@@ -268,45 +336,51 @@ fun WhiteboardCanvas(
                             color = Color(activeElem.color)
                         )
                     )
-                    drawText(result, topLeft = Offset(activeElem.x, activeElem.y))
                 }
+                drawText(result, topLeft = Offset(activeElem.x, activeElem.y))
             }
 
-            // 4b. Draw Jamboard Sticky Notes
+            // 4b. Draw Jamboard Sticky Notes (Culled & Layout Cached)
             stickyNotes.forEach { note ->
+                if (note.x + note.width < vLeft || note.x > vRight ||
+                    note.y + note.height < vTop || note.y > vBottom) {
+                    return@forEach
+                }
                 drawRoundRect(
                     color = Color.Black.copy(alpha = 0.22f),
                     topLeft = Offset(note.x + 4f, note.y + 6f),
-                    size = androidx.compose.ui.geometry.Size(note.width, note.height),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16f, 16f)
+                    size = Size(note.width, note.height),
+                    cornerRadius = CornerRadius(16f, 16f)
                 )
                 drawRoundRect(
                     color = Color(note.color),
                     topLeft = Offset(note.x, note.y),
-                    size = androidx.compose.ui.geometry.Size(note.width, note.height),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16f, 16f)
+                    size = Size(note.width, note.height),
+                    cornerRadius = CornerRadius(16f, 16f)
                 )
                 if (note.text.isNotBlank()) {
-                    val result = textMeasurer.measure(
-                        text = AnnotatedString(note.text),
-                        style = TextStyle(
-                            fontFamily = AppFontFamily,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF202124)
-                        ),
-                        constraints = androidx.compose.ui.unit.Constraints(
-                            maxWidth = (note.width - 24f).toInt().coerceAtLeast(10)
+                    val result = stickyTextLayoutCache.getOrPut("${note.id}_${note.text}_${note.width}") {
+                        textMeasurer.measure(
+                            text = AnnotatedString(note.text),
+                            style = TextStyle(
+                                fontFamily = AppFontFamily,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = m3OnSurface
+                            ),
+                            constraints = androidx.compose.ui.unit.Constraints(
+                                maxWidth = (note.width - 24f).toInt().coerceAtLeast(10)
+                            )
                         )
-                    )
+                    }
                     drawText(result, topLeft = Offset(note.x + 12f, note.y + 12f))
                 }
             }
 
             // 5. Draw Active In-Progress Stroke
             if (controller.activePoints.isNotEmpty() && controller.activeToolUsed != DrawingTool.LASER) {
-                val baseColor = currentColor
-                val drawColor = if (controller.activeToolUsed == DrawingTool.ERASER) backgroundColor else baseColor
+                val baseColor = effectiveColor
+                val drawColor = if (controller.activeToolUsed == DrawingTool.ERASER) effectiveBg else baseColor
 
                 with(StrokeDrawer) {
                     drawStyledStroke(
@@ -338,11 +412,11 @@ fun WhiteboardCanvas(
                 if (selectedTool == DrawingTool.LASSO_SELECT && controller.lassoPoints.size > 1) {
                     drawPath(
                         path = controller.lassoPath,
-                        color = Color(0xFFDC5F00).copy(alpha = 0.15f)
+                        color = selectionPrimary.copy(alpha = 0.15f)
                     )
                     drawPath(
                         path = controller.lassoPath,
-                        color = Color(0xFFDC5F00),
+                        color = selectionPrimary,
                         style = CanvasStrokeStyle(
                             width = 2.dp.toPx() / zoom,
                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f / zoom, 10f / zoom), 0f)
@@ -353,12 +427,12 @@ fun WhiteboardCanvas(
                 val currentMarquee = controller.marqueeRect
                 if (currentMarquee != null) {
                     drawRect(
-                        color = Color(0xFFDC5F00).copy(alpha = 0.15f),
+                        color = selectionPrimary.copy(alpha = 0.15f),
                         topLeft = Offset(currentMarquee.left, currentMarquee.top),
                         size = Size(currentMarquee.width, currentMarquee.height)
                     )
                     drawRect(
-                        color = Color(0xFFDC5F00),
+                        color = selectionPrimary,
                         topLeft = Offset(currentMarquee.left, currentMarquee.top),
                         size = Size(currentMarquee.width, currentMarquee.height),
                         style = CanvasStrokeStyle(
@@ -405,7 +479,7 @@ fun WhiteboardCanvas(
                         val boundRect = Rect(minX - pad, minY - pad, maxX + pad, maxY + pad)
 
                         drawRect(
-                            color = Color(0xFFDC5F00),
+                            color = selectionPrimary,
                             topLeft = Offset(boundRect.left, boundRect.top),
                             size = Size(boundRect.width, boundRect.height),
                             style = CanvasStrokeStyle(
@@ -422,12 +496,12 @@ fun WhiteboardCanvas(
                             Offset(boundRect.right, boundRect.bottom)
                         ).forEach { corner ->
                             drawCircle(
-                                color = Color.White,
+                                color = m3Surface,
                                 radius = handleRadius,
                                 center = corner
                             )
                             drawCircle(
-                                color = Color(0xFFDC5F00),
+                                color = selectionPrimary,
                                 radius = handleRadius,
                                 center = corner,
                                 style = CanvasStrokeStyle(width = 2.dp.toPx() / zoom)
@@ -438,20 +512,10 @@ fun WhiteboardCanvas(
             }
 
             // 8. Render Real-Time Peer Presence Cursors
-            val peerColorPalette = listOf(
-                Color(0xFF00E676),
-                Color(0xFF3897F0),
-                Color(0xFFFF9D42),
-                Color(0xFFFF3366),
-                Color(0xFFAF52DE),
-                Color(0xFF00E5FF),
-                Color(0xFFFFD60A)
-            )
-
             peerPresences.values.forEach { peer ->
                 peer.currentPoint?.let { point ->
                     val colorIndex = abs(peer.name.hashCode()) % peerColorPalette.size
-                    val cursorColor = if (peer.color != 0L && peer.color != 0xFFDC5F00) Color(peer.color) else peerColorPalette[colorIndex]
+                    val cursorColor = if (peer.color != 0L) Color(peer.color) else peerColorPalette[colorIndex]
 
                     drawCircle(
                         color = cursorColor.copy(alpha = 0.25f),
@@ -464,7 +528,7 @@ fun WhiteboardCanvas(
                         center = Offset(point.x, point.y)
                     )
                     drawCircle(
-                        color = Color.White,
+                        color = m3Surface,
                         radius = 2.5f / zoom,
                         center = Offset(point.x, point.y)
                     )
@@ -475,7 +539,7 @@ fun WhiteboardCanvas(
                         style = TextStyle(
                             fontFamily = AppFontFamily,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = m3OnSurface,
                             fontSize = (11 / zoom).sp
                         )
                     )
@@ -485,16 +549,16 @@ fun WhiteboardCanvas(
                     val tagTopLeft = Offset(point.x + 12f / zoom, point.y - tagHeight - 6f / zoom)
 
                     drawRoundRect(
-                        color = Color(0xFF121418).copy(alpha = 0.92f),
+                        color = m3SurfaceContainerHighest.copy(alpha = 0.95f),
                         topLeft = tagTopLeft,
                         size = Size(tagWidth, tagHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f / zoom, 6f / zoom)
+                        cornerRadius = CornerRadius(6f / zoom, 6f / zoom)
                     )
                     drawRoundRect(
                         color = cursorColor.copy(alpha = 0.85f),
                         topLeft = tagTopLeft,
                         size = Size(tagWidth, tagHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f / zoom, 6f / zoom),
+                        cornerRadius = CornerRadius(6f / zoom, 6f / zoom),
                         style = CanvasStrokeStyle(width = 1.2f / zoom)
                     )
                     drawText(
@@ -504,7 +568,7 @@ fun WhiteboardCanvas(
                         style = TextStyle(
                             fontFamily = AppFontFamily,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = m3OnSurface,
                             fontSize = (11 / zoom).sp
                         )
                     )
