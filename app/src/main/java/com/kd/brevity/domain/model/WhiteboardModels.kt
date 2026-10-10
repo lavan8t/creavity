@@ -24,14 +24,8 @@ enum class DrawingTool {
     TRIANGLE
 }
 
-enum class AppThemePreset(val displayName: String, val primaryColor: Long, val isDynamic: Boolean = false) {
-    DYNAMIC("Dynamic System", 0xFFDC5F00, isDynamic = true),
-    STUDIO_AMBER("Studio Amber", 0xFFDC5F00),
-    STUDIO_AQUA("Studio Aqua", 0xFF00B4D8),
-    STUDIO_EMERALD("Studio Emerald", 0xFF00E676),
-    STUDIO_VIOLET("Studio Violet", 0xFF9D4EDD),
-    STUDIO_CRIMSON("Studio Crimson", 0xFFFF3366),
-    STUDIO_SLATE("Studio Slate", 0xFF78909C)
+enum class AppThemePreset(val displayName: String, val isDynamic: Boolean = true) {
+    DYNAMIC("Dynamic Material You", isDynamic = true)
 }
 
 data class Point(

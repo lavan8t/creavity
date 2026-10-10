@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
             OutofTheBoxTheme(
                 darkTheme = isDark,
-                dynamicColor = uiState.selectedThemePreset.isDynamic
+                dynamicColor = true
             ) {
                 AdaptiveWhiteboardScreen(
                     uiState = uiState,

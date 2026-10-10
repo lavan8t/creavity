@@ -238,7 +238,11 @@ fun CanvasViewportScreen(
 
     val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
     val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
-    val effectivePenColor = if (uiState.currentColor == Color.Unspecified || (uiState.currentColor == Color.White && !isDarkCanvas) || (uiState.currentColor == Color.Black && isDarkCanvas)) MaterialTheme.colorScheme.onSurface else uiState.currentColor
+    val effectivePenColor = if (uiState.currentColor == Color.Unspecified) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        uiState.currentColor
+    }
 
     Box(
         modifier = modifier

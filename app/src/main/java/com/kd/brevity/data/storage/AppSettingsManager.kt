@@ -65,11 +65,11 @@ class AppSettingsManager(context: Context) {
 
     var themePreset: AppThemePreset
         get() {
-            val name = prefs.getString("theme_preset", AppThemePreset.STUDIO_AMBER.name) ?: AppThemePreset.STUDIO_AMBER.name
+            val name = prefs.getString("theme_preset", AppThemePreset.DYNAMIC.name) ?: AppThemePreset.DYNAMIC.name
             return try {
                 AppThemePreset.valueOf(name)
             } catch (_: Exception) {
-                AppThemePreset.STUDIO_AMBER
+                AppThemePreset.DYNAMIC
             }
         }
         set(value) = prefs.edit().putString("theme_preset", value.name).apply()
