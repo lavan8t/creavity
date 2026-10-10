@@ -116,11 +116,12 @@ fun CanvasBottomToolbar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(bottom = 16.dp)
+            .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             HorizontalFloatingToolbar(
                 expanded = true,

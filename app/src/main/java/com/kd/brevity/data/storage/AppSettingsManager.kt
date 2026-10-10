@@ -73,4 +73,16 @@ class AppSettingsManager(context: Context) {
             }
         }
         set(value) = prefs.edit().putString("theme_preset", value.name).apply()
+
+    var themeMode: com.kd.brevity.presentation.viewmodel.ThemeMode
+        get() {
+            val name = prefs.getString("theme_mode", com.kd.brevity.presentation.viewmodel.ThemeMode.SYSTEM.name) ?: com.kd.brevity.presentation.viewmodel.ThemeMode.SYSTEM.name
+            return try {
+                com.kd.brevity.presentation.viewmodel.ThemeMode.valueOf(name)
+            } catch (_: Exception) {
+                com.kd.brevity.presentation.viewmodel.ThemeMode.SYSTEM
+            }
+        }
+        set(value) = prefs.edit().putString("theme_mode", value.name).apply()
 }
+

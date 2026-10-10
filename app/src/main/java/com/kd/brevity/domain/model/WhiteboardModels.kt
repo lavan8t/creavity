@@ -189,7 +189,10 @@ data class Board(
     val canvasHeight: Float = 1080f,
     val presentationUrl: String? = null,
     val versionHistory: List<BoardVersionSnapshot> = emptyList(),
-    val modificationLog: List<CanvasModification> = emptyList()
+    val modificationLog: List<CanvasModification> = emptyList(),
+    val labels: List<String> = emptyList(),
+    val venue: String = "",
+    val group: String = ""
 )
 
 data class PeerDevice(

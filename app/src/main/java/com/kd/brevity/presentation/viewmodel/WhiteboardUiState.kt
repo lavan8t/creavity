@@ -15,6 +15,8 @@ import com.kd.brevity.domain.model.Stroke
 import com.kd.brevity.domain.model.TextElement
 import com.kd.brevity.presentation.canvas.CanvasBackgroundPattern
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 data class WhiteboardUiState(
     val currentBoard: Board = Board(),
     val savedBoards: List<Board> = emptyList(),
@@ -33,6 +35,7 @@ data class WhiteboardUiState(
     val connectedPeers: List<PeerDevice> = emptyList(),
     val discoveredPeers: List<PeerDevice> = emptyList(),
     val selectedThemePreset: AppThemePreset = AppThemePreset.STUDIO_AMBER,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val livePeerPresences: Map<String, PeerPresence> = emptyMap(),

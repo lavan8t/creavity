@@ -50,7 +50,10 @@ import com.kd.brevity.domain.model.Board
 import com.kd.brevity.presentation.ui.NavDestination
 import com.kd.brevity.presentation.ui.OotbAction
 import com.kd.brevity.presentation.ui.components.BoardActionsSheet
+import com.kd.brevity.presentation.ui.components.BoardEditMetadataSheet
 import com.kd.brevity.presentation.ui.components.BoardExportSheet
+import com.kd.brevity.presentation.ui.components.BoardMetadataBadges
+import com.kd.brevity.presentation.ui.components.GroupFolderFilterRow
 import com.kd.brevity.presentation.ui.components.LibraryNavDrawer
 import com.kd.brevity.presentation.ui.components.MaterialSymbol
 import com.kd.brevity.presentation.ui.components.TooltipHint
@@ -200,10 +203,11 @@ fun BoardsLibraryScreen(
 
     var isGridView by remember { mutableStateOf(true) }
     var sortOrder by remember { mutableStateOf(LibrarySortOrder.LAST_ACCESSED) }
+    var isAscending by rememberSaveable { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var boardToRename by remember { mutableStateOf<Board?>(null) }
-    var renameBoardTitle by remember { mutableStateOf("") }
+    var selectedGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    var boardToEditMetadata by remember { mutableStateOf<Board?>(null) }
     var selectedBoardForActions by remember { mutableStateOf<Board?>(null) }
     var boardToExport by remember { mutableStateOf<Board?>(null) }
     var isSelectionMode by rememberSaveable { mutableStateOf(false) }
@@ -226,14 +230,23 @@ fun BoardsLibraryScreen(
         uiState.savedBoards.count { it.isInBin }
     }
 
-    // Filter and sort boards with deep content search (title + sticky notes + text elements)
-    val filteredBoards = remember(activeBoards, searchQuery, sortOrder) {
-        val base = if (searchQuery.isBlank()) {
-            activeBoards
-        } else {
+    val distinctGroups = remember(activeBoards) {
+        activeBoards.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+
+    // Filter and sort boards with deep content search (title + venue + group + labels + content)
+    val filteredBoards = remember(activeBoards, searchQuery, sortOrder, isAscending, selectedGroup) {
+        var base = activeBoards
+        if (selectedGroup != null) {
+            base = base.filter { it.group.equals(selectedGroup, ignoreCase = true) }
+        }
+        if (searchQuery.isNotBlank()) {
             val q = searchQuery.trim()
-            activeBoards.filter { b ->
+            base = base.filter { b ->
                 b.title.contains(q, ignoreCase = true) ||
+                b.venue.contains(q, ignoreCase = true) ||
+                b.group.contains(q, ignoreCase = true) ||
+                b.labels.any { l -> l.contains(q, ignoreCase = true) } ||
                 b.pages.any { p ->
                     p.textElements.any { t -> t.text.contains(q, ignoreCase = true) } ||
                     p.stickyNotes.any { s -> s.text.contains(q, ignoreCase = true) }
@@ -242,9 +255,9 @@ fun BoardsLibraryScreen(
         }
 
         when (sortOrder) {
-            LibrarySortOrder.LAST_ACCESSED -> base.sortedByDescending { it.lastAccessedAt }
-            LibrarySortOrder.LAST_MODIFIED -> base.sortedByDescending { it.modifiedAt }
-            LibrarySortOrder.TITLE -> base.sortedBy { it.title.lowercase() }
+            LibrarySortOrder.LAST_ACCESSED -> if (isAscending) base.sortedBy { it.lastAccessedAt } else base.sortedByDescending { it.lastAccessedAt }
+            LibrarySortOrder.LAST_MODIFIED -> if (isAscending) base.sortedBy { it.modifiedAt } else base.sortedByDescending { it.modifiedAt }
+            LibrarySortOrder.TITLE -> if (isAscending) base.sortedBy { it.title.lowercase() } else base.sortedByDescending { it.title.lowercase() }
         }
     }
 
@@ -349,16 +362,15 @@ fun BoardsLibraryScreen(
                                 }
                             }
 
-                            // Edit / Rename (active when exactly 1 board selected)
-                            TooltipHint(text = "Edit title") {
+                            // Edit Details (active when exactly 1 board selected)
+                            TooltipHint(text = "Edit details") {
                                 IconButton(
                                     enabled = selectedBoardIds.size == 1,
                                     onClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         val singleId = selectedBoardIds.firstOrNull() ?: return@IconButton
                                         val target = activeBoards.find { it.id == singleId } ?: return@IconButton
-                                        boardToRename = target
-                                        renameBoardTitle = target.title
+                                        boardToEditMetadata = target
                                     },
                                     modifier = Modifier.size(38.dp)
                                 ) {
@@ -394,89 +406,73 @@ fun BoardsLibraryScreen(
                         }
                     }
                 } else {
-                    Row(
+                    // Thicc Search Bar with Menu button INSIDE on the left
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .height(58.dp)
+                            .padding(vertical = 2.dp)
                     ) {
-                        // Navigation Drawer Hamburger Menu Button
-                        TooltipHint(text = "Open menu") {
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    scope.launch { drawerState.open() }
-                                },
-                                modifier = Modifier.size(44.dp)
-                            ) {
-                                MaterialSymbol(
-                                    name = "menu",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    size = 24.dp
-                                )
-                            }
-                        }
-
-                        // Search Bar
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp)
+                                .fillMaxSize()
+                                .padding(horizontal = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                // Search icon on LEFT before "Search Boards"
-                                MaterialSymbol(
-                                    name = "search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    size = 22.dp
-                                )
-
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.CenterStart
+                            TooltipHint(text = "Open menu") {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        scope.launch { drawerState.open() }
+                                    },
+                                    modifier = Modifier.size(44.dp)
                                 ) {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = "Search Boards",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Normal
-                                        )
-                                    }
-                                    BasicTextField(
-                                        value = searchQuery,
-                                        onValueChange = { searchQuery = it },
-                                        singleLine = true,
-                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontSize = 15.sp
-                                        ),
-                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                        modifier = Modifier.fillMaxWidth()
+                                    MaterialSymbol(
+                                        name = "menu",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        size = 24.dp
                                     )
                                 }
+                            }
 
-                                if (searchQuery.isNotEmpty()) {
-                                    TooltipHint(text = "Clear search") {
-                                        IconButton(
-                                            onClick = { searchQuery = "" },
-                                            modifier = Modifier.size(28.dp)
-                                        ) {
-                                            MaterialSymbol(
-                                                name = "close",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                size = 18.dp
-                                            )
-                                        }
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search boards, venue, labels...",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 15.sp
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 15.sp
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            if (searchQuery.isNotEmpty()) {
+                                TooltipHint(text = "Clear search") {
+                                    IconButton(
+                                        onClick = { searchQuery = "" },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        MaterialSymbol(
+                                            name = "close",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            size = 20.dp
+                                        )
                                     }
                                 }
                             }
@@ -484,50 +480,71 @@ fun BoardsLibraryScreen(
                     }
                 }
 
-            // 2. Sub-header Bar: "Last opened by me ↓" on left, View Toggle on right
+            // 2. Sub-header Bar: Sort + Order Arrow on left, View Toggle on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Sort Dropdown Button
-                Box {
-                    TooltipHint(text = "Sort boards") {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .clickable { showSortMenu = true }
-                                .padding(horizontal = 6.dp, vertical = 6.dp)
+                // Sort Dropdown Button + Direction Toggle
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Box {
+                        TooltipHint(text = "Sort boards") {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .clickable { showSortMenu = true }
+                                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = sortOrder.label,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                MaterialSymbol(
+                                    name = "arrow_drop_down",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 20.dp
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false },
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
-                            Text(
-                                text = sortOrder.label,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            MaterialSymbol(
-                                name = "arrow_drop_down",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 20.dp
-                            )
+                            LibrarySortOrder.entries.forEach { order ->
+                                DropdownMenuItem(
+                                    text = { Text(order.label) },
+                                    onClick = {
+                                        sortOrder = order
+                                        showSortMenu = false
+                                    }
+                                )
+                            }
                         }
                     }
 
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
-                        shape = RoundedCornerShape(16.dp),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        LibrarySortOrder.entries.forEach { order ->
-                            DropdownMenuItem(
-                                text = { Text(order.label) },
-                                onClick = {
-                                    sortOrder = order
-                                    showSortMenu = false
-                                }
+                    TooltipHint(text = if (isAscending) "Ascending order" else "Descending order") {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isAscending = !isAscending
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = if (isAscending) "arrow_upward" else "arrow_downward",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 20.dp
                             )
                         }
                     }
@@ -572,6 +589,17 @@ fun BoardsLibraryScreen(
                         }
                     }
                 }
+            }
+
+            // Group folders filter row
+            if (distinctGroups.isNotEmpty()) {
+                GroupFolderFilterRow(
+                    groups = distinctGroups,
+                    selectedGroup = selectedGroup,
+                    onSelectGroup = { group ->
+                        selectedGroup = if (selectedGroup == group) null else group
+                    }
+                )
             }
 
             // 3. Main Content: Grid Mode (Screen 1) or List Mode (Screen 2)
@@ -699,6 +727,7 @@ fun BoardsLibraryScreen(
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
+                                        BoardMetadataBadges(board = board)
                                     }
 
                                     // Favourite Star Button
@@ -830,6 +859,7 @@ fun BoardsLibraryScreen(
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    BoardMetadataBadges(board = board)
                                 }
 
                                 // Favourite Star Button
@@ -892,9 +922,9 @@ fun BoardsLibraryScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
-                    MaterialSymbol(name = "sensors", filled = true, size = 22.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    MaterialSymbol(name = "hub", filled = true, size = 22.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Connect", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(text = "Collaborate", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Button(
@@ -917,58 +947,21 @@ fun BoardsLibraryScreen(
             }
         }
 
-        // Rename Board Sheet (Latch-style ModalBottomSheet)
-        boardToRename?.let { board ->
-            ModalBottomSheet(
-                onDismissRequest = { boardToRename = null },
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                dragHandle = { BottomSheetDefaults.DragHandle() },
-                modifier = Modifier.imePadding()
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 28.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text("Rename Board", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    OutlinedTextField(
-                        value = renameBoardTitle,
-                        onValueChange = { renameBoardTitle = it },
-                        label = { Text("Board Title") },
-                        placeholder = { Text("New title") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(onClick = { boardToRename = null }) { Text("Cancel") }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (renameBoardTitle.isNotBlank()) {
-                                    onAction(OotbAction.RenameBoard(board.id, renameBoardTitle))
-                                    boardToRename = null
-                                }
-                            },
-                            shape = RoundedCornerShape(50)
-                        ) {
-                            Text("Save", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
+        // Board Metadata Edit Sheet (Latch-style ModalBottomSheet)
+        BoardEditMetadataSheet(
+            board = boardToEditMetadata,
+            onDismiss = { boardToEditMetadata = null },
+            onSave = { boardId, title, venue, group, labels ->
+                onAction(OotbAction.UpdateBoardMetadata(boardId, title, venue, group, labels))
             }
-        }
+        )
 
         // Board Actions Sheet (Star, Rename, Duplicate, Export, Move to Bin)
         BoardActionsSheet(
             board = selectedBoardForActions,
             onDismiss = { selectedBoardForActions = null },
             onToggleStar = { board -> onAction(OotbAction.ToggleStarBoard(board.id)) },
-            onRename = { board -> boardToRename = board; renameBoardTitle = board.title },
+            onRename = { board -> boardToEditMetadata = board },
             onDuplicate = { board -> onAction(OotbAction.DuplicateBoard(board.id)) },
             onExport = { board -> boardToExport = board },
             onMoveToBin = { board -> onAction(OotbAction.MoveBoardToBin(board.id)) }

@@ -66,6 +66,7 @@ sealed interface OotbAction {
     data class RestoreBoardFromBin(val boardId: String) : OotbAction
     data class DeleteBoardPermanently(val boardId: String) : OotbAction
     data object EmptyBin : OotbAction
+    data class UpdateBoardMetadata(val boardId: String, val title: String, val venue: String, val group: String, val labels: List<String>) : OotbAction
 
     // P2P Collaboration
     data class StartAdvertising(val deviceName: String) : OotbAction
@@ -81,4 +82,5 @@ sealed interface OotbAction {
     // Settings
     data class UpdateDisplayName(val name: String) : OotbAction
     data class ToggleHaptics(val enabled: Boolean) : OotbAction
+    data class SetThemeMode(val mode: com.kd.brevity.presentation.viewmodel.ThemeMode) : OotbAction
 }

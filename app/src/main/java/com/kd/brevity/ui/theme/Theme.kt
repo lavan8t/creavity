@@ -42,6 +42,36 @@ val OrangeColorScheme: ColorScheme = darkColorScheme(
     errorContainer = Color(0xFFB71C1C)
 )
 
+val OrangeLightColorScheme: ColorScheme = androidx.compose.material3.lightColorScheme(
+    primary = Color(0xFFDC5F00),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFFFDBCF),
+    onPrimaryContainer = Color(0xFF381400),
+    secondary = Color(0xFF5E6066),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE2E2E9),
+    onSecondaryContainer = Color(0xFF1B1B1F),
+    tertiary = Color(0xFF006D39),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF6CFFA0),
+    onTertiaryContainer = Color(0xFF00210C),
+    background = Color(0xFFFBF8F6),
+    onBackground = Color(0xFF1B1B1F),
+    surface = Color(0xFFFBF8F6),
+    onSurface = Color(0xFF1B1B1F),
+    surfaceVariant = Color(0xFFF0EAE4),
+    onSurfaceVariant = Color(0xFF49454F),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF6F3F0),
+    surfaceContainer = Color(0xFFEFECE9),
+    surfaceContainerHigh = Color(0xFFE9E6E3),
+    surfaceContainerHighest = Color(0xFFE3E0DE),
+    outline = Color(0xFF7A757F),
+    outlineVariant = Color(0xFFCAC4D0),
+    error = Color(0xFFBA1A1A),
+    errorContainer = Color(0xFFFFDAD6)
+)
+
 val ExpressiveShapes = androidx.compose.material3.Shapes(
     extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
     small = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
@@ -53,14 +83,17 @@ val ExpressiveShapes = androidx.compose.material3.Shapes(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun OutofTheBoxTheme(
+    darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        dynamicDarkColorScheme(context)
-    } else {
-        OrangeColorScheme
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (darkTheme) dynamicDarkColorScheme(context) else androidx.compose.material3.dynamicLightColorScheme(context)
+        }
+        darkTheme -> OrangeColorScheme
+        else -> OrangeLightColorScheme
     }
 
     MaterialTheme(

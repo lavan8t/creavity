@@ -13,8 +13,29 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-class BoardManager(context: Context) {
-    private val boardsDir = File(context.filesDir, "saved_boards").apply { mkdirs() }
+class BoardManager(private val context: Context) {
+    private val boardsDir: File by lazy {
+        val publicDocs = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS), "Brevity").apply {
+            try { mkdirs() } catch (_: Exception) {}
+        }
+        val targetDir = if (publicDocs.exists() && publicDocs.canWrite()) {
+            publicDocs
+        } else {
+            context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)?.let { File(it, "boards").apply { mkdirs() } }
+                ?: File(context.filesDir, "saved_boards").apply { mkdirs() }
+        }
+        // Migrate legacy boards from context.filesDir/saved_boards
+        val legacyDir = File(context.filesDir, "saved_boards")
+        if (legacyDir.exists() && legacyDir != targetDir) {
+            legacyDir.listFiles { _, name -> name.endsWith(".json") }?.forEach { f ->
+                val dest = File(targetDir, f.name)
+                if (!dest.exists()) {
+                    try { f.copyTo(dest, overwrite = true) } catch (_: Exception) {}
+                }
+            }
+        }
+        targetDir
+    }
 
     fun saveBoard(board: Board) {
         if (board.id.isBlank()) return
@@ -82,6 +103,9 @@ class BoardManager(context: Context) {
         json.put("canvasWidth", board.canvasWidth.toDouble())
         json.put("canvasHeight", board.canvasHeight.toDouble())
         board.presentationUrl?.let { json.put("presentationUrl", it) }
+        json.put("venue", board.venue)
+        json.put("group", board.group)
+        json.put("labels", JSONArray(board.labels))
 
         val pagesArray = JSONArray()
         board.pages.forEach { page ->
@@ -285,6 +309,14 @@ class BoardManager(context: Context) {
         val canvasWidth = json.optDouble("canvasWidth", 1920.0).toFloat()
         val canvasHeight = json.optDouble("canvasHeight", 1080.0).toFloat()
         val presentationUrl = if (json.has("presentationUrl") && !json.isNull("presentationUrl")) json.getString("presentationUrl") else null
+        val venue = json.optString("venue", "")
+        val group = json.optString("group", "")
+        val labelsArray = json.optJSONArray("labels")
+        val labels = if (labelsArray != null) {
+            (0 until labelsArray.length()).map { labelsArray.optString(it, "") }
+        } else {
+            emptyList()
+        }
 
         return Board(
             id = id,
@@ -304,7 +336,10 @@ class BoardManager(context: Context) {
             isInfiniteCanvas = isInfiniteCanvas,
             canvasWidth = canvasWidth,
             canvasHeight = canvasHeight,
-            presentationUrl = presentationUrl
+            presentationUrl = presentationUrl,
+            labels = labels,
+            venue = venue,
+            group = group
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.kd.brevity.presentation.viewmodel
 
 import com.kd.brevity.presentation.ui.OotbAction
+import kotlinx.coroutines.flow.update
 
 fun WhiteboardViewModel.dispatch(action: OotbAction) {
     when (action) {
@@ -60,5 +61,9 @@ fun WhiteboardViewModel.dispatch(action: OotbAction) {
         is OotbAction.SetPresentationUrl -> setPresentationUrl(action.url)
         is OotbAction.SetPresentationMode -> setPresentationMode(action.enabled)
         is OotbAction.ImportPresentation -> importPresentation(action.uri)
+        is OotbAction.SetThemeMode -> setThemeMode(action.mode)
+        is OotbAction.UpdateBoardMetadata -> updateBoardMetadata(action.boardId, action.title, action.venue, action.group, action.labels)
     }
 }
+
+

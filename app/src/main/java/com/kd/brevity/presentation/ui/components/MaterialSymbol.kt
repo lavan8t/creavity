@@ -1,6 +1,10 @@
 package com.kd.brevity.presentation.ui.components
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
@@ -28,6 +32,8 @@ fun MaterialSymbol(
         "line", "horizontal_rule" -> if (filled) horizontal_rule_filled else horizontal_rule
         "arrow", "arrow_forward" -> if (filled) arrow_forward_filled else arrow_forward
         "arrow_right_alt" -> if (filled) arrow_right_alt_filled else arrow_right_alt
+        "arrow_upward", "north" -> Icons.Default.ArrowUpward
+        "arrow_downward", "south" -> Icons.Default.ArrowDownward
         "rectangle", "crop_square" -> if (filled) rectangle_filled else rectangle
         "circle", "radio_button_unchecked" -> if (filled) circle_filled else circle
         "triangle", "change_history" -> if (filled) change_history_filled else change_history
@@ -57,6 +63,7 @@ fun MaterialSymbol(
         "map", "minimap", "radar", "near_me" -> if (filled) map_filled else map
         "format_color_fill" -> if (filled) format_color_fill_filled else format_color_fill
         "folder" -> if (filled) folder_filled else folder
+        "cell_tower" -> Icons.Default.CellTower
         "sensors" -> if (filled) sensors_filled else sensors
         "search" -> if (filled) search_filled else search
         "person", "account" -> if (filled) person_filled else person

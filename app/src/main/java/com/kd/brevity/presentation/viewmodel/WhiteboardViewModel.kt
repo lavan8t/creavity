@@ -43,14 +43,15 @@ import java.util.UUID
 class WhiteboardViewModel(application: Application) : AndroidViewModel(application) {
     val nearbyManager = NearbyConnectionsManager(application)
     private val boardManager = BoardManager(application)
-    private val appSettings = AppSettingsManager(application)
+    internal val appSettings = AppSettingsManager(application)
 
     internal val _uiState = MutableStateFlow(
         WhiteboardUiState(
             displayName = appSettings.displayName,
             hapticsEnabled = appSettings.hapticsEnabled,
             currentWidth = appSettings.defaultStrokeWidth,
-            selectedThemePreset = appSettings.themePreset
+            selectedThemePreset = appSettings.themePreset,
+            themeMode = appSettings.themeMode
         )
     )
     val uiState: StateFlow<WhiteboardUiState> = _uiState.asStateFlow()
@@ -366,14 +367,8 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
 
     fun recordMutation(mutation: BoardMutation) {
         mutationHistory.record(mutation)
-        _uiState.update {
-            it.copy(
-                canUndo = mutationHistory.canUndo,
-                canRedo = mutationHistory.canRedo
-            )
-        }
+        _uiState.update { it.copy(canUndo = mutationHistory.canUndo, canRedo = mutationHistory.canRedo) }
     }
-
 
     fun undo() {
         val state = _uiState.value
@@ -389,12 +384,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
             lastAccessedAt = System.currentTimeMillis()
         )
         persistBoard(updatedBoard)
-        _uiState.update {
-            it.copy(
-                canUndo = mutationHistory.canUndo,
-                canRedo = mutationHistory.canRedo
-            )
-        }
+        _uiState.update { it.copy(canUndo = mutationHistory.canUndo, canRedo = mutationHistory.canRedo) }
         nearbyManager.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedPage.strokes, updatedPage.textElements))
     }
 
@@ -412,12 +402,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
             lastAccessedAt = System.currentTimeMillis()
         )
         persistBoard(updatedBoard)
-        _uiState.update {
-            it.copy(
-                canUndo = mutationHistory.canUndo,
-                canRedo = mutationHistory.canRedo
-            )
-        }
+        _uiState.update { it.copy(canUndo = mutationHistory.canUndo, canRedo = mutationHistory.canRedo) }
         nearbyManager.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedPage.strokes, updatedPage.textElements))
     }
 
@@ -619,11 +604,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
                     val updatedPages = state.currentBoard.pages.toMutableList().apply {
                         this[state.currentBoard.activePageIndex] = updatedPage
                     }
-                    val updatedBoard = state.currentBoard.copy(
-                        pages = updatedPages,
-                        modifiedAt = System.currentTimeMillis(),
-                        lastAccessedAt = System.currentTimeMillis()
-                    )
+                    val updatedBoard = state.currentBoard.copy(pages = updatedPages, modifiedAt = System.currentTimeMillis(), lastAccessedAt = System.currentTimeMillis())
                     persistBoard(updatedBoard)
                     recordMutation(BoardMutation.AddImage(newImg))
                 }
@@ -640,12 +621,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
         val updatedPages = state.currentBoard.pages.toMutableList().apply {
             this[state.currentBoard.activePageIndex] = updatedPage
         }
-        val updatedBoard = state.currentBoard.copy(
-            pages = updatedPages,
-            modifiedAt = System.currentTimeMillis(),
-            lastAccessedAt = System.currentTimeMillis()
-        )
-
+        val updatedBoard = state.currentBoard.copy(pages = updatedPages, modifiedAt = System.currentTimeMillis(), lastAccessedAt = System.currentTimeMillis())
         persistBoard(updatedBoard)
         if (deletedImg != null) {
             recordMutation(BoardMutation.DeleteImage(deletedImg))
@@ -953,17 +929,10 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
         val page = currentBoard.pages.getOrElse(activePageIndex) { BoardPage() }
         val updatedNotes = page.stickyNotes + note
         val updatedPage = page.copy(stickyNotes = updatedNotes)
-        val updatedPages = currentBoard.pages.toMutableList()
-        if (activePageIndex in updatedPages.indices) {
-            updatedPages[activePageIndex] = updatedPage
-        } else {
-            updatedPages.add(updatedPage)
+        val updatedPages = currentBoard.pages.toMutableList().apply {
+            if (activePageIndex in indices) this[activePageIndex] = updatedPage else add(updatedPage)
         }
-        val updatedBoard = currentBoard.copy(
-            pages = updatedPages,
-            modifiedAt = System.currentTimeMillis(),
-            lastAccessedAt = System.currentTimeMillis()
-        )
+        val updatedBoard = currentBoard.copy(pages = updatedPages, modifiedAt = System.currentTimeMillis(), lastAccessedAt = System.currentTimeMillis())
         persistBoard(updatedBoard)
         nearbyManager.sendPacketToAll(WhiteboardPacket.StickyNoteAdd(note))
     }
@@ -974,17 +943,35 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
         val page = currentBoard.pages.getOrElse(activePageIndex) { BoardPage() }
         val updatedNotes = page.stickyNotes.filterNot { it.id == noteId }
         val updatedPage = page.copy(stickyNotes = updatedNotes)
-        val updatedPages = currentBoard.pages.toMutableList()
-        if (activePageIndex in updatedPages.indices) {
-            updatedPages[activePageIndex] = updatedPage
+        val updatedPages = currentBoard.pages.toMutableList().apply {
+            if (activePageIndex in indices) this[activePageIndex] = updatedPage
         }
-        val updatedBoard = currentBoard.copy(
-            pages = updatedPages,
-            modifiedAt = System.currentTimeMillis(),
-            lastAccessedAt = System.currentTimeMillis()
-        )
+        val updatedBoard = currentBoard.copy(pages = updatedPages, modifiedAt = System.currentTimeMillis(), lastAccessedAt = System.currentTimeMillis())
         persistBoard(updatedBoard)
         nearbyManager.sendPacketToAll(WhiteboardPacket.StickyNoteDelete(noteId))
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        appSettings.themeMode = mode
+        _uiState.update { it.copy(themeMode = mode) }
+    }
+
+    fun updateBoardMetadata(boardId: String, title: String, venue: String, group: String, labels: List<String>) {
+        val current = _uiState.value.currentBoard
+        val target = _uiState.value.savedBoards.find { it.id == boardId } ?: if (current.id == boardId) current else null ?: return
+        val updated = target.copy(
+            title = title.ifBlank { target.title },
+            venue = venue,
+            group = group,
+            labels = labels,
+            modifiedAt = System.currentTimeMillis()
+        )
+        _uiState.update { state ->
+            val updatedSaved = state.savedBoards.map { if (it.id == boardId) updated else it }
+            val updatedCurrent = if (state.currentBoard.id == boardId) updated else state.currentBoard
+            state.copy(currentBoard = updatedCurrent, savedBoards = updatedSaved)
+        }
+        viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(updated) }
     }
 
     override fun onCleared() {

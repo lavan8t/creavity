@@ -159,7 +159,7 @@ fun PeerConnectScreen(
                         }
                     }
                     Text(
-                        text = "Quick Share",
+                        text = "Collaborate",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -261,7 +261,7 @@ fun PeerConnectScreen(
                         shape = RoundedCornerShape(50)
                     ) {
                         MaterialSymbol(
-                            name = if (uiState.isAdvertising) "sensors" else "near_me",
+                            name = if (uiState.isAdvertising) "sensors" else "cell_tower",
                             size = 18.dp,
                             tint = if (uiState.isAdvertising) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                         )
@@ -295,7 +295,7 @@ fun PeerConnectScreen(
                         shape = RoundedCornerShape(50)
                     ) {
                         MaterialSymbol(
-                            name = "radar",
+                            name = if (uiState.isDiscovering) "radar" else "hub",
                             size = 18.dp,
                             tint = if (uiState.isDiscovering) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
                         )

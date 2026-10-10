@@ -41,7 +41,16 @@ class MainActivity : ComponentActivity() {
             val windowSizeClass = calculateWindowSizeClass(this)
             val uiState by viewModel.uiState.collectAsState()
 
-            OutofTheBoxTheme {
+            val isDark = when (uiState.themeMode) {
+                com.kd.brevity.presentation.viewmodel.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                com.kd.brevity.presentation.viewmodel.ThemeMode.LIGHT -> false
+                com.kd.brevity.presentation.viewmodel.ThemeMode.DARK -> true
+            }
+
+            OutofTheBoxTheme(
+                darkTheme = isDark,
+                dynamicColor = uiState.selectedThemePreset.isDynamic
+            ) {
                 AdaptiveWhiteboardScreen(
                     uiState = uiState,
                     windowWidthSizeClass = windowSizeClass.widthSizeClass,
