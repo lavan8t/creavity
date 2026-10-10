@@ -556,9 +556,9 @@ fun BoardsLibraryScreen(
                     }
                 }
             } else if (isGridView) {
-                // 2-Column Grid Mode (Screen 1)
+                // Adaptive Grid Mode (2 columns portrait, 4+ landscape/tablet)
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(minSize = 170.dp),
                     state = gridState,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),

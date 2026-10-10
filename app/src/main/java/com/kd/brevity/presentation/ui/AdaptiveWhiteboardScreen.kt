@@ -23,6 +23,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import android.content.res.Configuration
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.kd.brevity.domain.model.DrawingTool
 import com.kd.brevity.presentation.ui.screens.AboutScreen
 import com.kd.brevity.presentation.ui.screens.BinScreen
@@ -50,6 +57,26 @@ fun AdaptiveWhiteboardScreen(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val view = LocalView.current
+
+    DisposableEffect(isLandscape) {
+        val window = activity?.window ?: return@DisposableEffect onDispose {}
+        val insetsController = WindowCompat.getInsetsController(window, view)
+        insetsController.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+
+        if (isLandscape) {
+            insetsController.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
+        }
+
+        onDispose {
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
