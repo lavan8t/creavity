@@ -245,8 +245,6 @@ class CanvasGestureController(
                         val dx = midX - lastMidX
                         val dy = midY - lastMidY
 
-                        val touchPoints = (0 until pointerCount).map { Offset(event.getX(it), event.getY(it)) }
-                        onTransformStateChanged(true, touchPoints)
                         onTransform(scaleFactor, Offset(lastMidX, lastMidY), Offset(dx, dy))
                     }
                     lastMidX = midX

@@ -32,7 +32,19 @@ object StrokeDrawer {
 
         when (tool) {
             DrawingTool.PEN -> {
-                drawProfessionalApplePen(points, color, width)
+                if (cachedPath != null && !hasDynamicPressure(points)) {
+                    drawPath(
+                        path = cachedPath,
+                        color = color,
+                        style = CanvasStrokeStyle(
+                            width = width,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                } else {
+                    drawProfessionalApplePen(points, color, width)
+                }
             }
             DrawingTool.MARKER -> {
                 val path = cachedPath ?: PathUtils.createSmoothPath(points)
@@ -50,7 +62,19 @@ object StrokeDrawer {
                 drawPressureSensitiveStroke(points, color.copy(alpha = 0.85f), width * 2.5f)
             }
             DrawingTool.PENCIL -> {
-                drawProfessionalApplePencil(points, color, width)
+                if (cachedPath != null) {
+                    drawPath(
+                        path = cachedPath,
+                        color = color.copy(alpha = 0.85f),
+                        style = CanvasStrokeStyle(
+                            width = width,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                } else {
+                    drawProfessionalApplePencil(points, color, width)
+                }
             }
             DrawingTool.HIGHLIGHTER -> {
                 val path = cachedPath ?: PathUtils.createSmoothPath(points)

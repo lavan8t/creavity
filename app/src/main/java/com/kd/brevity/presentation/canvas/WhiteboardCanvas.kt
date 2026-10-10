@@ -260,7 +260,10 @@ fun WhiteboardCanvas(
                 val activeStroke = movingStrokeMap[stroke.id] ?: stroke
                 if (activeStroke.points.isEmpty()) return@forEach
 
-                val bounds = strokeBoundsCache.getOrPut("${activeStroke.id}_${activeStroke.points.size}") {
+                val isMoving = movingStrokeMap.containsKey(stroke.id)
+                val strokeKey = if (isMoving) "${stroke.id}_m" else stroke.id
+
+                val bounds = strokeBoundsCache.getOrPut(strokeKey) {
                     var minX = Float.MAX_VALUE
                     var minY = Float.MAX_VALUE
                     var maxX = Float.MIN_VALUE
@@ -278,7 +281,7 @@ fun WhiteboardCanvas(
                     return@forEach
                 }
 
-                val path = pathCache.getOrPut("${activeStroke.id}_${activeStroke.points.size}") {
+                val path = pathCache.getOrPut(strokeKey) {
                     PathUtils.createToolPath(activeStroke.tool, activeStroke.points)
                 }
                 val baseColor = Color(activeStroke.color)
