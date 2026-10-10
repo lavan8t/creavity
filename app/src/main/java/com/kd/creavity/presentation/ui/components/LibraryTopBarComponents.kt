@@ -1,8 +1,15 @@
 package com.kd.creavity.presentation.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,14 +22,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kd.creavity.presentation.ui.motion.BrevityMotion
+import kotlinx.coroutines.delay
 
 /**
  * Top bar displayed when multiple boards are selected in library selection mode.
@@ -164,6 +180,24 @@ fun LibrarySearchBar(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    var showBrandIntro by rememberSaveable { mutableStateOf(true) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    // When focused or search query changes, dismiss brand intro immediately
+    LaunchedEffect(isFocused, searchQuery) {
+        if (isFocused || searchQuery.isNotEmpty()) {
+            showBrandIntro = false
+        }
+    }
+
+    // On app open, show CreaVITy briefly, then fade out into "Search Boards"
+    LaunchedEffect(Unit) {
+        if (showBrandIntro) {
+            delay(1200L)
+            showBrandIntro = false
+        }
+    }
 
     Surface(
         shape = RoundedCornerShape(50),
@@ -194,22 +228,46 @@ fun LibrarySearchBar(
 
             Box(
                 modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.Center
             ) {
                 if (searchQuery.isEmpty()) {
-                    Text(
-                        text = "Search boards, venue, labels...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 15.sp
-                    )
+                    AnimatedContent(
+                        targetState = showBrandIntro,
+                        transitionSpec = {
+                            fadeIn(animationSpec = BrevityMotion.springEffects()) togetherWith
+                                fadeOut(animationSpec = BrevityMotion.springEffects())
+                        },
+                        label = "SearchBarPlaceholder"
+                    ) { isBrand ->
+                        if (isBrand) {
+                            Text(
+                                text = "CreaVITy",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            Text(
+                                text = "Search Boards",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 15.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
                     singleLine = true,
+                    interactionSource = interactionSource,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 15.sp
+                        fontSize = 15.sp,
+                        textAlign = TextAlign.Center
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth()
@@ -220,11 +278,13 @@ fun LibrarySearchBar(
                 TooltipHint(text = "Clear search") {
                     IconButton(
                         onClick = { onSearchQueryChange("") },
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(44.dp)
                     ) {
                         MaterialSymbol(name = "close", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
                     }
                 }
+            } else {
+                Spacer(modifier = Modifier.size(44.dp))
             }
         }
     }
