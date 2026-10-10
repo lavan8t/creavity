@@ -1,0 +1,548 @@
+package com.kd.brevity.presentation.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.kd.brevity.presentation.ui.OotbAction
+import com.kd.brevity.presentation.ui.components.MaterialSymbol
+import com.kd.brevity.presentation.ui.components.TooltipHint
+import com.kd.brevity.presentation.viewmodel.WhiteboardUiState
+
+private val BACKGROUND_COLOR_OPTIONS = listOf(
+    Pair("Studio Dark", Color(0xFF18181C)),
+    Pair("Deep Slate Navy", Color(0xFF0F172A)),
+    Pair("Warm Espresso", Color(0xFF1C1917)),
+    Pair("Pine Black", Color(0xFF141F1A)),
+    Pair("Twilight Plum", Color(0xFF1E1424)),
+    Pair("Neutral Charcoal", Color(0xFF2B2D35))
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsTopBar(
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    onBackPressed: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+
+    LargeTopAppBar(
+        title = {
+            Text(
+                text = "Settings",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 16.dp)
+            )
+        },
+        navigationIcon = {
+            TooltipHint(text = "Back") {
+                FilledIconButton(
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .size(40.dp)
+                        .clip(CircleShape),
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onBackPressed()
+                    },
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                    )
+                ) {
+                    MaterialSymbol(
+                        name = "arrow_back",
+                        tint = MaterialTheme.colorScheme.primary,
+                        size = 20.dp
+                    )
+                }
+            }
+        },
+        scrollBehavior = scrollBehavior,
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@Composable
+fun SettingsSection(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(vertical = 8.dp)
+        ) {
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        content()
+    }
+}
+
+@Composable
+fun SettingsItem(
+    title: String,
+    subtitle: String,
+    trailingContent: @Composable () -> Unit = {},
+    shape: Shape = RoundedCornerShape(4.dp),
+    onClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = shape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .clickable(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            })
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Box(
+                modifier = Modifier.padding(start = 16.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                trailingContent()
+            }
+        }
+    }
+}
+
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CanvasBackgroundBottomSheet(
+    selectedColor: Color,
+    onColorSelected: (Color) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptic = LocalHapticFeedback.current
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Canvas Background",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+
+            BACKGROUND_COLOR_OPTIONS.forEach { (name, color) ->
+                val isSelected = color == selectedColor
+                val contentColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(),
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onColorSelected(color)
+                            }
+                        )
+                        .padding(vertical = 12.dp, horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(
+                                width = if (isSelected) 3.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                shape = CircleShape
+                            )
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text = name,
+                        color = contentColor,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.W500,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    uiState: WhiteboardUiState,
+    onAction: (OotbAction) -> Unit,
+    onNavigateToCanvas: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val lazyListState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    var showBackgroundSheet by remember { mutableStateOf(false) }
+    var showEditDisplayNameDialog by remember { mutableStateOf(false) }
+    var tempDisplayName by remember { mutableStateOf("") }
+
+    val currentBgName = remember(uiState.backgroundColor) {
+        BACKGROUND_COLOR_OPTIONS.find { it.second == uiState.backgroundColor }?.first ?: "Custom"
+    }
+
+    Scaffold(
+        modifier = modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize(),
+        topBar = {
+            SettingsTopBar(
+                scrollBehavior = scrollBehavior,
+                onBackPressed = onNavigateToCanvas
+            )
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = MaterialTheme.colorScheme.surface
+    ) { innerPadding ->
+        LazyColumn(
+            state = lazyListState,
+            contentPadding = innerPadding,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            // APPEARANCE
+            item {
+                SettingsSection(title = "Appearance") {
+                    Column(modifier = Modifier.clip(shape = RoundedCornerShape(24.dp))) {
+                        SettingsItem(
+                            title = "Canvas Background",
+                            subtitle = currentBgName,
+                            trailingContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(26.dp)
+                                        .clip(CircleShape)
+                                        .background(uiState.backgroundColor)
+                                        .border(
+                                            width = 1.5.dp,
+                                            color = MaterialTheme.colorScheme.outlineVariant,
+                                            shape = CircleShape
+                                        )
+                                )
+                            },
+                            onClick = {
+                                showBackgroundSheet = true
+                            }
+                        )
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+
+            // INKING & CANVAS
+            item {
+                SettingsSection(title = "Inking & Canvas") {
+                    Column(modifier = Modifier.clip(shape = RoundedCornerShape(24.dp))) {
+                        // Default Stroke Width with embedded slider
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(
+                                            text = "Default Inking Width",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "Thickness for pen, pencils & shapes",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Text(
+                                        text = "${uiState.currentWidth.toInt()} px",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Slider(
+                                    value = uiState.currentWidth,
+                                    onValueChange = { onAction(OotbAction.ChangeStrokeWidth(it)) },
+                                    valueRange = 1f..40f,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        SettingsItem(
+                            title = "Tactile Drawing Haptics",
+                            subtitle = "Real-time micro friction ticks while inking on glass",
+                            trailingContent = {
+                                Switch(
+                                    checked = uiState.hapticsEnabled,
+                                    onCheckedChange = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onAction(OotbAction.ToggleHaptics(it))
+                                    }
+                                )
+                            },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onAction(OotbAction.ToggleHaptics(!uiState.hapticsEnabled))
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        SettingsItem(
+                            title = "Infinite Canvas",
+                            subtitle = if (uiState.isInfiniteCanvas) "Unlimited panning and zooming space" else "Fixed Sheet (16:9)",
+                            trailingContent = {
+                                Switch(
+                                    checked = uiState.isInfiniteCanvas,
+                                    onCheckedChange = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onAction(OotbAction.SetInfiniteCanvas(it))
+                                    }
+                                )
+                            },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onAction(OotbAction.SetInfiniteCanvas(!uiState.isInfiniteCanvas))
+                            }
+                        )
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+
+            // COLLABORATION
+            item {
+                SettingsSection(title = "Collaboration") {
+                    Column(modifier = Modifier.clip(shape = RoundedCornerShape(24.dp))) {
+                        SettingsItem(
+                            title = "Connection Name",
+                            subtitle = uiState.displayName,
+                            trailingContent = {
+                                MaterialSymbol(
+                                    name = "person",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    size = 22.dp
+                                )
+                            },
+                            onClick = {
+                                tempDisplayName = uiState.displayName
+                                showEditDisplayNameDialog = true
+                            }
+                        )
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(24.dp)) }
+
+            // Bottom Spacer for full immersive scrolling under navigation bar
+            item { Spacer(modifier = Modifier.height(72.dp)) }
+        }
+    }
+
+    if (showEditDisplayNameDialog) {
+        val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { showEditDisplayNameDialog = false },
+            sheetState = editSheetState,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp)
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Connection Name",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                OutlinedTextField(
+                    value = tempDisplayName,
+                    onValueChange = { tempDisplayName = it },
+                    label = { Text("Device Name") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = { showEditDisplayNameDialog = false }) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val trimmed = tempDisplayName.trim()
+                            if (trimmed.isNotEmpty()) {
+                                onAction(OotbAction.UpdateDisplayName(trimmed))
+                            }
+                            showEditDisplayNameDialog = false
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text("Save", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showBackgroundSheet) {
+        CanvasBackgroundBottomSheet(
+            selectedColor = uiState.backgroundColor,
+            onColorSelected = { color ->
+                onAction(OotbAction.SelectBackgroundColor(color))
+                showBackgroundSheet = false
+            },
+            onDismiss = { showBackgroundSheet = false }
+        )
+    }
+}

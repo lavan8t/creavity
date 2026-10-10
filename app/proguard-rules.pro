@@ -1,9 +1,9 @@
 # ==============================================================================
-# Out of The Box (OOTB) - Full R8 / ProGuard Optimization & Obfuscation Rules
+# breVITy - Full R8 / ProGuard Optimization & Obfuscation Rules
 # ==============================================================================
 
 # Aggressive Optimization & Obfuscation
--repackageclasses 'com.kd.ootb.opt'
+-repackageclasses 'com.kd.brevity.opt'
 -allowaccessmodification
 
 # Strip debug logging from release APK for speed and size reduction
@@ -15,9 +15,9 @@
 }
 
 # Keep project domain models & binary packet serialization
--keep class com.kd.ootb.domain.model.** { *; }
--keep class com.kd.ootb.data.binary.** { *; }
--keepclassmembers class com.kd.ootb.domain.model.** { *; }
+-keep class com.kd.brevity.domain.model.** { *; }
+-keep class com.kd.brevity.data.binary.** { *; }
+-keepclassmembers class com.kd.brevity.domain.model.** { *; }
 
 # Compose Stable & Immutable Annotations
 -keepclassmembers class * {

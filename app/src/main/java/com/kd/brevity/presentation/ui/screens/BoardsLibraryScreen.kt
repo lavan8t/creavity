@@ -1,0 +1,779 @@
+package com.kd.brevity.presentation.ui.screens
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke as DrawScopeStroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.kd.brevity.data.export.BoardExporter
+import com.kd.brevity.domain.model.Board
+import com.kd.brevity.presentation.ui.NavDestination
+import com.kd.brevity.presentation.ui.OotbAction
+import com.kd.brevity.presentation.ui.components.BoardActionsSheet
+import com.kd.brevity.presentation.ui.components.BoardExportSheet
+import com.kd.brevity.presentation.ui.components.LibraryNavDrawer
+import com.kd.brevity.presentation.ui.components.MaterialSymbol
+import com.kd.brevity.presentation.ui.components.TooltipHint
+import com.kd.brevity.presentation.viewmodel.WhiteboardUiState
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+enum class LibrarySortOrder(val label: String) {
+    LAST_ACCESSED("Last accessed"),
+    LAST_MODIFIED("Last modified"),
+    TITLE("Title")
+}
+
+fun Modifier.drawListScrollbar(state: LazyListState, color: Color): Modifier = this.drawWithContent {
+    drawContent()
+    val totalItems = state.layoutInfo.totalItemsCount
+    val visibleItems = state.layoutInfo.visibleItemsInfo.size
+    if (totalItems > visibleItems && visibleItems > 0) {
+        val firstVisible = state.firstVisibleItemIndex
+        val viewportHeight = size.height
+        val barHeight = (viewportHeight * (visibleItems.toFloat() / totalItems)).coerceAtLeast(32.dp.toPx())
+        val scrollProgress = (firstVisible.toFloat() / (totalItems - visibleItems).coerceAtLeast(1))
+        val barOffsetY = (viewportHeight - barHeight) * scrollProgress
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(size.width - 4.dp.toPx(), barOffsetY),
+            size = Size(3.dp.toPx(), barHeight),
+            cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+        )
+    }
+}
+
+fun Modifier.drawGridScrollbar(state: LazyGridState, color: Color): Modifier = this.drawWithContent {
+    drawContent()
+    val totalItems = state.layoutInfo.totalItemsCount
+    val visibleItems = state.layoutInfo.visibleItemsInfo.size
+    if (totalItems > visibleItems && visibleItems > 0) {
+        val firstVisible = state.firstVisibleItemIndex
+        val viewportHeight = size.height
+        val barHeight = (viewportHeight * (visibleItems.toFloat() / totalItems)).coerceAtLeast(32.dp.toPx())
+        val scrollProgress = (firstVisible.toFloat() / (totalItems - visibleItems).coerceAtLeast(1))
+        val barOffsetY = (viewportHeight - barHeight) * scrollProgress
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(size.width - 4.dp.toPx(), barOffsetY),
+            size = Size(3.dp.toPx(), barHeight),
+            cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+        )
+    }
+}
+
+@Composable
+fun BoardThumbnailPreview(
+    board: Board,
+    modifier: Modifier = Modifier
+) {
+    val page = board.pages.getOrNull(board.activePageIndex) ?: board.pages.firstOrNull()
+    val strokes = page?.strokes ?: emptyList()
+    val stickyNotes = page?.stickyNotes ?: emptyList()
+
+    Box(
+        modifier = modifier
+            .background(Color(board.backgroundColor)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (strokes.isEmpty() && stickyNotes.isEmpty()) {
+            MaterialSymbol(
+                name = "brush",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f),
+                size = 28.dp
+            )
+        } else {
+            Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
+                var minX = Float.MAX_VALUE
+                var minY = Float.MAX_VALUE
+                var maxX = Float.MIN_VALUE
+                var maxY = Float.MIN_VALUE
+
+                strokes.forEach { stroke ->
+                    stroke.points.forEach { pt ->
+                        if (pt.x < minX) minX = pt.x
+                        if (pt.y < minY) minY = pt.y
+                        if (pt.x > maxX) maxX = pt.x
+                        if (pt.y > maxY) maxY = pt.y
+                    }
+                }
+                stickyNotes.forEach { sn ->
+                    if (sn.x < minX) minX = sn.x
+                    if (sn.y < minY) minY = sn.y
+                    if (sn.x + sn.width > maxX) maxX = sn.x + sn.width
+                    if (sn.y + sn.height > maxY) maxY = sn.y + sn.height
+                }
+
+                if (minX == Float.MAX_VALUE) {
+                    minX = 0f; minY = 0f; maxX = 1920f; maxY = 1080f
+                }
+
+                val strokeWidthX = (maxX - minX).coerceAtLeast(1f)
+                val strokeWidthY = (maxY - minY).coerceAtLeast(1f)
+                val scale = minOf(size.width / strokeWidthX, size.height / strokeWidthY).coerceIn(0.01f, 1.0f)
+                val offsetX = (size.width - strokeWidthX * scale) / 2f
+                val offsetY = (size.height - strokeWidthY * scale) / 2f
+
+                // Draw sticky notes preview
+                stickyNotes.forEach { sn ->
+                    val nx = (sn.x - minX) * scale + offsetX
+                    val ny = (sn.y - minY) * scale + offsetY
+                    val nw = (sn.width * scale).coerceAtLeast(4f)
+                    val nh = (sn.height * scale).coerceAtLeast(4f)
+                    drawRoundRect(
+                        color = Color(sn.color),
+                        topLeft = Offset(nx, ny),
+                        size = androidx.compose.ui.geometry.Size(nw, nh),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
+                    )
+                }
+
+                // Draw strokes preview
+                strokes.forEach { stroke ->
+                    if (stroke.points.size > 1) {
+                        val path = Path()
+                        val firstPt = stroke.points.first()
+                        val startX = (firstPt.x - minX) * scale + offsetX
+                        val startY = (firstPt.y - minY) * scale + offsetY
+                        path.moveTo(startX, startY)
+                        for (i in 1 until stroke.points.size) {
+                            val pt = stroke.points[i]
+                            val px = (pt.x - minX) * scale + offsetX
+                            val py = (pt.y - minY) * scale + offsetY
+                            path.lineTo(px, py)
+                        }
+                        drawPath(
+                            path = path,
+                            color = Color(stroke.color),
+                            style = DrawScopeStroke(
+                                width = (stroke.strokeWidth * scale).coerceAtLeast(1.2f),
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun BoardsLibraryScreen(
+    uiState: WhiteboardUiState,
+    onAction: (OotbAction) -> Unit,
+    onNavigateToCanvas: () -> Unit,
+    onNavigateToDestination: (NavDestination) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    var isGridView by remember { mutableStateOf(true) }
+    var sortOrder by remember { mutableStateOf(LibrarySortOrder.LAST_ACCESSED) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var boardToRename by remember { mutableStateOf<Board?>(null) }
+    var renameBoardTitle by remember { mutableStateOf("") }
+    var selectedBoardForActions by remember { mutableStateOf<Board?>(null) }
+    var boardToExport by remember { mutableStateOf<Board?>(null) }
+
+    val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
+
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
+    val activeBoards = remember(uiState.savedBoards) {
+        uiState.savedBoards.filter { !it.isInBin }
+    }
+    val binnedCount = remember(uiState.savedBoards) {
+        uiState.savedBoards.count { it.isInBin }
+    }
+
+    // Filter and sort boards with deep content search (title + sticky notes + text elements)
+    val filteredBoards = remember(activeBoards, searchQuery, sortOrder) {
+        val base = if (searchQuery.isBlank()) {
+            activeBoards
+        } else {
+            val q = searchQuery.trim()
+            activeBoards.filter { b ->
+                b.title.contains(q, ignoreCase = true) ||
+                b.pages.any { p ->
+                    p.textElements.any { t -> t.text.contains(q, ignoreCase = true) } ||
+                    p.stickyNotes.any { s -> s.text.contains(q, ignoreCase = true) }
+                }
+            }
+        }
+
+        when (sortOrder) {
+            LibrarySortOrder.LAST_ACCESSED -> base.sortedByDescending { it.lastAccessedAt }
+            LibrarySortOrder.LAST_MODIFIED -> base.sortedByDescending { it.modifiedAt }
+            LibrarySortOrder.TITLE -> base.sortedBy { it.title.lowercase() }
+        }
+    }
+
+    LibraryNavDrawer(
+        drawerState = drawerState,
+        binnedCount = binnedCount,
+        onNavigateToDestination = onNavigateToDestination
+    ) {
+        Box(
+            modifier = modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // 1. Top Bar: [ Hamburger Menu icon on left ] [ Search Bar with search icon on left ]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Navigation Drawer Hamburger Menu Button
+                    TooltipHint(text = "Open menu") {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                scope.launch { drawerState.open() }
+                            },
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = "menu",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                size = 24.dp
+                            )
+                        }
+                    }
+
+                    // Search Bar
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Search icon on LEFT before "Search Boards"
+                            MaterialSymbol(
+                                name = "search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 22.dp
+                            )
+
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search Boards",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 15.sp
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            if (searchQuery.isNotEmpty()) {
+                                TooltipHint(text = "Clear search") {
+                                    IconButton(
+                                        onClick = { searchQuery = "" },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        MaterialSymbol(
+                                            name = "close",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            size = 18.dp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            // 2. Sub-header Bar: "Last opened by me ↓" on left, View Toggle on right
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Sort Dropdown Button
+                Box {
+                    TooltipHint(text = "Sort boards") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable { showSortMenu = true }
+                                .padding(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = sortOrder.label,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            MaterialSymbol(
+                                name = "arrow_drop_down",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 20.dp
+                            )
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false },
+                        shape = RoundedCornerShape(16.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ) {
+                        LibrarySortOrder.entries.forEach { order ->
+                            DropdownMenuItem(
+                                text = { Text(order.label) },
+                                onClick = {
+                                    sortOrder = order
+                                    showSortMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Grid / List Toggle Button (Screen 1 & Screen 2)
+                TooltipHint(text = if (isGridView) "Switch to list view" else "Switch to grid view") {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            isGridView = !isGridView
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = if (isGridView) "view_list" else "grid_view",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            size = 22.dp
+                        )
+                    }
+                }
+            }
+
+            // 3. Main Content: Grid Mode (Screen 1) or List Mode (Screen 2)
+            if (filteredBoards.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .padding(24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 28.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = "draw",
+                                size = 48.dp,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            } else if (isGridView) {
+                // 2-Column Grid Mode (Screen 1)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    state = gridState,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .drawGridScrollbar(gridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                ) {
+                    items(filteredBoards, key = { it.id }) { board ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                        onNavigateToCanvas()
+                                    },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        selectedBoardForActions = board
+                                    }
+                                )
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // Thumbnail Preview (16:9)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(110.dp)
+                                        .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                                ) {
+                                    BoardThumbnailPreview(
+                                        board = board,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+
+                                // Card Footer: Title + info | 3-dots
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = board.title.ifBlank { "Untitled Board" },
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+
+                                    // 3-dots overflow to open action sheet
+                                    TooltipHint(text = "Board options") {
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedBoardForActions = board
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            MaterialSymbol(name = "more_vert", size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // List Mode (Screen 2)
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .drawListScrollbar(listState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                ) {
+                    items(filteredBoards, key = { it.id }) { board ->
+                        Surface(
+                            color = Color.Transparent,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .combinedClickable(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                        onNavigateToCanvas()
+                                    },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        selectedBoardForActions = board
+                                    }
+                                )
+                                .padding(vertical = 8.dp, horizontal = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                BoardThumbnailPreview(
+                                    board = board,
+                                    modifier = Modifier
+                                        .size(width = 54.dp, height = 36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                )
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = board.title.ifBlank { "Untitled Board" },
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "Opened by me ${dateFormat.format(Date(board.modifiedAt))}",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                // 3-dots Menu to open action sheet
+                                TooltipHint(text = "Board options") {
+                                    IconButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedBoardForActions = board
+                                        },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        MaterialSymbol(name = "more_vert", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Bottom Action Bar: Connect & New Board (2 buttons in same row)
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledTonalButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onNavigateToDestination(NavDestination.PEERS)
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                MaterialSymbol(
+                    name = "sensors",
+                    filled = true,
+                    size = 22.dp,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Connect",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onAction(OotbAction.CreateNewBoard("Untitled Board"))
+                    onNavigateToCanvas()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                MaterialSymbol(
+                    name = "add",
+                    filled = true,
+                    size = 22.dp,
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "New Board",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        // Rename Board Sheet (Latch-style ModalBottomSheet)
+        boardToRename?.let { board ->
+            ModalBottomSheet(
+                onDismissRequest = { boardToRename = null },
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                dragHandle = { BottomSheetDefaults.DragHandle() },
+                modifier = Modifier.imePadding()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Rename Board",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    OutlinedTextField(
+                        value = renameBoardTitle,
+                        onValueChange = { renameBoardTitle = it },
+                        label = { Text("Board Title") },
+                        placeholder = { Text("New title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { boardToRename = null }) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (renameBoardTitle.isNotBlank()) {
+                                    onAction(OotbAction.RenameBoard(board.id, renameBoardTitle))
+                                    boardToRename = null
+                                }
+                            },
+                            shape = RoundedCornerShape(50)
+                        ) {
+                            Text("Save", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Board Actions Sheet (Star, Rename, Duplicate, Export, Move to Bin)
+        BoardActionsSheet(
+            board = selectedBoardForActions,
+            onDismiss = { selectedBoardForActions = null },
+            onToggleStar = { board -> onAction(OotbAction.ToggleStarBoard(board.id)) },
+            onRename = { board ->
+                boardToRename = board
+                renameBoardTitle = board.title
+            },
+            onDuplicate = { board -> onAction(OotbAction.DuplicateBoard(board.id)) },
+            onExport = { board -> boardToExport = board },
+            onMoveToBin = { board -> onAction(OotbAction.MoveBoardToBin(board.id)) }
+        )
+
+        // Board Export Format Picker Sheet
+        BoardExportSheet(
+            board = boardToExport,
+            onDismiss = { boardToExport = null },
+            onFormatSelected = { format ->
+                boardToExport?.let { board ->
+                    BoardExporter.shareBoard(context, board, format)
+                }
+            }
+        )
+    }
+}
+}
+

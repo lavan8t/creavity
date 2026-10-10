@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.kd.ootb"
+    namespace = "com.kd.brevity"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.kd.ootb"
+        applicationId = "com.kd.brevity"
         minSdk = 29
         targetSdk = 37
         versionCode = 1
@@ -59,6 +59,7 @@ android {
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.windowsize)
