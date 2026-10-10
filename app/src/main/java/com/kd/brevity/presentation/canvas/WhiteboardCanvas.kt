@@ -5,9 +5,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.delay
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -109,6 +111,17 @@ fun WhiteboardCanvas(
             requestInvalidate = { drawInvalidator.longValue = System.nanoTime() }
         ).apply {
             this.density = density
+        }
+    }
+
+    LaunchedEffect(controller.laserActiveToken) {
+        if (controller.laserPoints.isEmpty()) return@LaunchedEffect
+        while (controller.laserPoints.isNotEmpty()) {
+            val now = System.currentTimeMillis()
+            controller.laserPoints.removeAll { now - it.timestampMs > 1200L }
+            drawInvalidator.longValue = System.nanoTime()
+            if (controller.laserPoints.isEmpty()) break
+            delay(16L)
         }
     }
 
@@ -291,7 +304,7 @@ fun WhiteboardCanvas(
             }
 
             // 5. Draw Active In-Progress Stroke
-            if (controller.activePoints.isNotEmpty()) {
+            if (controller.activePoints.isNotEmpty() && controller.activeToolUsed != DrawingTool.LASER) {
                 val baseColor = currentColor
                 val drawColor = if (controller.activeToolUsed == DrawingTool.ERASER) backgroundColor else baseColor
 
@@ -309,11 +322,9 @@ fun WhiteboardCanvas(
             // 6. Draw Ephemeral Laser Pointer
             if (controller.laserPoints.isNotEmpty()) {
                 with(StrokeDrawer) {
-                    drawStyledStroke(
+                    drawGlowingLaserStroke(
                         points = controller.laserPoints,
-                        color = Color(0xFFFF1744),
-                        width = (currentWidth * 1.5f) / zoom,
-                        tool = DrawingTool.LASER
+                        baseWidth = (currentWidth * 1.5f) / zoom
                     )
                 }
             }

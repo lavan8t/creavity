@@ -2,6 +2,9 @@ package com.kd.brevity.presentation.canvas
 
 import android.view.KeyEvent
 import android.view.MotionEvent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -51,6 +54,8 @@ class CanvasGestureController(
 
     // Laser pointer points (ephemeral)
     val laserPoints = mutableListOf<Point>()
+    var laserActiveToken by mutableLongStateOf(0L)
+        private set
 
     // Selection & move state
     val selectedStrokeIds = mutableListOf<String>()
@@ -324,7 +329,6 @@ class CanvasGestureController(
                 activePoints.clear()
                 activePath.reset()
             }
-            laserPoints.clear()
             requestInvalidate()
             return true
         }
@@ -596,8 +600,10 @@ class CanvasGestureController(
                 }
 
                 if (activeToolUsed == DrawingTool.LASER) {
-                    laserPoints.clear()
+                    val now = System.currentTimeMillis()
+                    laserPoints.removeAll { now - it.timestampMs > 1200L }
                     laserPoints.add(worldPoint)
+                    laserActiveToken++
                 } else {
                     drawingHaptics.onStrokeStart(event.x, event.y, event.eventTime)
                     onStrokeBroadcastStart(
@@ -633,8 +639,10 @@ class CanvasGestureController(
                         }
 
                         if (activeToolUsed == DrawingTool.LASER) {
-                            laserPoints.clear()
+                            val now = System.currentTimeMillis()
+                            laserPoints.removeAll { now - it.timestampMs > 1200L }
                             laserPoints.add(startPt)
+                            laserActiveToken++
                         } else {
                             drawingHaptics.onStrokeStart(pendingEdgeStartX, pendingEdgeStartY, event.eventTime)
                             onStrokeBroadcastStart(
@@ -656,8 +664,10 @@ class CanvasGestureController(
                         activeToolUsed == DrawingTool.LASER
 
                 if (activeToolUsed == DrawingTool.LASER) {
+                    val now = System.currentTimeMillis()
                     laserPoints.add(worldPoint)
-                    if (laserPoints.size > 20) laserPoints.removeAt(0)
+                    laserPoints.removeAll { now - it.timestampMs > 1200L }
+                    laserActiveToken++
                 } else {
                     drawingHaptics.onStrokeMove(event.x, event.y, event.eventTime, hapticsEnabled)
                 }

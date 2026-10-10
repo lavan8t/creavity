@@ -27,24 +27,12 @@ object StrokeDrawer {
         tool: DrawingTool,
         cachedPath: Path? = null
     ) {
-        if (points.size < 2) return
+        if (points.isEmpty()) return
+        if (points.size < 2 && tool != DrawingTool.LASER && tool != DrawingTool.PEN && tool != DrawingTool.PENCIL) return
 
         when (tool) {
             DrawingTool.PEN -> {
-                if (hasDynamicPressure(points)) {
-                    drawPressureSensitiveStroke(points, color, width)
-                } else {
-                    val path = cachedPath ?: PathUtils.createSmoothPath(points)
-                    drawPath(
-                        path = path,
-                        color = color,
-                        style = CanvasStrokeStyle(
-                            width = width,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
-                    )
-                }
+                drawProfessionalApplePen(points, color, width)
             }
             DrawingTool.MARKER -> {
                 val path = cachedPath ?: PathUtils.createSmoothPath(points)
@@ -62,7 +50,7 @@ object StrokeDrawer {
                 drawPressureSensitiveStroke(points, color.copy(alpha = 0.85f), width * 2.5f)
             }
             DrawingTool.PENCIL -> {
-                drawRoughPencilStroke(points, color.copy(alpha = 0.75f), width * 0.7f)
+                drawProfessionalApplePencil(points, color, width)
             }
             DrawingTool.HIGHLIGHTER -> {
                 val path = cachedPath ?: PathUtils.createSmoothPath(points)
@@ -110,25 +98,7 @@ object StrokeDrawer {
                 }
             }
             DrawingTool.LASER -> {
-                if (points.isNotEmpty()) {
-                    val last = points.last()
-                    // Glowing outer laser halo
-                    drawCircle(Color(0xFFFF1744).copy(alpha = 0.35f), radius = (width * 2.8f).coerceAtLeast(8f), center = Offset(last.x, last.y))
-                    drawCircle(Color(0xFFFF5252).copy(alpha = 0.7f), radius = (width * 1.6f).coerceAtLeast(5f), center = Offset(last.x, last.y))
-                    drawCircle(Color.White, radius = (width * 0.75f).coerceAtLeast(2.5f), center = Offset(last.x, last.y))
-                    if (points.size >= 2) {
-                        val path = cachedPath ?: PathUtils.createSmoothPath(points.takeLast(16))
-                        drawPath(
-                            path = path,
-                            color = Color(0xFFFF1744).copy(alpha = 0.65f),
-                            style = CanvasStrokeStyle(
-                                width = (width * 1.4f).coerceAtLeast(3f),
-                                cap = StrokeCap.Round,
-                                join = StrokeJoin.Round
-                            )
-                        )
-                    }
-                }
+                drawGlowingLaserStroke(points, width)
             }
             else -> {
                 val path = cachedPath ?: PathUtils.createToolPath(tool, points)
@@ -180,82 +150,186 @@ object StrokeDrawer {
         }
     }
 
-    private fun DrawScope.drawMultiLayerPenStroke(
+    private fun DrawScope.drawProfessionalApplePen(
         points: List<Point>,
         color: Color,
-        width: Float
+        baseWidth: Float
     ) {
-        val baseWidth = width.coerceAtLeast(1.0f)
-        val layerOffsets = listOf(-0.35f, 0f, 0.35f)
+        if (points.isEmpty()) return
+        if (points.size == 1) {
+            val p = points.first()
+            drawCircle(color, radius = (baseWidth * 0.5f).coerceAtLeast(1f), center = Offset(p.x, p.y))
+            return
+        }
 
-        layerOffsets.forEachIndexed { offsetIndex, layerFactor ->
-            val layerOffset = layerFactor * (baseWidth * 0.4f)
-            val path = Path()
-            path.moveTo(points.first().x + layerOffset, points.first().y + layerOffset)
+        val widths = FloatArray(points.size)
+        var smoothedWidth = baseWidth
 
-            for (i in 1 until points.size) {
-                val prev = points[i - 1]
-                val curr = points[i]
-                val midX = (prev.x + curr.x) / 2f + layerOffset
-                val midY = (prev.y + curr.y) / 2f + layerOffset
-                path.quadraticTo(prev.x + layerOffset, prev.y + layerOffset, midX, midY)
-            }
-            path.lineTo(points.last().x + layerOffset, points.last().y + layerOffset)
+        for (i in points.indices) {
+            val curr = points[i]
+            val prev = if (i > 0) points[i - 1] else curr
+            val dt = (curr.timestampMs - prev.timestampMs).coerceIn(1L, 160L).toFloat()
+            val dx = curr.x - prev.x
+            val dy = curr.y - prev.y
+            val dist = sqrt(dx * dx + dy * dy)
+            val speed = dist / dt
 
-            val widthFactor = 1f - (abs(offsetIndex - 1) * 0.25f)
-            val strokeWidth = baseWidth * (0.6f + 0.4f * widthFactor)
-            val alphaMod = (0.55f + 0.25f * widthFactor).coerceIn(0f, 1f)
+            val speedFactor = 1.0f - (speed * 0.12f).coerceIn(-0.35f, 0.45f)
+            val pressureFactor = 0.45f + 0.55f * curr.pressure.coerceIn(0.1f, 1.5f)
 
-            drawPath(
-                path = path,
-                color = color.copy(alpha = color.alpha * alphaMod),
-                style = CanvasStrokeStyle(
-                    width = strokeWidth,
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round
+            val targetWidth = (baseWidth * speedFactor * pressureFactor).coerceIn(baseWidth * 0.35f, baseWidth * 1.8f)
+            smoothedWidth = smoothedWidth * 0.65f + targetWidth * 0.35f
+            widths[i] = smoothedWidth
+        }
+
+        for (i in 0 until points.size - 1) {
+            val p0 = points[i]
+            val p1 = points[i + 1]
+            val midWidth = (widths[i] + widths[i + 1]) / 2f
+
+            drawLine(
+                color = color,
+                start = Offset(p0.x, p0.y),
+                end = Offset(p1.x, p1.y),
+                strokeWidth = midWidth,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+
+    private fun DrawScope.drawProfessionalApplePencil(
+        points: List<Point>,
+        color: Color,
+        baseWidth: Float
+    ) {
+        if (points.isEmpty()) return
+        if (points.size == 1) {
+            val p = points.first()
+            drawCircle(color.copy(alpha = 0.7f), radius = (baseWidth * 0.45f).coerceAtLeast(1f), center = Offset(p.x, p.y))
+            return
+        }
+
+        val avgTilt = points.map { it.tilt }.average().toFloat()
+        val tiltRatio = (avgTilt / 1.57f).coerceIn(0f, 1f)
+        val tiltSpread = 1f + 2.5f * tiltRatio
+        val effectiveWidth = (baseWidth * tiltSpread).coerceAtLeast(1f)
+        val baseAlpha = (color.alpha * (0.85f - 0.35f * tiltRatio)).coerceIn(0.2f, 0.95f)
+
+        val seed = points.first().timestampMs.toInt()
+        val random = Random(seed)
+
+        val jitterAmount = (effectiveWidth * 0.35f).coerceAtLeast(0.6f)
+        val passes = if (tiltRatio > 0.25f) 3 else 2
+
+        for (pass in 0 until passes) {
+            val passAlpha = (baseAlpha / passes.toFloat()) * (0.7f + random.nextFloat() * 0.5f)
+            val passWidth = effectiveWidth * (0.6f + random.nextFloat() * 0.4f)
+
+            for (i in 0 until points.size - 1) {
+                val p0 = points[i]
+                val p1 = points[i + 1]
+                val jx0 = (random.nextFloat() - 0.5f) * jitterAmount
+                val jy0 = (random.nextFloat() - 0.5f) * jitterAmount
+                val jx1 = (random.nextFloat() - 0.5f) * jitterAmount
+                val jy1 = (random.nextFloat() - 0.5f) * jitterAmount
+
+                drawLine(
+                    color = color.copy(alpha = passAlpha.coerceIn(0.05f, 1f)),
+                    start = Offset(p0.x + jx0, p0.y + jy0),
+                    end = Offset(p1.x + jx1, p1.y + jy1),
+                    strokeWidth = passWidth,
+                    cap = StrokeCap.Round
                 )
+            }
+        }
+
+        for (i in 0 until points.size - 1) {
+            val p0 = points[i]
+            val p1 = points[i + 1]
+            val segPressure = (p0.pressure + p1.pressure) / 2f
+            val coreWidth = (baseWidth * 0.7f * (0.5f + 0.5f * segPressure)).coerceAtLeast(1f)
+            val coreAlpha = (color.alpha * (0.65f + 0.35f * segPressure)).coerceIn(0.1f, 1f)
+
+            drawLine(
+                color = color.copy(alpha = coreAlpha),
+                start = Offset(p0.x, p0.y),
+                end = Offset(p1.x, p1.y),
+                strokeWidth = coreWidth,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+
+    fun DrawScope.drawGlowingLaserStroke(
+        points: List<Point>,
+        baseWidth: Float
+    ) {
+        if (points.isEmpty()) return
+        val now = System.currentTimeMillis()
+        val durationMs = 1200f
+
+        for (i in 0 until points.size - 1) {
+            val p0 = points[i]
+            val p1 = points[i + 1]
+            val age = (now - p1.timestampMs).toFloat() / durationMs
+            if (age >= 1.0f) continue
+            val life = (1.0f - age).coerceIn(0f, 1f)
+            val alphaMod = life * life
+
+            val start = Offset(p0.x, p0.y)
+            val end = Offset(p1.x, p1.y)
+
+            drawLine(
+                color = Color(0xFFFF1744).copy(alpha = 0.22f * alphaMod),
+                start = start,
+                end = end,
+                strokeWidth = (baseWidth * 4.2f).coerceAtLeast(10f),
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color(0xFFFF5252).copy(alpha = 0.55f * alphaMod),
+                start = start,
+                end = end,
+                strokeWidth = (baseWidth * 2.2f).coerceAtLeast(6f),
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color(0xFFFF8A80).copy(alpha = 0.85f * alphaMod),
+                start = start,
+                end = end,
+                strokeWidth = (baseWidth * 1.1f).coerceAtLeast(3f),
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color.White.copy(alpha = 0.95f * alphaMod),
+                start = start,
+                end = end,
+                strokeWidth = (baseWidth * 0.45f).coerceAtLeast(1.5f),
+                cap = StrokeCap.Round
             )
         }
 
-        // Final crisp center core line
-        val mainPath = PathUtils.createSmoothPath(points)
-        drawPath(
-            path = mainPath,
-            color = color,
-            style = CanvasStrokeStyle(
-                width = baseWidth,
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round
-            )
-        )
-    }
+        val latest = points.last()
+        val headAge = (now - latest.timestampMs).toFloat() / durationMs
+        if (headAge < 1.0f) {
+            val headLife = (1.0f - headAge).coerceIn(0f, 1f)
+            val headAlpha = headLife * headLife
+            val center = Offset(latest.x, latest.y)
 
-    private fun DrawScope.drawRoughPencilStroke(
-        points: List<Point>,
-        color: Color,
-        width: Float
-    ) {
-        val baseWidth = width.coerceAtLeast(1.0f)
-        val jitter = (baseWidth * 0.35f).coerceAtLeast(0.5f)
-        val random = Random(points.first().timestampMs.toInt())
-
-        for (i in 0 until points.size - 1) {
-            val start = points[i]
-            val end = points[i + 1]
-            val offsetStart = Offset(
-                start.x + (random.nextFloat() - 0.5f) * jitter,
-                start.y + (random.nextFloat() - 0.5f) * jitter
+            drawCircle(
+                color = Color(0xFFFF1744).copy(alpha = 0.35f * headAlpha),
+                radius = (baseWidth * 3.5f).coerceAtLeast(12f),
+                center = center
             )
-            val offsetEnd = Offset(
-                end.x + (random.nextFloat() - 0.5f) * jitter,
-                end.y + (random.nextFloat() - 0.5f) * jitter
+            drawCircle(
+                color = Color(0xFFFF5252).copy(alpha = 0.75f * headAlpha),
+                radius = (baseWidth * 2.0f).coerceAtLeast(7f),
+                center = center
             )
-            drawLine(
-                color = color,
-                start = offsetStart,
-                end = offsetEnd,
-                strokeWidth = baseWidth * 0.85f,
-                cap = StrokeCap.Round
+            drawCircle(
+                color = Color.White.copy(alpha = 0.95f * headAlpha),
+                radius = (baseWidth * 0.9f).coerceAtLeast(3.5f),
+                center = center
             )
         }
     }

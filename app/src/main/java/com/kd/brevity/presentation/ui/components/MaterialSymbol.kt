@@ -53,18 +53,17 @@ fun MaterialSymbol(
         "arrow_back", "back" -> if (filled) arrow_back_filled else arrow_back
         "copy", "content_copy" -> if (filled) content_copy_filled else content_copy
         "palette" -> if (filled) palette_filled else palette
-        "tune" -> if (filled) tune_filled else tune
+        "settings", "tune" -> if (filled) settings_filled else settings
         "map", "minimap", "radar", "near_me" -> if (filled) map_filled else map
         "format_color_fill" -> if (filled) format_color_fill_filled else format_color_fill
         "folder" -> if (filled) folder_filled else folder
         "sensors" -> if (filled) sensors_filled else sensors
-        "settings" -> if (filled) settings_filled else settings
         "search" -> if (filled) search_filled else search
         "person", "account" -> if (filled) person_filled else person
-        "groups" -> if (filled) groups_filled else groups
+        "groups", "group" -> if (filled) groups_filled else groups
         "home" -> if (filled) home_filled else home
-        "share" -> if (filled) share_filled else share
-        "devices" -> if (filled) devices_filled else devices
+        "share", "link" -> if (filled) share_filled else share
+        "devices", "hub" -> if (filled) devices_filled else devices
         "lock" -> if (filled) lock_filled else lock
         "info" -> if (filled) info_filled else info
         "visibility", "eye", "view" -> if (filled) visibility_filled else visibility
@@ -74,7 +73,7 @@ fun MaterialSymbol(
         "auto_awesome" -> if (filled) auto_awesome_filled else auto_awesome
         "more_vert", "dots", "more" -> if (filled) more_vert_filled else more_vert
         "star" -> if (filled) star_filled else star
-        "note_add" -> if (filled) note_add_filled else note_add
+        "note_add", "file_present" -> if (filled) note_add_filled else note_add
         "sticky_note_2" -> if (filled) sticky_note_2_filled else sticky_note_2
         "image" -> if (filled) image_filled else image
         "slideshow" -> if (filled) slideshow_filled else slideshow
@@ -82,7 +81,10 @@ fun MaterialSymbol(
         "grid_view", "view_module" -> if (filled) grid_view_filled else grid_view
         "view_list" -> if (filled) view_list_filled else view_list
         "check" -> if (filled) check_filled else check
-        else -> if (filled) tune_filled else tune
+        "fit_screen", "filter_center_focus" -> if (filled) crop_free_filled else crop_free
+        "filter_none" -> if (filled) rectangle_filled else rectangle
+        "all_inclusive" -> if (filled) gesture_filled else gesture
+        else -> if (filled) circle_filled else circle
     }
 
     Icon(

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -53,6 +51,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.blur.BlurRadiusSpec
+import androidx.compose.ui.graphics.blur.BlurStop
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -63,12 +63,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 import com.kd.brevity.domain.model.Point
 import com.kd.brevity.domain.model.StickyNote
 import com.kd.brevity.presentation.canvas.WhiteboardCanvas
@@ -91,6 +85,12 @@ import com.kd.brevity.presentation.ui.components.UndoRedoCalloutCard
 import com.kd.brevity.presentation.ui.components.WhiteboardMinimap
 import com.kd.brevity.presentation.ui.motion.BrevityMotion
 import com.kd.brevity.presentation.viewmodel.WhiteboardUiState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 enum class MinimapCorner(val alignment: Alignment) {
     TOP_START(Alignment.TopStart),
@@ -309,13 +309,22 @@ fun CanvasViewportScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Top Progressive Blur Scrim
+        // Top Progressive Blur Scrim (Progressive Blur APIs - Multi-Stop Gradient)
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .height(124.dp)
-                .blur(radius = 28.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                .blur {
+                    radius = BlurRadiusSpec.verticalGradient(
+                        listOf(
+                            BlurStop(fraction = 0f, radius = 28.dp),
+                            BlurStop(fraction = 0.5f, radius = 14.dp),
+                            BlurStop(fraction = 1f, radius = 0.dp)
+                        )
+                    )
+                    edgeTreatment = BlurredEdgeTreatment.Unbounded
+                }
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -473,9 +482,6 @@ fun CanvasViewportScreen(
                             showOptionsMenu = true
                         },
                         zoom = uiState.zoom,
-                        onResetZoom = {
-                            onAction(OotbAction.ResetCanvasTransform)
-                        },
                         isHost = uiState.isHost,
                         onBirdsEyeClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -562,18 +568,6 @@ fun CanvasViewportScreen(
                                             )
                                         )
                                     } catch (_: Exception) {}
-                                }
-                            )
-
-                            // Reset Zoom
-                            DropdownMenuItem(
-                                text = { Text("Reset Zoom (${(uiState.zoom * 100).toInt()}%)") },
-                                leadingIcon = {
-                                    MaterialSymbol(name = "restart_alt", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
-                                },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    onAction(OotbAction.ResetCanvasTransform)
                                 }
                             )
 
@@ -741,13 +735,22 @@ fun CanvasViewportScreen(
             )
         }
 
-        // Bottom Progressive Blur Scrim
+        // Bottom Progressive Blur Scrim (Progressive Blur APIs - Multi-Stop Gradient)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(136.dp)
-                .blur(radius = 28.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                .blur {
+                    radius = BlurRadiusSpec.verticalGradient(
+                        listOf(
+                            BlurStop(fraction = 0f, radius = 0.dp),
+                            BlurStop(fraction = 0.5f, radius = 14.dp),
+                            BlurStop(fraction = 1f, radius = 28.dp)
+                        )
+                    )
+                    edgeTreatment = BlurredEdgeTreatment.Unbounded
+                }
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(

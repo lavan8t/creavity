@@ -39,7 +39,6 @@ fun JamboardTopBar(
     onCastClick: () -> Unit,
     onMoreClick: () -> Unit,
     zoom: Float = 1.0f,
-    onResetZoom: () -> Unit = {},
     isHost: Boolean = false,
     onBirdsEyeClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -238,32 +237,6 @@ fun JamboardTopBar(
                                 tint = MaterialTheme.colorScheme.primary,
                                 size = 18.dp
                             )
-                        }
-                    }
-
-                    if (kotlin.math.abs(zoom - 1.0f) > 0.05f) {
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(16.dp)
-                                .background(MaterialTheme.colorScheme.outlineVariant)
-                        )
-
-                        TooltipHint(text = "Reset zoom (100%)") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .clickable(onClick = onResetZoom)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "${(zoom * 100).toInt()}%",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
                         }
                     }
                 }

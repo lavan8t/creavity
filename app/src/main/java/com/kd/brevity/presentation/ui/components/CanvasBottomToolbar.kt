@@ -6,15 +6,19 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -242,24 +246,54 @@ fun CanvasBottomToolbar(
                         fabMenuExpanded = false
                         onOpenStickyNote()
                     },
-                    text = { Text("Sticky note") },
-                    icon = { MaterialSymbol(name = "note_add", size = 20.dp, tint = MaterialTheme.colorScheme.primary) }
+                    text = {
+                        Text(
+                            text = "Sticky note",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    icon = { MaterialSymbol(name = "note_add", size = 20.dp, tint = LocalContentColor.current) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         onPickImage()
                     },
-                    text = { Text("Image") },
-                    icon = { MaterialSymbol(name = "image", size = 20.dp, tint = MaterialTheme.colorScheme.primary) }
+                    text = {
+                        Text(
+                            text = "Image",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    icon = { MaterialSymbol(name = "image", size = 20.dp, tint = LocalContentColor.current) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         onOpenGoogleSlides()
                     },
-                    text = { Text("Drive / Presentation") },
-                    icon = { MaterialSymbol(name = "slideshow", size = 20.dp, tint = MaterialTheme.colorScheme.primary) }
+                    text = {
+                        Text(
+                            text = "Drive / Presentation",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    icon = { MaterialSymbol(name = "slideshow", size = 20.dp, tint = LocalContentColor.current) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -270,39 +304,79 @@ fun CanvasBottomToolbar(
                         )
                         onOpenTextDialog(point)
                     },
-                    text = { Text("Text") },
-                    icon = { MaterialSymbol(name = "title", size = 20.dp, tint = MaterialTheme.colorScheme.primary) }
+                    text = {
+                        Text(
+                            text = "Text",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    icon = { MaterialSymbol(name = "title", size = 20.dp, tint = LocalContentColor.current) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         onAction(OotbAction.SelectTool(DrawingTool.CIRCLE))
                     },
-                    text = { Text("Circle") },
-                    icon = { MaterialSymbol(name = "circle", size = 20.dp, tint = MaterialTheme.colorScheme.primary) }
+                    text = {
+                        Text(
+                            text = "Circle",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    icon = { MaterialSymbol(name = "circle", size = 20.dp, tint = LocalContentColor.current) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         onAction(OotbAction.SelectTool(DrawingTool.RECTANGLE))
                     },
-                    text = { Text("Rectangle") },
-                    icon = { MaterialSymbol(name = "rectangle", size = 20.dp, tint = MaterialTheme.colorScheme.primary) }
+                    text = {
+                        Text(
+                            text = "Rectangle",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
+                    icon = { MaterialSymbol(name = "rectangle", size = 20.dp, tint = LocalContentColor.current) },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         onAction(OotbAction.SelectTool(DrawingTool.LASER))
                     },
-                    text = { Text("Laser pointer") },
+                    text = {
+                        Text(
+                            text = "Laser pointer",
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    },
                     icon = {
                         MaterialSymbol(
                             name = "flare",
                             size = 20.dp,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = LocalContentColor.current,
                             filled = uiState.selectedTool == DrawingTool.LASER
                         )
-                    }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
             }
         }
