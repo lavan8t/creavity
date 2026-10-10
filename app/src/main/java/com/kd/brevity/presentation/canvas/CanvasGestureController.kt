@@ -85,29 +85,14 @@ class CanvasGestureController(
     private var activeStrokeIsStylus: Boolean = false
     private var activeDrawingPointerId: Int = -1
 
-    // Viewport dimensions & display density for edge rejection
+    // Viewport dimensions & display density
     var viewWidth = 0f
     var viewHeight = 0f
     var density = 2.5f
 
-    // Edge back gesture avoidance state
-    private var isEdgeGesturePending = false
-    private var pendingEdgeWorldPoint: Point? = null
-    private var pendingEdgeStartX = 0f
-    private var pendingEdgeStartY = 0f
-    private var pendingEdgeTool = DrawingTool.PEN
-    private var pendingEdgeColor = Color.Black
-    private var pendingEdgeWidth = 2f
-
     private fun isPalmContact(event: MotionEvent, pointerIndex: Int): Boolean {
         if (pointerIndex < 0 || pointerIndex >= event.pointerCount) return false
-        val tool = event.getToolType(pointerIndex)
-        if (tool == 5) return true // MotionEvent.TOOL_TYPE_PALM
-        if (tool == MotionEvent.TOOL_TYPE_FINGER) {
-            val size = event.getSize(pointerIndex)
-            if (size > 0.35f) return true
-        }
-        return false
+        return event.getToolType(pointerIndex) == 5 // MotionEvent.TOOL_TYPE_PALM
     }
 
     private fun discardActiveStroke() {
@@ -121,8 +106,6 @@ class CanvasGestureController(
             laserPoints.clear()
             requestInvalidate()
         }
-        isEdgeGesturePending = false
-        pendingEdgeWorldPoint = null
         activeDrawingPointerId = -1
         activeStrokeIsStylus = false
     }
@@ -209,15 +192,6 @@ class CanvasGestureController(
             return true
         }
 
-        // Stylus Guard Window: If stylus was lifted recently, ignore single-finger touches (resting palm)
-        val inStylusGuardWindow = (now - lastStylusTimestampMs) < 700L
-        if (!hasStylusPointer && inStylusGuardWindow && pointerCount == 1) {
-            if (activePoints.isNotEmpty() && !activeStrokeIsStylus) {
-                discardActiveStroke()
-            }
-            return true
-        }
-
         // 3. Multi-touch Pinch to Zoom & Pan (Finger mode only, when no stylus is touching)
         if (!hasStylusPointer && pointerCount >= 2) {
             discardActiveStroke()
@@ -298,13 +272,6 @@ class CanvasGestureController(
             activeDrawingPointerId = -1
             activeStrokeIsStylus = false
 
-            if (isEdgeGesturePending) {
-                isEdgeGesturePending = false
-                pendingEdgeWorldPoint = null
-                requestInvalidate()
-                return true
-            }
-
             if (wasPinching) {
                 activePoints.clear()
                 activePath.reset()
@@ -343,16 +310,7 @@ class CanvasGestureController(
                         listOf(activePoints.first(), activePoints.last())
                     }
 
-                    // Accidental tap / single dot / micro-movement filter:
-                    // Discard single-point dots and strokes shorter than minimum drag slop
-                    var totalDist = 0f
-                    for (i in 0 until finalPoints.size - 1) {
-                        totalDist += hypot(finalPoints[i + 1].x - finalPoints[i].x, finalPoints[i + 1].y - finalPoints[i].y)
-                    }
-                    val minStrokeDistance = 14f / zoom
-                    val isDotOrMicroTap = finalPoints.size <= 1 || totalDist < minStrokeDistance
-
-                    if (!isDotOrMicroTap) {
+                    if (finalPoints.isNotEmpty()) {
                         val finalStroke = Stroke(
                             id = activeStrokeId,
                             points = finalPoints,
@@ -362,7 +320,7 @@ class CanvasGestureController(
                             isEraser = activeToolUsed == DrawingTool.ERASER
                         )
                         pendingStroke = finalStroke
-                        pathCache["${finalStroke.id}_${finalPoints.size}"] = PathUtils.createToolPath(activeToolUsed, finalPoints)
+                        pathCache[finalStroke.id] = PathUtils.createToolPath(activeToolUsed, finalPoints)
                         onStrokeCompleted(finalStroke)
                     }
                 }
@@ -636,25 +594,6 @@ class CanvasGestureController(
                 activeDrawingPointerId = event.getPointerId(targetIndex)
                 activeStrokeIsStylus = hasStylusPointer
 
-                val effectiveWidth = if (viewWidth > 0f) viewWidth else 1080f
-                val edgeGutter = 28f * density
-                val isEdgeZone = (event.getX(targetIndex) <= edgeGutter || event.getX(targetIndex) >= (effectiveWidth - edgeGutter))
-                val isFinger = !hasStylusPointer
-
-                if (isFinger && isEdgeZone) {
-                    isEdgeGesturePending = true
-                    pendingEdgeStartX = event.getX(targetIndex)
-                    pendingEdgeStartY = event.getY(targetIndex)
-                    pendingEdgeWorldPoint = worldPoint
-                    pendingEdgeTool = effectiveTool
-                    pendingEdgeColor = currentColor
-                    pendingEdgeWidth = currentWidth
-                    return true
-                }
-
-                isEdgeGesturePending = false
-                pendingEdgeWorldPoint = null
-
                 activeToolUsed = effectiveTool
                 activeStrokeId = UUID.randomUUID().toString()
                 activePoints.clear()
@@ -688,47 +627,6 @@ class CanvasGestureController(
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isEdgeGesturePending) {
-                    val moveDist = hypot(event.getX(targetIndex) - pendingEdgeStartX, event.getY(targetIndex) - pendingEdgeStartY)
-                    val edgeSlop = 20f * density
-                    if (moveDist >= edgeSlop) {
-                        isEdgeGesturePending = false
-                        activeToolUsed = pendingEdgeTool
-                        activeStrokeId = UUID.randomUUID().toString()
-                        activePoints.clear()
-                        val startPt = pendingEdgeWorldPoint ?: worldPoint
-                        activePoints.add(startPt)
-                        activePath.reset()
-
-                        val isCurved = activeToolUsed == DrawingTool.PEN || activeToolUsed == DrawingTool.PENCIL ||
-                                activeToolUsed == DrawingTool.HIGHLIGHTER || activeToolUsed == DrawingTool.ERASER ||
-                                activeToolUsed == DrawingTool.LASER
-
-                        if (isCurved) {
-                            activePath.moveTo(startPt.x, startPt.y)
-                        }
-
-                        if (activeToolUsed == DrawingTool.LASER) {
-                            val now = android.os.SystemClock.uptimeMillis()
-                            laserPoints.removeAll { now - it.timestampMs > 1200L }
-                            laserPoints.add(startPt)
-                            laserActiveToken++
-                        } else {
-                            drawingHaptics.onStrokeStart(pendingEdgeStartX, pendingEdgeStartY, event.eventTime)
-                            onStrokeBroadcastStart(
-                                activeStrokeId,
-                                pendingEdgeColor.toArgb().toLong(),
-                                pendingEdgeWidth / zoom,
-                                activeToolUsed == DrawingTool.ERASER,
-                                startPt
-                            )
-                        }
-                        pendingEdgeWorldPoint = null
-                    } else {
-                        return true
-                    }
-                }
-
                 val isCurved = activeToolUsed == DrawingTool.PEN || activeToolUsed == DrawingTool.PENCIL ||
                         activeToolUsed == DrawingTool.HIGHLIGHTER || activeToolUsed == DrawingTool.ERASER ||
                         activeToolUsed == DrawingTool.LASER

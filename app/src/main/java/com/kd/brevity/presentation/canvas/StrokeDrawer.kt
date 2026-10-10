@@ -28,11 +28,15 @@ object StrokeDrawer {
         cachedPath: Path? = null
     ) {
         if (points.isEmpty()) return
-        if (points.size < 2 && tool != DrawingTool.LASER && tool != DrawingTool.PEN && tool != DrawingTool.PENCIL) return
+        if (points.size == 1 && tool != DrawingTool.LASER) {
+            val p = points.first()
+            drawCircle(color, radius = (width * 0.5f).coerceAtLeast(1.5f), center = Offset(p.x, p.y))
+            return
+        }
 
         when (tool) {
             DrawingTool.PEN -> {
-                if (cachedPath != null && !hasDynamicPressure(points)) {
+                if (cachedPath != null && points.size > 1 && !hasDynamicPressure(points)) {
                     drawPath(
                         path = cachedPath,
                         color = color,
@@ -62,7 +66,7 @@ object StrokeDrawer {
                 drawPressureSensitiveStroke(points, color.copy(alpha = 0.85f), width * 2.5f)
             }
             DrawingTool.PENCIL -> {
-                if (cachedPath != null) {
+                if (cachedPath != null && points.size > 1) {
                     drawPath(
                         path = cachedPath,
                         color = color.copy(alpha = 0.85f),
