@@ -58,7 +58,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
     internal val remoteStrokesMap = mutableMapOf<String, Stroke>()
 
     init {
-        loadSavedBoards()
+        viewModelScope.launch(Dispatchers.IO) { loadSavedBoards() }
         nearbyManager.isAdvertising.onEach { isAdv ->
             _uiState.update { state ->
                 val code = if (isAdv) state.roomCode ?: generateRoomCode() else if (state.connectedPeers.isEmpty()) null else state.roomCode
@@ -91,17 +91,14 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
 
     fun persistBoard(updatedBoard: Board) {
         if (updatedBoard.id.isBlank()) return
-        boardManager.saveBoard(updatedBoard)
+        viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(updatedBoard) }
         _uiState.update { state ->
             val updatedSaved = if (state.savedBoards.any { it.id == updatedBoard.id }) {
                 state.savedBoards.map { if (it.id == updatedBoard.id) updatedBoard else it }
             } else {
                 listOf(updatedBoard) + state.savedBoards
             }
-            state.copy(
-                currentBoard = updatedBoard,
-                savedBoards = updatedSaved
-            )
+            state.copy(currentBoard = updatedBoard, savedBoards = updatedSaved)
         }
     }
 
@@ -117,7 +114,6 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }
         } else {
-            // Truly allow 0 boards: no default board forced
             _uiState.update {
                 it.copy(
                     currentBoard = Board(id = "", title = ""),
@@ -171,7 +167,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
     fun createNewBoard(title: String = "Untitled Board") {
         val current = _uiState.value.currentBoard
         if (current.id.isNotBlank()) {
-            boardManager.saveBoard(current)
+            viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(current) }
         }
 
         val newBoard = Board(
@@ -194,21 +190,24 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
     fun switchBoard(board: Board) {
         if (board.id.isBlank()) return
         val current = _uiState.value.currentBoard
-        if (current.id.isNotBlank() && current.id != board.id) {
-            boardManager.saveBoard(current)
-        }
+        val updatedTarget = board.copy(lastAccessedAt = System.currentTimeMillis())
 
-        // Always load latest state from disk or fallback to passed board
-        val freshTarget = boardManager.loadBoard(board.id) ?: board
-        val updatedTarget = freshTarget.copy(lastAccessedAt = System.currentTimeMillis())
-        persistBoard(updatedTarget)
-
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            val updatedSaved = state.savedBoards.map { if (it.id == updatedTarget.id) updatedTarget else it }
+            state.copy(
+                currentBoard = updatedTarget,
+                savedBoards = updatedSaved,
                 backgroundColor = Color(updatedTarget.backgroundColor),
                 zoom = 1.0f,
                 panOffset = Offset.Zero
             )
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            if (current.id.isNotBlank() && current.id != board.id) {
+                boardManager.saveBoard(current)
+            }
+            boardManager.saveBoard(updatedTarget)
         }
 
         if (_uiState.value.connectedPeers.isNotEmpty()) {
@@ -298,8 +297,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun deleteBoardPermanently(boardId: String) {
-        boardManager.deleteBoard(boardId)
-        val remaining = boardManager.loadAllBoards()
+        val remaining = _uiState.value.savedBoards.filter { it.id != boardId }
         val isCurrent = _uiState.value.currentBoard.id == boardId
         if (isCurrent) {
             val available = remaining.filter { !it.isInBin }
@@ -311,13 +309,18 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
         } else {
             _uiState.update { it.copy(savedBoards = remaining) }
         }
+        viewModelScope.launch(Dispatchers.IO) {
+            boardManager.deleteBoard(boardId)
+        }
     }
 
     fun emptyBin() {
         val binned = _uiState.value.savedBoards.filter { it.isInBin }
-        binned.forEach { boardManager.deleteBoard(it.id) }
-        val remaining = boardManager.loadAllBoards()
+        val remaining = _uiState.value.savedBoards.filter { !it.isInBin }
         _uiState.update { it.copy(savedBoards = remaining) }
+        viewModelScope.launch(Dispatchers.IO) {
+            binned.forEach { boardManager.deleteBoard(it.id) }
+        }
     }
 
     fun deleteBoard(boardId: String) = moveBoardToBin(boardId)

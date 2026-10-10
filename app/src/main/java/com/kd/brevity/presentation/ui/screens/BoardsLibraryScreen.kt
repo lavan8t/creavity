@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawScopeStroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -123,21 +124,23 @@ fun BoardThumbnailPreview(
                 size = 28.dp
             )
         } else {
-            Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
+            // Precompute bounds and paths once per board version outside draw pass
+            val thumbnailData = remember(board.id, board.modifiedAt, strokes.size, stickyNotes.size) {
                 var minX = Float.MAX_VALUE
                 var minY = Float.MAX_VALUE
                 var maxX = Float.MIN_VALUE
                 var maxY = Float.MIN_VALUE
 
-                strokes.forEach { stroke ->
-                    stroke.points.forEach { pt ->
+                val previewStrokes = strokes.take(40)
+                for (s in previewStrokes) {
+                    for (pt in s.points) {
                         if (pt.x < minX) minX = pt.x
                         if (pt.y < minY) minY = pt.y
                         if (pt.x > maxX) maxX = pt.x
                         if (pt.y > maxY) maxY = pt.y
                     }
                 }
-                stickyNotes.forEach { sn ->
+                for (sn in stickyNotes) {
                     if (sn.x < minX) minX = sn.x
                     if (sn.y < minY) minY = sn.y
                     if (sn.x + sn.width > maxX) maxX = sn.x + sn.width
@@ -148,45 +151,62 @@ fun BoardThumbnailPreview(
                     minX = 0f; minY = 0f; maxX = 1920f; maxY = 1080f
                 }
 
-                val strokeWidthX = (maxX - minX).coerceAtLeast(1f)
-                val strokeWidthY = (maxY - minY).coerceAtLeast(1f)
-                val scale = minOf(size.width / strokeWidthX, size.height / strokeWidthY).coerceIn(0.01f, 1.0f)
-                val offsetX = (size.width - strokeWidthX * scale) / 2f
-                val offsetY = (size.height - strokeWidthY * scale) / 2f
+                val spanX = (maxX - minX).coerceAtLeast(1f)
+                val spanY = (maxY - minY).coerceAtLeast(1f)
+
+                val paths = previewStrokes.mapNotNull { stroke ->
+                    if (stroke.points.size > 1) {
+                        val path = Path()
+                        path.moveTo(stroke.points[0].x, stroke.points[0].y)
+                        for (i in 1 until stroke.points.size) {
+                            path.lineTo(stroke.points[i].x, stroke.points[i].y)
+                        }
+                        Triple(path, Color(stroke.color), stroke.strokeWidth)
+                    } else null
+                }
+
+                val notes = stickyNotes.map { sn ->
+                    floatArrayOf(sn.x, sn.y, sn.width, sn.height, sn.color.toFloat())
+                }
+
+                Triple(floatArrayOf(minX, minY, spanX, spanY), paths, notes)
+            }
+
+            Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
+                val (bounds, paths, notes) = thumbnailData
+                val minX = bounds[0]
+                val minY = bounds[1]
+                val spanX = bounds[2]
+                val spanY = bounds[3]
+                val scale = minOf(size.width / spanX, size.height / spanY).coerceIn(0.01f, 1.0f)
+                val offsetX = (size.width - spanX * scale) / 2f
+                val offsetY = (size.height - spanY * scale) / 2f
 
                 // Draw sticky notes preview
-                stickyNotes.forEach { sn ->
-                    val nx = (sn.x - minX) * scale + offsetX
-                    val ny = (sn.y - minY) * scale + offsetY
-                    val nw = (sn.width * scale).coerceAtLeast(4f)
-                    val nh = (sn.height * scale).coerceAtLeast(4f)
+                notes.forEach { noteData ->
+                    val nx = (noteData[0] - minX) * scale + offsetX
+                    val ny = (noteData[1] - minY) * scale + offsetY
+                    val nw = (noteData[2] * scale).coerceAtLeast(4f)
+                    val nh = (noteData[3] * scale).coerceAtLeast(4f)
                     drawRoundRect(
-                        color = Color(sn.color),
+                        color = Color(noteData[4].toLong()),
                         topLeft = Offset(nx, ny),
                         size = androidx.compose.ui.geometry.Size(nw, nh),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(4f, 4f)
                     )
                 }
 
-                // Draw strokes preview
-                strokes.forEach { stroke ->
-                    if (stroke.points.size > 1) {
-                        val path = Path()
-                        val firstPt = stroke.points.first()
-                        val startX = (firstPt.x - minX) * scale + offsetX
-                        val startY = (firstPt.y - minY) * scale + offsetY
-                        path.moveTo(startX, startY)
-                        for (i in 1 until stroke.points.size) {
-                            val pt = stroke.points[i]
-                            val px = (pt.x - minX) * scale + offsetX
-                            val py = (pt.y - minY) * scale + offsetY
-                            path.lineTo(px, py)
-                        }
+                // Draw pre-cached stroke paths with GPU translate/scale
+                withTransform({
+                    translate(offsetX - minX * scale, offsetY - minY * scale)
+                    scale(scale, scale, pivot = Offset.Zero)
+                }) {
+                    paths.forEach { (path, color, strokeWidth) ->
                         drawPath(
                             path = path,
-                            color = Color(stroke.color),
+                            color = color,
                             style = DrawScopeStroke(
-                                width = (stroke.strokeWidth * scale).coerceAtLeast(1.2f),
+                                width = strokeWidth.coerceAtLeast(1.5f),
                                 cap = StrokeCap.Round,
                                 join = StrokeJoin.Round
                             )
@@ -481,6 +501,7 @@ fun BoardsLibraryScreen(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
+                                .animateItem()
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
                                 .combinedClickable(
@@ -560,6 +581,7 @@ fun BoardsLibraryScreen(
                         Surface(
                             color = Color.Transparent,
                             modifier = Modifier
+                                .animateItem()
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
                                 .combinedClickable(

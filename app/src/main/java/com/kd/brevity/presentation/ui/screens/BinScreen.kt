@@ -69,6 +69,7 @@ fun BinScreen(
     val binnedBoards = remember(uiState.savedBoards) {
         uiState.savedBoards.filter { it.isInBin }
     }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault()) }
     var showEmptyBinConfirmation by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -182,7 +183,9 @@ fun BinScreen(
                         Card(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                             shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .animateItem()
+                                .fillMaxWidth()
                         ) {
                             Column(
                                 modifier = Modifier
@@ -204,7 +207,7 @@ fun BinScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         val dateStr = board.binnedAt?.let {
-                                            SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault()).format(Date(it))
+                                            dateFormat.format(Date(it))
                                         } ?: "In Bin"
                                         Text(
                                             text = dateStr,
