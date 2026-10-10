@@ -4,14 +4,14 @@ plugins {
 }
 
 android {
-    namespace = "com.kd.brevity"
+    namespace = "com.kd.creavity"
     compileSdk {
         version = release(37)
     }
     compileSdkMinor = 1
 
     defaultConfig {
-        applicationId = "com.kd.brevity"
+        applicationId = "com.kd.creavity"
         minSdk = 29
         targetSdk = 37
         versionCode = 1

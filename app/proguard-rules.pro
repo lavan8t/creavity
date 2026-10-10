@@ -3,7 +3,7 @@
 # ==============================================================================
 
 # Aggressive Optimization & Obfuscation
--repackageclasses 'com.kd.brevity.opt'
+-repackageclasses 'com.kd.creavity.opt'
 -allowaccessmodification
 
 # Strip debug logging from release APK for speed and size reduction
@@ -15,9 +15,9 @@
 }
 
 # Keep project domain models & binary packet serialization
--keep class com.kd.brevity.domain.model.** { *; }
--keep class com.kd.brevity.data.binary.** { *; }
--keepclassmembers class com.kd.brevity.domain.model.** { *; }
+-keep class com.kd.creavity.domain.model.** { *; }
+-keep class com.kd.creavity.data.binary.** { *; }
+-keepclassmembers class com.kd.creavity.domain.model.** { *; }
 
 # Compose Stable & Immutable Annotations
 -keepclassmembers class * {
