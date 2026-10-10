@@ -67,6 +67,8 @@ sealed interface OotbAction {
     data class DeleteBoardPermanently(val boardId: String) : OotbAction
     data object EmptyBin : OotbAction
     data class UpdateBoardMetadata(val boardId: String, val title: String, val venue: String, val group: String, val labels: List<String>) : OotbAction
+    data class CreateFolder(val folderName: String) : OotbAction
+    data class DeleteFolder(val folderName: String) : OotbAction
 
     // P2P Collaboration
     data class StartAdvertising(val deviceName: String) : OotbAction

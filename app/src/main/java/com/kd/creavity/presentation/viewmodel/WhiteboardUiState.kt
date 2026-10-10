@@ -20,6 +20,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 data class WhiteboardUiState(
     val currentBoard: Board = Board(),
     val savedBoards: List<Board> = emptyList(),
+    val userFolders: Set<String> = emptySet(),
     val currentColor: Color = Color.Unspecified,
     val backgroundColor: Color = Color.Unspecified,
     val backgroundPattern: CanvasBackgroundPattern = CanvasBackgroundPattern.ISOMETRIC_DOTS,

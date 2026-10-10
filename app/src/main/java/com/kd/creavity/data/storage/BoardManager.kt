@@ -97,6 +97,16 @@ class BoardManager(private val context: Context) {
         // Deliberately no-op: never silently delete boards behind user back
     }
 
+    fun getCustomFolders(): Set<String> {
+        val prefs = context.getSharedPreferences("creavity_folders", Context.MODE_PRIVATE)
+        return prefs.getStringSet("folders", emptySet()) ?: emptySet()
+    }
+
+    fun saveCustomFolders(folders: Set<String>) {
+        val prefs = context.getSharedPreferences("creavity_folders", Context.MODE_PRIVATE)
+        prefs.edit().putStringSet("folders", folders).apply()
+    }
+
     private fun boardToJson(board: Board): JSONObject {
         val json = JSONObject()
         json.put("id", board.id)

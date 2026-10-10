@@ -89,8 +89,9 @@ import com.kd.creavity.presentation.ui.components.GroupFolderFilterRow
 import com.kd.creavity.presentation.ui.components.LibraryNavDrawer
 import com.kd.creavity.presentation.ui.components.LibrarySearchBar
 import com.kd.creavity.presentation.ui.components.LibrarySelectionTopBar
-import com.kd.creavity.presentation.ui.components.LibraryTabMode
-import com.kd.creavity.presentation.ui.components.LibraryTabSwitcher
+import com.kd.creavity.presentation.ui.components.LibraryViewMode
+import com.kd.creavity.presentation.ui.components.LibraryViewModeSwitcher
+import com.kd.creavity.presentation.ui.components.CreateFolderSheet
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
@@ -120,9 +121,11 @@ fun BoardsLibraryScreen(
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    var selectedTab by rememberSaveable { mutableStateOf(LibraryTabMode.RECENT) }
+    var viewMode by rememberSaveable { mutableStateOf(LibraryViewMode.FOLDERS) }
     var openedFolder by rememberSaveable { mutableStateOf<String?>(null) }
-    var isGridView by rememberSaveable { mutableStateOf(true) }
+    var isFolderGridView by rememberSaveable { mutableStateOf(true) }
+    var showCreateFolderSheet by remember { mutableStateOf(false) }
+    var folderToDeleteConfirm by remember { mutableStateOf<String?>(null) }
     var sortOrder by remember { mutableStateOf(LibrarySortOrder.LAST_ACCESSED) }
     var isAscending by rememberSaveable { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -191,24 +194,23 @@ fun BoardsLibraryScreen(
         }
     }
 
+    val allFolderNames = remember(activeBoards, uiState.userFolders) {
+        val fromBoards = activeBoards.map { it.group.trim() }.filter { it.isNotBlank() }
+        (uiState.userFolders + fromBoards).distinct().sorted()
+    }
+
     // Folders map: Maps folder name -> List of Boards inside it
-    val foldersMap = remember(activeBoards, searchQuery) {
-        val base = if (searchQuery.isBlank()) activeBoards else {
-            val q = searchQuery.trim()
-            activeBoards.filter { b ->
-                b.title.contains(q, ignoreCase = true) ||
-                b.venue.contains(q, ignoreCase = true) ||
-                b.group.contains(q, ignoreCase = true) ||
-                b.labels.any { l -> l.contains(q, ignoreCase = true) }
+    val foldersMap = remember(allFolderNames, activeBoards, searchQuery) {
+        val q = searchQuery.trim()
+        val map = LinkedHashMap<String, List<Board>>()
+        allFolderNames.forEach { g ->
+            val inG = activeBoards.filter { it.group.equals(g, ignoreCase = true) }
+            if (q.isBlank() || g.contains(q, ignoreCase = true) || inG.any { it.title.contains(q, ignoreCase = true) }) {
+                map[g] = inG
             }
         }
-        val groups = base.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()
-        val map = LinkedHashMap<String, List<Board>>()
-        groups.forEach { g ->
-            map[g] = base.filter { it.group.equals(g, ignoreCase = true) }
-        }
-        val unfiled = base.filter { it.group.isBlank() }
-        if (unfiled.isNotEmpty()) {
+        val unfiled = activeBoards.filter { it.group.isBlank() }
+        if (unfiled.isNotEmpty() && (q.isBlank() || unfiled.any { it.title.contains(q, ignoreCase = true) })) {
             map["Unfiled"] = unfiled
         }
         map
@@ -293,17 +295,17 @@ fun BoardsLibraryScreen(
                     )
                 }
 
-                // 2. Sub-header Bar: Tab Switcher (Recent vs Folders) + Sort / View Controls
+                // 2. Sub-header Bar: Unified View Mode Switcher (Folders, Grid, List) + Actions
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Segmented Tab Switcher: "Recent" vs "Folders"
-                    LibraryTabSwitcher(
-                        selectedTab = selectedTab,
-                        onTabSelected = { tab ->
-                            selectedTab = tab
+                    // Unified 3-way view mode switcher: Folders | Grid | List
+                    LibraryViewModeSwitcher(
+                        viewMode = viewMode,
+                        onViewModeChange = { mode ->
+                            viewMode = mode
                             openedFolder = null
                         }
                     )
@@ -312,7 +314,7 @@ fun BoardsLibraryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (selectedTab == LibraryTabMode.RECENT) {
+                        if (viewMode != LibraryViewMode.FOLDERS) {
                             // Sort Dropdown Button + Direction Toggle
                             Box {
                                 TooltipHint(text = "Sort boards") {
@@ -367,6 +369,23 @@ fun BoardsLibraryScreen(
                                     )
                                 }
                             }
+                        } else {
+                            // In Folders mode: Create New Folder Button
+                            TooltipHint(text = "New folder") {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showCreateFolderSheet = true
+                                    },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    MaterialSymbol(
+                                        name = "create_new_folder",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        size = 22.dp
+                                    )
+                                }
+                            }
                         }
 
                         // Selection Mode Toggle Button
@@ -386,30 +405,11 @@ fun BoardsLibraryScreen(
                                 )
                             }
                         }
-
-                        // Grid / List Toggle Button
-                        if (selectedTab == LibraryTabMode.RECENT) {
-                            TooltipHint(text = if (isGridView) "Switch to list view" else "Switch to grid view") {
-                                IconButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        isGridView = !isGridView
-                                    },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    MaterialSymbol(
-                                        name = if (isGridView) "view_list" else "grid_view",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        size = 22.dp
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
 
-                // Group folders filter row (in Recent mode when groups exist)
-                if (selectedTab == LibraryTabMode.RECENT && distinctGroups.isNotEmpty()) {
+                // Group folders filter row (in Grid or List mode when groups exist)
+                if (viewMode != LibraryViewMode.FOLDERS && distinctGroups.isNotEmpty()) {
                     GroupFolderFilterRow(
                         groups = distinctGroups,
                         selectedGroup = selectedGroup,
@@ -419,311 +419,359 @@ fun BoardsLibraryScreen(
                     )
                 }
 
-                // 3. Main Content: Recent View OR Folders Shared Element View
-                if (selectedTab == LibraryTabMode.RECENT) {
-                    // ==================== RECENT BOARDS VIEW ====================
-                    if (filteredBoards.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
+                // 3. Main Content: Grid, List, or Folders Shared Element View
+                when (viewMode) {
+                    LibraryViewMode.GRID -> {
+                        // ==================== ALL BOARDS GRID VIEW ====================
+                        if (filteredBoards.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
                                 ) {
-                                    MaterialSymbol(name = "draw", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
-                                    Text(
-                                        text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        MaterialSymbol(name = "draw", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
+                                        Text(
+                                            text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 170.dp),
+                                state = gridState,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(bottom = 96.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .drawGridScrollbar(gridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                            ) {
+                                items(filteredBoards, key = { it.id }) { board ->
+                                    val isSelected = selectedBoardIds.contains(board.id)
+                                    BoardGridCard(
+                                        board = board,
+                                        isSelected = isSelected,
+                                        isSelectionMode = isSelectionMode,
+                                        onCardClick = {
+                                            if (isSelectionMode) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                            } else {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                onNavigateToCanvas()
+                                            }
+                                        },
+                                        onCardLongClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            if (!isSelectionMode) {
+                                                isSelectionMode = true
+                                                selectedBoardIds = setOf(board.id)
+                                            } else {
+                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                            }
+                                        },
+                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                        onOptionsClick = { selectedBoardForActions = board }
                                     )
                                 }
                             }
                         }
-                    } else if (isGridView) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 170.dp),
-                            state = gridState,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = PaddingValues(bottom = 96.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .drawGridScrollbar(gridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                        ) {
-                            items(filteredBoards, key = { it.id }) { board ->
-                                val isSelected = selectedBoardIds.contains(board.id)
-                                BoardGridCard(
-                                    board = board,
-                                    isSelected = isSelected,
-                                    isSelectionMode = isSelectionMode,
-                                    onCardClick = {
-                                        if (isSelectionMode) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                        } else {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                            onNavigateToCanvas()
-                                        }
-                                    },
-                                    onCardLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        if (!isSelectionMode) {
-                                            isSelectionMode = true
-                                            selectedBoardIds = setOf(board.id)
-                                        } else {
-                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                        }
-                                    },
-                                    onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
-                                    onOptionsClick = { selectedBoardForActions = board }
-                                )
+                    }
+                    LibraryViewMode.LIST -> {
+                        // ==================== ALL BOARDS LIST VIEW ====================
+                        if (filteredBoards.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        MaterialSymbol(name = "draw", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
+                                        Text(
+                                            text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    } else {
-                        LazyColumn(
-                            state = listState,
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            contentPadding = PaddingValues(bottom = 96.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .drawListScrollbar(listState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                        ) {
-                            items(filteredBoards, key = { it.id }) { board ->
-                                val isSelected = selectedBoardIds.contains(board.id)
-                                BoardListRow(
-                                    board = board,
-                                    isSelected = isSelected,
-                                    isSelectionMode = isSelectionMode,
-                                    dateFormat = dateFormat,
-                                    onRowClick = {
-                                        if (isSelectionMode) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                        } else {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                            onNavigateToCanvas()
-                                        }
-                                    },
-                                    onRowLongClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        if (!isSelectionMode) {
-                                            isSelectionMode = true
-                                            selectedBoardIds = setOf(board.id)
-                                        } else {
-                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                        }
-                                    },
-                                    onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
-                                    onOptionsClick = { selectedBoardForActions = board }
-                                )
+                        } else {
+                            LazyColumn(
+                                state = listState,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                contentPadding = PaddingValues(bottom = 96.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .drawListScrollbar(listState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                            ) {
+                                items(filteredBoards, key = { it.id }) { board ->
+                                    val isSelected = selectedBoardIds.contains(board.id)
+                                    BoardListRow(
+                                        board = board,
+                                        isSelected = isSelected,
+                                        isSelectionMode = isSelectionMode,
+                                        dateFormat = dateFormat,
+                                        onRowClick = {
+                                            if (isSelectionMode) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                            } else {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                onNavigateToCanvas()
+                                            }
+                                        },
+                                        onRowLongClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            if (!isSelectionMode) {
+                                                isSelectionMode = true
+                                                selectedBoardIds = setOf(board.id)
+                                            } else {
+                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                            }
+                                        },
+                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                        onOptionsClick = { selectedBoardForActions = board }
+                                    )
+                                }
                             }
                         }
                     }
-                } else {
-                    // ==================== FOLDERS VIEW (SHARED ELEMENT) ====================
-                    SharedTransitionLayout(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        AnimatedContent(
-                            targetState = openedFolder,
-                            transitionSpec = {
-                                fadeIn(animationSpec = BrevityMotion.springSpatial()) togetherWith
-                                fadeOut(animationSpec = BrevityMotion.springSpatial())
-                            },
-                            label = "FolderTransition"
-                        ) { targetFolder ->
-                            if (targetFolder == null) {
-                                // Folder Overview: Folders grid with 2x2 miniature previews
-                                if (foldersMap.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Card(
-                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                            shape = RoundedCornerShape(16.dp),
-                                            modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
+                    LibraryViewMode.FOLDERS -> {
+                        // ==================== FOLDERS VIEW (SHARED ELEMENT) ====================
+                        SharedTransitionLayout(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            AnimatedContent(
+                                targetState = openedFolder,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = BrevityMotion.springSpatial()) togetherWith
+                                    fadeOut(animationSpec = BrevityMotion.springSpatial())
+                                },
+                                label = "FolderTransition"
+                            ) { targetFolder ->
+                                if (targetFolder == null) {
+                                    // Folder Overview: Folders grid with cardless cards and names strictly above
+                                    if (foldersMap.isEmpty()) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            Card(
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                                shape = RoundedCornerShape(16.dp),
+                                                modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
                                             ) {
-                                                MaterialSymbol(name = "folder_off", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
-                                                Text(
-                                                    text = if (searchQuery.isNotEmpty()) "No folders match '$searchQuery'" else "No folders yet",
-                                                    fontSize = 16.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = MaterialTheme.colorScheme.onSurface
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    MaterialSymbol(name = "folder_open", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
+                                                    Text(
+                                                        text = if (searchQuery.isNotEmpty()) "No folders match '$searchQuery'" else "No folders yet",
+                                                        fontSize = 16.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Adaptive(minSize = 170.dp),
+                                            state = folderOverviewGridState,
+                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                            contentPadding = PaddingValues(bottom = 96.dp),
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .drawGridScrollbar(folderOverviewGridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                                        ) {
+                                            items(foldersMap.entries.toList(), key = { it.key }) { (folderName, boards) ->
+                                                FolderCard(
+                                                    folderName = folderName,
+                                                    boards = boards,
+                                                    onOpenFolder = { openedFolder = folderName },
+                                                    onDeleteFolder = if (boards.isEmpty() && folderName != "Unfiled") {
+                                                        { folderToDeleteConfirm = folderName }
+                                                    } else null,
+                                                    folderNameModifier = Modifier.sharedBounds(
+                                                        sharedContentState = rememberSharedContentState(key = "folder_title_${folderName}"),
+                                                        animatedVisibilityScope = this@AnimatedContent,
+                                                        boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
+                                                    ),
+                                                    previewItemModifier = { board ->
+                                                        Modifier.sharedElement(
+                                                            sharedContentState = rememberSharedContentState(key = "board_thumb_${board.id}"),
+                                                            animatedVisibilityScope = this@AnimatedContent,
+                                                            boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
+                                                        )
+                                                    }
                                                 )
                                             }
                                         }
                                     }
                                 } else {
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Adaptive(minSize = 170.dp),
-                                        state = folderOverviewGridState,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                        contentPadding = PaddingValues(bottom = 96.dp),
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .drawGridScrollbar(folderOverviewGridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                                    // Opened Folder Detail: Grid or List of boards in this folder
+                                    Column(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(foldersMap.entries.toList(), key = { it.key }) { (folderName, boards) ->
-                                            FolderCard(
-                                                folderName = folderName,
-                                                boards = boards,
-                                                onOpenFolder = { openedFolder = folderName },
-                                                previewItemModifier = { board ->
-                                                    Modifier.sharedElement(
-                                                        sharedContentState = rememberSharedContentState(key = "board_thumb_${board.id}"),
-                                                        animatedVisibilityScope = this@AnimatedContent,
-                                                        boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                    )
-                                                }
+                                        FolderDetailHeader(
+                                            folderName = targetFolder,
+                                            count = currentFolderBoards.size,
+                                            isGridView = isFolderGridView,
+                                            onToggleView = { isFolderGridView = !isFolderGridView },
+                                            onBack = { openedFolder = null },
+                                            onDeleteFolder = if (currentFolderBoards.isEmpty() && targetFolder != "Unfiled") {
+                                                { folderToDeleteConfirm = targetFolder }
+                                            } else null,
+                                            folderNameModifier = Modifier.sharedBounds(
+                                                sharedContentState = rememberSharedContentState(key = "folder_title_${targetFolder}"),
+                                                animatedVisibilityScope = this@AnimatedContent,
+                                                boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
                                             )
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Opened Folder Detail: Grid or List of boards in this folder
-                                Column(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    FolderDetailHeader(
-                                        folderName = targetFolder,
-                                        count = currentFolderBoards.size,
-                                        isGridView = isGridView,
-                                        onToggleView = { isGridView = !isGridView },
-                                        onBack = { openedFolder = null }
-                                    )
+                                        )
 
-                                    if (currentFolderBoards.isEmpty()) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().weight(1f),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "No boards in $targetFolder",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                fontSize = 15.sp
-                                            )
-                                        }
-                                    } else if (isGridView) {
-                                        LazyVerticalGrid(
-                                            columns = GridCells.Adaptive(minSize = 170.dp),
-                                            state = folderDetailGridState,
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                                            contentPadding = PaddingValues(bottom = 96.dp),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .weight(1f)
-                                                .drawGridScrollbar(folderDetailGridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                                        ) {
-                                            items(currentFolderBoards, key = { it.id }) { board ->
-                                                val isSelected = selectedBoardIds.contains(board.id)
-                                                BoardGridCard(
-                                                    board = board,
-                                                    isSelected = isSelected,
-                                                    isSelectionMode = isSelectionMode,
-                                                    thumbnailModifier = Modifier.sharedElement(
-                                                        sharedContentState = rememberSharedContentState(key = "board_thumb_${board.id}"),
-                                                        animatedVisibilityScope = this@AnimatedContent,
-                                                        boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                    ),
-                                                    onCardClick = {
-                                                        if (isSelectionMode) {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                        } else {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                                            onNavigateToCanvas()
-                                                        }
-                                                    },
-                                                    onCardLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        if (!isSelectionMode) {
-                                                            isSelectionMode = true
-                                                            selectedBoardIds = setOf(board.id)
-                                                        } else {
-                                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                        }
-                                                    },
-                                                    onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
-                                                    onOptionsClick = { selectedBoardForActions = board }
+                                        if (currentFolderBoards.isEmpty()) {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "No boards in $targetFolder",
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    fontSize = 15.sp
                                                 )
                                             }
-                                        }
-                                    } else {
-                                        LazyColumn(
-                                            state = folderDetailListState,
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                            contentPadding = PaddingValues(bottom = 96.dp),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .weight(1f)
-                                                .drawListScrollbar(folderDetailListState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                                        ) {
-                                            items(currentFolderBoards, key = { it.id }) { board ->
-                                                val isSelected = selectedBoardIds.contains(board.id)
-                                                BoardListRow(
-                                                    board = board,
-                                                    isSelected = isSelected,
-                                                    isSelectionMode = isSelectionMode,
-                                                    thumbnailModifier = Modifier.sharedElement(
-                                                        sharedContentState = rememberSharedContentState(key = "board_thumb_${board.id}"),
-                                                        animatedVisibilityScope = this@AnimatedContent,
-                                                        boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                    ),
-                                                    dateFormat = dateFormat,
-                                                    onRowClick = {
-                                                        if (isSelectionMode) {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                        } else {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                            onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                                            onNavigateToCanvas()
-                                                        }
-                                                    },
-                                                    onRowLongClick = {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        if (!isSelectionMode) {
-                                                            isSelectionMode = true
-                                                            selectedBoardIds = setOf(board.id)
-                                                        } else {
-                                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                        }
-                                                    },
-                                                    onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
-                                                    onOptionsClick = { selectedBoardForActions = board }
-                                                )
+                                        } else if (isFolderGridView) {
+                                            LazyVerticalGrid(
+                                                columns = GridCells.Adaptive(minSize = 170.dp),
+                                                state = folderDetailGridState,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                                contentPadding = PaddingValues(bottom = 96.dp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .weight(1f)
+                                                    .drawGridScrollbar(folderDetailGridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                                            ) {
+                                                items(currentFolderBoards, key = { it.id }) { board ->
+                                                    val isSelected = selectedBoardIds.contains(board.id)
+                                                    BoardGridCard(
+                                                        board = board,
+                                                        isSelected = isSelected,
+                                                        isSelectionMode = isSelectionMode,
+                                                        thumbnailModifier = Modifier.sharedElement(
+                                                            sharedContentState = rememberSharedContentState(key = "board_thumb_${board.id}"),
+                                                            animatedVisibilityScope = this@AnimatedContent,
+                                                            boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
+                                                        ),
+                                                        onCardClick = {
+                                                            if (isSelectionMode) {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                                            } else {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                                onNavigateToCanvas()
+                                                            }
+                                                        },
+                                                        onCardLongClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            if (!isSelectionMode) {
+                                                                isSelectionMode = true
+                                                                selectedBoardIds = setOf(board.id)
+                                                            } else {
+                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                                            }
+                                                        },
+                                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                                        onOptionsClick = { selectedBoardForActions = board }
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            LazyColumn(
+                                                state = folderDetailListState,
+                                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                                contentPadding = PaddingValues(bottom = 96.dp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .weight(1f)
+                                                    .drawListScrollbar(folderDetailListState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
+                                            ) {
+                                                items(currentFolderBoards, key = { it.id }) { board ->
+                                                    val isSelected = selectedBoardIds.contains(board.id)
+                                                    BoardListRow(
+                                                        board = board,
+                                                        isSelected = isSelected,
+                                                        isSelectionMode = isSelectionMode,
+                                                        thumbnailModifier = Modifier.sharedElement(
+                                                            sharedContentState = rememberSharedContentState(key = "board_thumb_${board.id}"),
+                                                            animatedVisibilityScope = this@AnimatedContent,
+                                                            boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
+                                                        ),
+                                                        dateFormat = dateFormat,
+                                                        onRowClick = {
+                                                            if (isSelectionMode) {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                                            } else {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                                onNavigateToCanvas()
+                                                            }
+                                                        },
+                                                        onRowLongClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            if (!isSelectionMode) {
+                                                                isSelectionMode = true
+                                                                selectedBoardIds = setOf(board.id)
+                                                            } else {
+                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                                            }
+                                                        },
+                                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                                        onOptionsClick = { selectedBoardForActions = board }
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -765,7 +813,7 @@ fun BoardsLibraryScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            val folderGroup = if (selectedTab == LibraryTabMode.FOLDERS && openedFolder != null && openedFolder != "Unfiled") {
+                            val folderGroup = if (viewMode == LibraryViewMode.FOLDERS && openedFolder != null && openedFolder != "Unfiled") {
                                 openedFolder ?: ""
                             } else ""
                             onAction(OotbAction.CreateNewBoard("Untitled Board"))
@@ -845,6 +893,31 @@ fun BoardsLibraryScreen(
                     onDismiss = { boardIdToDeleteWithConfirm = null }
                 )
             }
+            if (folderToDeleteConfirm != null) {
+                val targetFolder = folderToDeleteConfirm!!
+                DeleteConfirmDialog(
+                    title = "Delete Folder?",
+                    text = "Are you sure you want to delete the empty folder '$targetFolder'?",
+                    confirmText = "Delete Folder",
+                    onConfirm = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onAction(OotbAction.DeleteFolder(targetFolder))
+                        if (openedFolder == targetFolder) {
+                            openedFolder = null
+                        }
+                        folderToDeleteConfirm = null
+                    },
+                    onDismiss = { folderToDeleteConfirm = null }
+                )
+            }
+
+            CreateFolderSheet(
+                show = showCreateFolderSheet,
+                onDismiss = { showCreateFolderSheet = false },
+                onCreate = { folderName ->
+                    onAction(OotbAction.CreateFolder(folderName))
+                }
+            )
         }
     }
 }

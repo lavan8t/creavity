@@ -42,7 +42,7 @@ import java.util.UUID
 
 class WhiteboardViewModel(application: Application) : AndroidViewModel(application) {
     val nearbyManager = NearbyConnectionsManager(application)
-    private val boardManager = BoardManager(application)
+    internal val boardManager = BoardManager(application)
     internal val appSettings = AppSettingsManager(application)
 
     internal val _uiState = MutableStateFlow(
@@ -115,22 +115,15 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun loadSavedBoards() {
         val boards = boardManager.loadAllBoards()
-        if (boards.isNotEmpty()) {
-            val initial = boards.first()
-            _uiState.update {
-                it.copy(
-                    currentBoard = initial,
-                    savedBoards = boards,
-                    backgroundColor = Color(initial.backgroundColor)
-                )
-            }
-        } else {
-            _uiState.update {
-                it.copy(
-                    currentBoard = Board(id = "", title = ""),
-                    savedBoards = emptyList()
-                )
-            }
+        val allFolders = (boardManager.getCustomFolders() + boards.map { it.group.trim() }.filter { it.isNotBlank() })
+        val initial = boards.firstOrNull() ?: Board(id = "", title = "")
+        _uiState.update {
+            it.copy(
+                currentBoard = initial,
+                savedBoards = boards,
+                userFolders = allFolders,
+                backgroundColor = if (boards.isNotEmpty()) Color(initial.backgroundColor) else it.backgroundColor
+            )
         }
     }
 
@@ -979,7 +972,11 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
         _uiState.update { state ->
             val updatedSaved = state.savedBoards.map { if (it.id == boardId) updated else it }
             val updatedCurrent = if (state.currentBoard.id == boardId) updated else state.currentBoard
-            state.copy(currentBoard = updatedCurrent, savedBoards = updatedSaved)
+            val updatedFolders = if (group.isNotBlank()) state.userFolders + group.trim() else state.userFolders
+            state.copy(currentBoard = updatedCurrent, savedBoards = updatedSaved, userFolders = updatedFolders)
+        }
+        if (group.isNotBlank()) {
+            boardManager.saveCustomFolders(_uiState.value.userFolders)
         }
         viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(updated) }
     }

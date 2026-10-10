@@ -1,6 +1,5 @@
 package com.kd.creavity.presentation.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,23 +7,30 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,21 +42,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.Board
-import com.kd.creavity.presentation.ui.motion.BrevityMotion
 
-enum class LibraryTabMode(val label: String, val icon: String) {
-    RECENT("Recent", "schedule"),
-    FOLDERS("Folders", "folder")
+enum class LibraryViewMode(val label: String, val icon: String) {
+    FOLDERS("Folders", "folder"),
+    GRID("Grid", "grid_view"),
+    LIST("List", "view_list")
 }
 
 /**
- * Modern M3 segmented pill tab switcher for Home screen views:
- * "Recent" (recently accessed boards) vs "Folders" (folder preview cards).
+ * Unified 3-way view switcher for Home screen: Folders, Grid, and List.
+ * Clean Material 3 segmented pill design.
  */
 @Composable
-fun LibraryTabSwitcher(
-    selectedTab: LibraryTabMode,
-    onTabSelected: (LibraryTabMode) -> Unit,
+fun LibraryViewModeSwitcher(
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
@@ -58,16 +64,15 @@ fun LibraryTabSwitcher(
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.height(44.dp)
+        modifier = modifier.height(42.dp)
     ) {
         Row(
-            modifier = Modifier
-                .padding(4.dp),
+            modifier = Modifier.padding(3.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            LibraryTabMode.entries.forEach { tab ->
-                val isSelected = selectedTab == tab
+            LibraryViewMode.entries.forEach { mode ->
+                val isSelected = viewMode == mode
                 val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
                 val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -79,27 +84,29 @@ fun LibraryTabSwitcher(
                         .clickable {
                             if (!isSelected) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onTabSelected(tab)
+                                onViewModeChange(mode)
                             }
                         }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         MaterialSymbol(
-                            name = tab.icon,
+                            name = mode.icon,
                             filled = isSelected,
                             tint = contentColor,
                             size = 18.dp
                         )
-                        Text(
-                            text = tab.label,
-                            fontSize = 13.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = contentColor
-                        )
+                        if (isSelected) {
+                            Text(
+                                text = mode.label,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = contentColor
+                            )
+                        }
                     }
                 }
             }
@@ -108,8 +115,9 @@ fun LibraryTabSwitcher(
 }
 
 /**
- * Folder Card showing a 2x2 miniature preview container holding up to 4 items inside that folder.
- * [previewItemModifier] provides the shared element modifier per board to enable seamless translation.
+ * Folder Card showing the folder name strictly above the 2x2 miniature board previews.
+ * No card container background wrapper.
+ * Non-empty folders cannot be deleted; empty folders stay in list and are deletable.
  */
 @Composable
 fun FolderCard(
@@ -117,206 +125,229 @@ fun FolderCard(
     boards: List<Board>,
     onOpenFolder: () -> Unit,
     modifier: Modifier = Modifier,
+    onDeleteFolder: (() -> Unit)? = null,
+    folderNameModifier: Modifier = Modifier,
     previewItemModifier: @Composable (Board) -> Modifier = { Modifier }
 ) {
     val haptic = LocalHapticFeedback.current
     val previewBoards = boards.take(4)
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        shape = RoundedCornerShape(18.dp),
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onOpenFolder()
-            }
+            },
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
+        // Folder Name and Count Header sitting ABOVE the preview (no card wrapper)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // 2x2 Miniature Preview Container (holding up to 4 items inside)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(118.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                    .padding(6.dp)
-            ) {
-                if (boards.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        MaterialSymbol(
-                            name = "folder_open",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
-                            size = 36.dp
-                        )
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        // Top Row: items 0 and 1
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            val b0 = previewBoards.getOrNull(0)
-                            if (b0 != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .then(previewItemModifier(b0))
-                                        .clip(RoundedCornerShape(8.dp))
-                                ) {
-                                    BoardThumbnailPreview(
-                                        board = b0,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                                )
-                            }
-
-                            val b1 = previewBoards.getOrNull(1)
-                            if (b1 != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .then(previewItemModifier(b1))
-                                        .clip(RoundedCornerShape(8.dp))
-                                ) {
-                                    BoardThumbnailPreview(
-                                        board = b1,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                                )
-                            }
-                        }
-
-                        // Bottom Row: items 2 and 3
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            val b2 = previewBoards.getOrNull(2)
-                            if (b2 != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .then(previewItemModifier(b2))
-                                        .clip(RoundedCornerShape(8.dp))
-                                ) {
-                                    BoardThumbnailPreview(
-                                        board = b2,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                                )
-                            }
-
-                            val b3 = previewBoards.getOrNull(3)
-                            if (b3 != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .then(previewItemModifier(b3))
-                                        .clip(RoundedCornerShape(8.dp))
-                                ) {
-                                    BoardThumbnailPreview(
-                                        board = b3,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Folder Title & Item Count Footer
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 MaterialSymbol(
                     name = "folder",
                     filled = true,
                     tint = MaterialTheme.colorScheme.primary,
-                    size = 22.dp
+                    size = 20.dp
+                )
+                Text(
+                    text = folderName.ifBlank { "Unfiled" },
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = folderNameModifier
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "${boards.size} ${if (boards.size == 1) "item" else "items"}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = folderName.ifBlank { "Unfiled" },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "${boards.size} ${if (boards.size == 1) "item" else "items"}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                // Delete button is strictly only available when folder has 0 contents
+                if (boards.isEmpty() && folderName != "Unfiled" && onDeleteFolder != null) {
+                    TooltipHint(text = "Delete empty folder") {
+                        IconButton(
+                            onClick = onDeleteFolder,
+                            modifier = Modifier.size(26.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = "delete",
+                                tint = MaterialTheme.colorScheme.error,
+                                size = 16.dp
+                            )
+                        }
+                    }
                 }
+            }
+        }
 
-                MaterialSymbol(
-                    name = "chevron_right",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    size = 18.dp
-                )
+        // 2x2 Miniature Preview Container directly below the name
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(118.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(6.dp)
+        ) {
+            if (boards.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "folder_open",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                            size = 32.dp
+                        )
+                        Text(
+                            text = "Empty folder",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Top Row: items 0 and 1
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val b0 = previewBoards.getOrNull(0)
+                        if (b0 != null) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .then(previewItemModifier(b0))
+                                    .clip(RoundedCornerShape(8.dp))
+                            ) {
+                                BoardThumbnailPreview(
+                                    board = b0,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                            )
+                        }
+
+                        val b1 = previewBoards.getOrNull(1)
+                        if (b1 != null) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .then(previewItemModifier(b1))
+                                    .clip(RoundedCornerShape(8.dp))
+                            ) {
+                                BoardThumbnailPreview(
+                                    board = b1,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                            )
+                        }
+                    }
+
+                    // Bottom Row: items 2 and 3
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val b2 = previewBoards.getOrNull(2)
+                        if (b2 != null) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .then(previewItemModifier(b2))
+                                    .clip(RoundedCornerShape(8.dp))
+                            ) {
+                                BoardThumbnailPreview(
+                                    board = b2,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                            )
+                        }
+
+                        val b3 = previewBoards.getOrNull(3)
+                        if (b3 != null) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .then(previewItemModifier(b3))
+                                    .clip(RoundedCornerShape(8.dp))
+                            ) {
+                                BoardThumbnailPreview(
+                                    board = b3,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f))
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -332,7 +363,9 @@ fun FolderDetailHeader(
     isGridView: Boolean,
     onToggleView: () -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    onDeleteFolder: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    folderNameModifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -371,7 +404,8 @@ fun FolderDetailHeader(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = folderNameModifier
                 )
                 Text(
                     text = "$count ${if (count == 1) "item" else "items"}",
@@ -381,20 +415,109 @@ fun FolderDetailHeader(
             }
         }
 
-        // Grid / List toggle for opened folder
-        TooltipHint(text = if (isGridView) "Switch to list view" else "Switch to grid view") {
-            IconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onToggleView()
-                },
-                modifier = Modifier.size(36.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Delete folder button (strictly only if folder has 0 contents)
+            if (count == 0 && folderName != "Unfiled" && onDeleteFolder != null) {
+                TooltipHint(text = "Delete folder") {
+                    IconButton(
+                        onClick = onDeleteFolder,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "delete",
+                            tint = MaterialTheme.colorScheme.error,
+                            size = 20.dp
+                        )
+                    }
+                }
+            }
+
+            // Grid / List toggle for opened folder
+            TooltipHint(text = if (isGridView) "Switch to list view" else "Switch to grid view") {
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggleView()
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    MaterialSymbol(
+                        name = if (isGridView) "view_list" else "grid_view",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        size = 22.dp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ModalBottomSheet to create a new folder.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateFolderSheet(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    if (!show) return
+    var folderName by remember { mutableStateOf("") }
+    val haptic = LocalHapticFeedback.current
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        modifier = Modifier.imePadding()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "New Folder",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            OutlinedTextField(
+                value = folderName,
+                onValueChange = { folderName = it },
+                label = { Text("Folder Name") },
+                placeholder = { Text("e.g. Work, Ideas, Sketches") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                MaterialSymbol(
-                    name = if (isGridView) "view_list" else "grid_view",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    size = 22.dp
-                )
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    enabled = folderName.isNotBlank() && !folderName.trim().equals("Unfiled", ignoreCase = true),
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onCreate(folderName.trim())
+                        onDismiss()
+                    },
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text("Create", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

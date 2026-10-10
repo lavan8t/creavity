@@ -63,7 +63,26 @@ fun WhiteboardViewModel.dispatch(action: OotbAction) {
         is OotbAction.ImportPresentation -> importPresentation(action.uri)
         is OotbAction.SetThemeMode -> setThemeMode(action.mode)
         is OotbAction.UpdateBoardMetadata -> updateBoardMetadata(action.boardId, action.title, action.venue, action.group, action.labels)
+        is OotbAction.CreateFolder -> createFolder(action.folderName)
+        is OotbAction.DeleteFolder -> deleteFolder(action.folderName)
     }
+}
+
+fun WhiteboardViewModel.createFolder(name: String) {
+    val trimmed = name.trim()
+    if (trimmed.isBlank() || trimmed.equals("Unfiled", ignoreCase = true)) return
+    val updated = _uiState.value.userFolders + trimmed
+    boardManager.saveCustomFolders(updated)
+    _uiState.update { it.copy(userFolders = updated) }
+}
+
+fun WhiteboardViewModel.deleteFolder(name: String) {
+    val trimmed = name.trim()
+    val hasActiveBoards = _uiState.value.savedBoards.any { !it.isInBin && it.group.equals(trimmed, ignoreCase = true) }
+    if (hasActiveBoards) return // Folder not deletable when contents are in it
+    val updated = _uiState.value.userFolders - trimmed
+    boardManager.saveCustomFolders(updated)
+    _uiState.update { it.copy(userFolders = updated) }
 }
 
 

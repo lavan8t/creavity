@@ -7,9 +7,12 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Delete
@@ -80,6 +83,10 @@ fun MaterialSymbol(
         "map", "minimap", "radar", "near_me" -> if (filled) map_filled else map
         "format_color_fill" -> if (filled) format_color_fill_filled else format_color_fill
         "folder" -> if (filled) folder_filled else folder
+        "folder_open" -> Icons.Default.FolderOpen
+        "folder_off" -> if (filled) folder_filled else folder
+        "create_new_folder", "new_folder" -> Icons.Default.CreateNewFolder
+        "schedule", "recent", "time" -> Icons.Default.Schedule
         "cell_tower" -> Icons.Default.CellTower
         "sensors" -> if (filled) sensors_filled else sensors
         "search" -> if (filled) search_filled else search
