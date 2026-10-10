@@ -135,8 +135,8 @@ fun WhiteboardCanvas(
 
     val effectiveBg = if (backgroundColor == Color.Unspecified) MaterialTheme.colorScheme.surface else backgroundColor
     val isDark = effectiveBg.luminance() < 0.5f
-    val effectiveColor = if (currentColor == Color.Unspecified || (currentColor == Color.White && !isDark) || (currentColor == Color.Black && isDark)) {
-        MaterialTheme.colorScheme.onSurface
+    val effectiveColor = if (currentColor == Color.Unspecified) {
+        if (isDark) Color(0xFFFFFFFF) else Color(0xFF000000)
     } else {
         currentColor
     }

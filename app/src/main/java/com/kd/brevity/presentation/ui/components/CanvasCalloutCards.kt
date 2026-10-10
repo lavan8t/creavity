@@ -13,23 +13,56 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.brevity.domain.model.DrawingTool
 import com.kd.brevity.presentation.ui.motion.BrevityMotion
 
-// Jamboard 6-Color Palette
-val JAMBOARD_PEN_COLORS = listOf(
-    Color(0xFF202124), // Black / Dark
-    Color(0xFF1A73E8), // Google Blue
-    Color(0xFF1E8E3E), // Google Green
-    Color(0xFFF9AB00), // Google Yellow / Amber
-    Color(0xFFD93025), // Google Red
-    Color(0xFFFFFFFF)  // White
+/**
+ * Official Material 3 (M3) 24-Color Expressive Swatches Palette.
+ * 4x6 Matrix covering Neutrals, Warm Primaries, Cool Nature/Cyans, and Earth/Amber Accents.
+ */
+val M3_PEN_PALETTE_24: List<Color> = listOf(
+    // Row 1: Neutrals & Grayscale (Black to Pure White)
+    Color(0xFF000000), // Pure Black
+    Color(0xFF424242), // Charcoal / Grey 800
+    Color(0xFF757575), // Medium Grey / Grey 600
+    Color(0xFF9E9E9E), // Grey 500
+    Color(0xFFE0E0E0), // Light Grey / Grey 300
+    Color(0xFFFFFFFF), // Pure White
+
+    // Row 2: Warm Primaries & Purples (Material 500/600 Hues)
+    Color(0xFFD93025), // Google Red (Red 600)
+    Color(0xFFE91E63), // Material Pink 500
+    Color(0xFF9C27B0), // Material Purple 500
+    Color(0xFF673AB7), // Material Deep Purple 500
+    Color(0xFF3F51B5), // Material Indigo 500
+    Color(0xFF1A73E8), // Google Blue (Blue 600)
+
+    // Row 3: Cool Nature & Cyans
+    Color(0xFF03A9F4), // Material Light Blue 500
+    Color(0xFF00BCD4), // Material Cyan 500
+    Color(0xFF009688), // Material Teal 500
+    Color(0xFF1E8E3E), // Google Green (Green 600)
+    Color(0xFF8BC34A), // Material Light Green 500
+    Color(0xFFCDDC39), // Material Lime 500
+
+    // Row 4: Warm Earth & Ambers
+    Color(0xFFF9AB00), // Google Yellow / Amber 600
+    Color(0xFFFFB300), // Material Amber 500
+    Color(0xFFFF9800), // Material Orange 500
+    Color(0xFFF4511E), // Material Deep Orange 500
+    Color(0xFF795548), // Material Brown 500
+    Color(0xFF607D8B)  // Material Blue Grey / Slate 500
 )
+
+// Legacy alias for backwards compatibility
+val JAMBOARD_PEN_COLORS: List<Color> = M3_PEN_PALETTE_24
 
 // Jamboard Sticky Note Colors
 val JAMBOARD_STICKY_COLORS = listOf(
@@ -185,7 +218,7 @@ fun PenCalloutCard(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = RoundedCornerShape(14.dp),
             shadowElevation = 8.dp,
-            modifier = Modifier.width(280.dp)
+            modifier = Modifier.width(300.dp)
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -261,32 +294,120 @@ fun PenCalloutCard(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Colors row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    JAMBOARD_PEN_COLORS.forEach { col ->
-                        val isSelected = currentColor == col
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(col)
-                                .border(
-                                    width = if (isSelected) 3.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                    shape = CircleShape
-                                )
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onSelectColor(col)
-                                }
-                        )
+                // Official Material 3 24-Color Swatches Matrix (4 rows of 6)
+                M3ColorSwatchesGrid(
+                    selectedColor = currentColor,
+                    onColorSelected = onSelectColor,
+                    swatchSize = 28.dp,
+                    spacing = 6.dp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Official Material 3 24-Color Swatches Grid (4 rows x 6 columns).
+ */
+@Composable
+fun M3ColorSwatchesGrid(
+    selectedColor: Color,
+    onColorSelected: (Color) -> Unit,
+    modifier: Modifier = Modifier,
+    swatchSize: Dp = 28.dp,
+    spacing: Dp = 6.dp
+) {
+    val haptic = LocalHapticFeedback.current
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(spacing)
+    ) {
+        M3_PEN_PALETTE_24.chunked(6).forEach { rowColors ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                rowColors.forEach { col ->
+                    val isSelected = selectedColor == col
+                    val isLight = col.luminance() > 0.75f
+                    val checkTint = if (col.luminance() > 0.5f) Color.Black else Color.White
+                    Box(
+                        modifier = Modifier
+                            .size(swatchSize)
+                            .clip(CircleShape)
+                            .background(col)
+                            .border(
+                                width = if (isSelected) 2.5.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else if (isLight) MaterialTheme.colorScheme.outlineVariant
+                                        else Color.Black.copy(alpha = 0.15f),
+                                shape = CircleShape
+                            )
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onColorSelected(col)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            MaterialSymbol(
+                                name = "check",
+                                tint = checkTint,
+                                size = 16.dp
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Modal Bottom Sheet for Recoloring Selected Canvas Elements using the official 24 M3 Swatches.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecolorModalBottomSheet(
+    visible: Boolean,
+    currentColor: Color,
+    onColorSelected: (Color) -> Unit,
+    onDismiss: () -> Unit
+) {
+    if (!visible) return
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Recolor Elements",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            M3ColorSwatchesGrid(
+                selectedColor = currentColor,
+                onColorSelected = { col ->
+                    onColorSelected(col)
+                    onDismiss()
+                },
+                swatchSize = 36.dp,
+                spacing = 10.dp
+            )
         }
     }
 }
