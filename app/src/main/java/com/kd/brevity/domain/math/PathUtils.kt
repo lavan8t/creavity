@@ -93,10 +93,13 @@ object PathUtils {
     }
 
     /**
-     * Generates vector path based on the selected drawing tool (Pen, Highlighter, Line, Arrow, Rectangle, Circle).
+     * Generates vector path based on the selected drawing tool (Pen, Calligraphy, Highlighter, Line, Arrow, Rectangle, Circle).
      */
-    fun createToolPath(tool: DrawingTool, points: List<Point>): Path {
+    fun createToolPath(tool: DrawingTool, points: List<Point>, strokeWidth: Float = 6f): Path {
         if (points.isEmpty()) return Path()
+        if (tool == DrawingTool.CALLIGRAPHY) {
+            return com.kd.brevity.presentation.canvas.renderers.CalligraphyStrokeRenderer.createCalligraphyPath(points, strokeWidth)
+        }
         if (points.size <= 1 || tool == DrawingTool.PEN || tool == DrawingTool.MARKER || tool == DrawingTool.BRUSH || tool == DrawingTool.PENCIL || tool == DrawingTool.HIGHLIGHTER || tool == DrawingTool.ERASER || tool == DrawingTool.LASER) {
             return createSmoothPath(points)
         }

@@ -134,6 +134,8 @@ class BoardManager(private val context: Context) {
                     ptObj.put("y", pt.y.toDouble())
                     ptObj.put("p", pt.pressure.toDouble())
                     ptObj.put("t", pt.timestampMs)
+                    if (pt.tilt != 0f) ptObj.put("tilt", pt.tilt.toDouble())
+                    if (pt.orientation != 0f) ptObj.put("ori", pt.orientation.toDouble())
                     pointsArray.put(ptObj)
                 }
                 strokeObj.put("points", pointsArray)
@@ -236,7 +238,9 @@ class BoardManager(private val context: Context) {
                             x = ptObj.getDouble("x").toFloat(),
                             y = ptObj.getDouble("y").toFloat(),
                             pressure = ptObj.optDouble("p", 1.0).toFloat(),
-                            timestampMs = ptObj.optLong("t", 0L)
+                            timestampMs = ptObj.optLong("t", 0L),
+                            tilt = ptObj.optDouble("tilt", 0.0).toFloat(),
+                            orientation = ptObj.optDouble("ori", 0.0).toFloat()
                         )
                     )
                 }

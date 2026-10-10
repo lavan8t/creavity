@@ -185,7 +185,7 @@ fun PenCalloutCard(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = RoundedCornerShape(14.dp),
             shadowElevation = 8.dp,
-            modifier = Modifier.width(280.dp)
+            modifier = Modifier.width(310.dp)
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -199,6 +199,8 @@ fun PenCalloutCard(
                 ) {
                     val tips = listOf(
                         DrawingTool.PEN to ("draw" to "Pen"),
+                        DrawingTool.PENCIL to ("pencil" to "Pencil"),
+                        DrawingTool.CALLIGRAPHY to ("calligraphy" to "Calligraphy"),
                         DrawingTool.MARKER to ("edit" to "Marker"),
                         DrawingTool.HIGHLIGHTER to ("ink_highlighter" to "Highlighter"),
                         DrawingTool.BRUSH to ("brush" to "Brush")
@@ -215,6 +217,8 @@ fun PenCalloutCard(
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         val w = when (tool) {
                                             DrawingTool.PEN -> 5f
+                                            DrawingTool.PENCIL -> 4f
+                                            DrawingTool.CALLIGRAPHY -> 10f
                                             DrawingTool.MARKER -> 12f
                                             DrawingTool.HIGHLIGHTER -> 28f
                                             DrawingTool.BRUSH -> 18f

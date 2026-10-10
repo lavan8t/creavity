@@ -302,6 +302,7 @@ class CanvasGestureController(
                 if (activeToolUsed != DrawingTool.LASER) {
                     val isCurved = activeToolUsed == DrawingTool.PEN || activeToolUsed == DrawingTool.MARKER ||
                             activeToolUsed == DrawingTool.BRUSH || activeToolUsed == DrawingTool.PENCIL ||
+                            activeToolUsed == DrawingTool.CALLIGRAPHY ||
                             activeToolUsed == DrawingTool.HIGHLIGHTER || activeToolUsed == DrawingTool.ERASER
 
                     val finalPoints = if (isCurved) {
@@ -320,7 +321,7 @@ class CanvasGestureController(
                             isEraser = activeToolUsed == DrawingTool.ERASER
                         )
                         pendingStroke = finalStroke
-                        pathCache[finalStroke.id] = PathUtils.createToolPath(activeToolUsed, finalPoints)
+                        pathCache[finalStroke.id] = PathUtils.createToolPath(activeToolUsed, finalPoints, finalStroke.strokeWidth)
                         onStrokeCompleted(finalStroke)
                     }
                 }
@@ -601,8 +602,9 @@ class CanvasGestureController(
                 activePath.reset()
 
                 val isCurved = activeToolUsed == DrawingTool.PEN || activeToolUsed == DrawingTool.PENCIL ||
-                        activeToolUsed == DrawingTool.HIGHLIGHTER || activeToolUsed == DrawingTool.ERASER ||
-                        activeToolUsed == DrawingTool.LASER
+                        activeToolUsed == DrawingTool.CALLIGRAPHY || activeToolUsed == DrawingTool.MARKER ||
+                        activeToolUsed == DrawingTool.BRUSH || activeToolUsed == DrawingTool.HIGHLIGHTER ||
+                        activeToolUsed == DrawingTool.ERASER || activeToolUsed == DrawingTool.LASER
 
                 if (isCurved) {
                     activePath.moveTo(worldPoint.x, worldPoint.y)
@@ -628,8 +630,9 @@ class CanvasGestureController(
             }
             MotionEvent.ACTION_MOVE -> {
                 val isCurved = activeToolUsed == DrawingTool.PEN || activeToolUsed == DrawingTool.PENCIL ||
-                        activeToolUsed == DrawingTool.HIGHLIGHTER || activeToolUsed == DrawingTool.ERASER ||
-                        activeToolUsed == DrawingTool.LASER
+                        activeToolUsed == DrawingTool.CALLIGRAPHY || activeToolUsed == DrawingTool.MARKER ||
+                        activeToolUsed == DrawingTool.BRUSH || activeToolUsed == DrawingTool.HIGHLIGHTER ||
+                        activeToolUsed == DrawingTool.ERASER || activeToolUsed == DrawingTool.LASER
 
                 if (activeToolUsed == DrawingTool.LASER) {
                     val now = android.os.SystemClock.uptimeMillis()

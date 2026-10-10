@@ -132,11 +132,15 @@ fun CanvasBottomToolbar(
                     // 1. Pen tool button
                     val isPen = uiState.selectedTool in listOf(
                         DrawingTool.PEN,
+                        DrawingTool.PENCIL,
+                        DrawingTool.CALLIGRAPHY,
                         DrawingTool.MARKER,
                         DrawingTool.HIGHLIGHTER,
                         DrawingTool.BRUSH
                     )
                     val penIcon = when (uiState.selectedTool) {
+                        DrawingTool.PENCIL -> "pencil"
+                        DrawingTool.CALLIGRAPHY -> "calligraphy"
                         DrawingTool.MARKER -> "edit"
                         DrawingTool.HIGHLIGHTER -> "ink_highlighter"
                         DrawingTool.BRUSH -> "brush"

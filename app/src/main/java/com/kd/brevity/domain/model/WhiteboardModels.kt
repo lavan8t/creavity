@@ -12,6 +12,7 @@ enum class DrawingTool {
     STICKY_NOTE,
     LASER,
     PENCIL,
+    CALLIGRAPHY,
     LINE,
     ARROW,
     RECTANGLE,

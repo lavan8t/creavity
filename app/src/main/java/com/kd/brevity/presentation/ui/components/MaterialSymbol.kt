@@ -37,6 +37,7 @@ fun MaterialSymbol(
         "draw", "pen" -> if (filled) draw_filled else draw
         "brush" -> if (filled) brush_filled else brush
         "edit", "pencil" -> if (filled) Icons.Filled.Edit else Icons.Outlined.Edit
+        "calligraphy", "history_edu", "fountain_pen" -> if (filled) border_color_filled else border_color
         "edit_outline" -> Icons.Outlined.Edit
         "highlighter", "ink_highlighter" -> if (filled) ink_highlighter_filled else ink_highlighter
         "border_color" -> if (filled) border_color_filled else border_color

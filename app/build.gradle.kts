@@ -55,6 +55,9 @@ android {
             useLegacyPackaging = false
         }
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -80,6 +83,15 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.compose.ui.text.googlefonts)
     implementation(libs.androidx.compose.material.icons.extended)
+
+    val inkVersion = "1.0.0"
+    implementation("androidx.ink:ink-nativeloader:$inkVersion")
+    implementation("androidx.ink:ink-rendering:$inkVersion")
+    implementation("androidx.ink:ink-strokes:$inkVersion")
+    implementation("androidx.ink:ink-authoring-compose:$inkVersion")
+    implementation("androidx.ink:ink-brush-compose:$inkVersion")
+    implementation("androidx.ink:ink-geometry-compose:$inkVersion")
+    implementation("androidx.ink:ink-storage:$inkVersion")
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
