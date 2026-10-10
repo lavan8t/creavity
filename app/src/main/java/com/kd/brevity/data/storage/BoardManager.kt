@@ -37,16 +37,19 @@ class BoardManager(private val context: Context) {
         targetDir
     }
 
+    @Synchronized
     fun saveBoard(board: Board) {
         if (board.id.isBlank()) return
         val targetFile = File(boardsDir, "${board.id}.json")
         val tempFile = File(boardsDir, "${board.id}.json.tmp")
-        val json = boardToJson(board)
-        tempFile.writeText(json.toString())
-        if (!tempFile.renameTo(targetFile)) {
-            targetFile.writeText(json.toString())
-            tempFile.delete()
-        }
+        try {
+            val json = boardToJson(board)
+            tempFile.writeText(json.toString())
+            if (!tempFile.renameTo(targetFile)) {
+                targetFile.writeText(json.toString())
+                tempFile.delete()
+            }
+        } catch (_: Exception) {}
     }
 
     fun loadBoard(boardId: String): Board? {

@@ -90,9 +90,19 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun generateRoomCode(): String = (1..5).map { ('A'..'Z').random() }.joinToString("")
 
-    fun persistBoard(updatedBoard: Board) {
+    private var persistDebounceJob: kotlinx.coroutines.Job? = null
+
+    fun persistBoard(updatedBoard: Board, immediate: Boolean = false) {
         if (updatedBoard.id.isBlank()) return
-        viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(updatedBoard) }
+        persistDebounceJob?.cancel()
+        if (immediate) {
+            viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(updatedBoard) }
+        } else {
+            persistDebounceJob = viewModelScope.launch(Dispatchers.IO) {
+                kotlinx.coroutines.delay(350)
+                boardManager.saveBoard(updatedBoard)
+            }
+        }
         _uiState.update { state ->
             val updatedSaved = if (state.savedBoards.any { it.id == updatedBoard.id }) {
                 state.savedBoards.map { if (it.id == updatedBoard.id) updatedBoard else it }
@@ -360,7 +370,7 @@ class WhiteboardViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun saveCurrentBoard() {
-        persistBoard(_uiState.value.currentBoard)
+        persistBoard(_uiState.value.currentBoard, immediate = true)
     }
 
     private val mutationHistory = MutationHistory()

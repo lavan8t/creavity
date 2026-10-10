@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import com.kd.brevity.data.nearby.ConnectivityCheckResult
 import com.kd.brevity.data.nearby.ConnectivityHelper
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
         requestRequiredPermissions()
 
         setContent {
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
             val isDark = when (uiState.themeMode) {
                 com.kd.brevity.presentation.viewmodel.ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()

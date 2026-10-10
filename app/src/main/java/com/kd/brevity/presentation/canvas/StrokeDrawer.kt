@@ -144,8 +144,9 @@ object StrokeDrawer {
     }
 
     private fun hasDynamicPressure(points: List<Point>): Boolean {
-        var minP = 1.0f
-        var maxP = 1.0f
+        if (points.isEmpty()) return false
+        var minP = points[0].pressure
+        var maxP = points[0].pressure
         for (p in points) {
             if (p.pressure < minP) minP = p.pressure
             if (p.pressure > maxP) maxP = p.pressure

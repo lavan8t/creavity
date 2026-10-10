@@ -304,7 +304,7 @@ fun WhiteboardCanvas(
                 if (strokes.any { it.id == pending.id }) {
                     controller.pendingStroke = null
                 } else {
-                    val path = pathCache.getOrPut("${pending.id}_${pending.points.size}") {
+                    val path = pathCache.getOrPut(pending.id) {
                         PathUtils.createToolPath(pending.tool, pending.points)
                     }
                     val baseColor = Color(pending.color)

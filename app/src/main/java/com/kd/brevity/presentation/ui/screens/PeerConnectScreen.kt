@@ -124,7 +124,7 @@ fun PeerConnectScreen(
     val haptic = LocalHapticFeedback.current
     var showEditSheet by remember { mutableStateOf(false) }
 
-    BackHandler { onNavigateToCanvas() }
+    BackHandler(enabled = showEditSheet) { showEditSheet = false }
 
     val (userEmoji, rawName) = remember(uiState.displayName) {
         parseEmojiAndName(uiState.displayName)

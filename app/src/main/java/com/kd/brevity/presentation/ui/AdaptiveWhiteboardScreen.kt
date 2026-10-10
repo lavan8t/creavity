@@ -100,10 +100,6 @@ fun AdaptiveWhiteboardScreen(
         }
     }
 
-    BackHandler(enabled = currentRoute != NavDestination.BOARDS) {
-        navigateBack()
-    }
-
     val latestUiState by rememberUpdatedState(uiState)
 
     // Keyboard Shortcuts for Desktop / Windows / Stylus Keys
@@ -156,20 +152,28 @@ fun AdaptiveWhiteboardScreen(
             }
             .focusable()
     ) {
+        val slideSpring = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        )
+        val fadeSpring = androidx.compose.animation.core.spring<Float>(
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        )
+
         NavHost(
             navController = navController,
             startDestination = NavDestination.BOARDS.name,
             enterTransition = {
-                slideInHorizontally(initialOffsetX = { it })
+                slideInHorizontally(initialOffsetX = { it }, animationSpec = slideSpring) + androidx.compose.animation.fadeIn(animationSpec = fadeSpring)
             },
             exitTransition = {
-                slideOutHorizontally(targetOffsetX = { -it })
+                slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = slideSpring) + androidx.compose.animation.fadeOut(animationSpec = fadeSpring)
             },
             popEnterTransition = {
-                slideInHorizontally(initialOffsetX = { -it })
+                slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = slideSpring) + androidx.compose.animation.fadeIn(animationSpec = fadeSpring)
             },
             popExitTransition = {
-                slideOutHorizontally(targetOffsetX = { it })
+                slideOutHorizontally(targetOffsetX = { it }, animationSpec = slideSpring) + androidx.compose.animation.fadeOut(animationSpec = fadeSpring)
             },
             modifier = Modifier.fillMaxSize()
         ) {
