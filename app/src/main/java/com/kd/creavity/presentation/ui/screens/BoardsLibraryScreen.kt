@@ -440,7 +440,7 @@ fun BoardsLibraryScreen(
                                     ) {
                                         MaterialSymbol(name = "draw", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
                                         Text(
-                                            text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
+                                            text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No boards yet",
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -513,7 +513,7 @@ fun BoardsLibraryScreen(
                                     ) {
                                         MaterialSymbol(name = "draw", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
                                         Text(
-                                            text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
+                                            text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No boards yet",
                                             fontSize = 16.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurface

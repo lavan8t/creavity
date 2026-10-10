@@ -76,11 +76,18 @@ fun LibraryNavDrawer(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
-                    // 1. Whiteboards
+                    // 1. Boards
                     NavigationDrawerItem(
+                        icon = {
+                            MaterialSymbol(
+                                name = "draw",
+                                size = 22.dp,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        },
                         label = {
                             Text(
-                                text = "Whiteboards",
+                                text = "Boards",
                                 fontWeight = FontWeight.SemiBold
                             )
                         },
@@ -92,12 +99,20 @@ fun LibraryNavDrawer(
                         shape = RoundedCornerShape(50),
                         colors = NavigationDrawerItemDefaults.colors(
                             selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     )
 
                     // 2. Trash
                     NavigationDrawerItem(
+                        icon = {
+                            MaterialSymbol(
+                                name = "delete",
+                                size = 22.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         label = {
                             Text(
                                 text = "Trash",
@@ -124,7 +139,8 @@ fun LibraryNavDrawer(
                         },
                         shape = RoundedCornerShape(50),
                         colors = NavigationDrawerItemDefaults.colors(
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
 
@@ -135,6 +151,13 @@ fun LibraryNavDrawer(
 
                     // 3. Settings
                     NavigationDrawerItem(
+                        icon = {
+                            MaterialSymbol(
+                                name = "settings",
+                                size = 22.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         label = {
                             Text(
                                 text = "Settings",
@@ -151,12 +174,20 @@ fun LibraryNavDrawer(
                         },
                         shape = RoundedCornerShape(50),
                         colors = NavigationDrawerItemDefaults.colors(
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
 
                     // 4. About
                     NavigationDrawerItem(
+                        icon = {
+                            MaterialSymbol(
+                                name = "info",
+                                size = 22.dp,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         label = {
                             Text(
                                 text = "About",
@@ -173,7 +204,8 @@ fun LibraryNavDrawer(
                         },
                         shape = RoundedCornerShape(50),
                         colors = NavigationDrawerItemDefaults.colors(
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
