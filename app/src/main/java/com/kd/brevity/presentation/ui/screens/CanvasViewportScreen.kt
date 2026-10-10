@@ -79,7 +79,6 @@ import com.kd.brevity.presentation.ui.components.JamboardStickyNoteDialog
 import com.kd.brevity.presentation.ui.components.JamboardTopBar
 import com.kd.brevity.presentation.ui.components.MaterialSymbol
 import com.kd.brevity.presentation.ui.components.PenCalloutCard
-import com.kd.brevity.presentation.ui.components.RecolorModalBottomSheet
 import com.kd.brevity.presentation.ui.components.SelectCalloutCard
 import com.kd.brevity.presentation.ui.components.UndoRedoCalloutCard
 import com.kd.brevity.presentation.ui.components.WhiteboardMinimap
@@ -236,15 +235,10 @@ fun CanvasViewportScreen(
     }
     var showGoogleSlidesDialog by remember { mutableStateOf(false) }
     var googleSlidesUrlInput by remember { mutableStateOf(uiState.presentationUrl ?: "") }
-    var showRecolorSheet by remember { mutableStateOf(false) }
 
     val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
     val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
-    val effectivePenColor = if (uiState.currentColor == Color.Unspecified) {
-        if (isDarkCanvas) Color(0xFFFFFFFF) else Color(0xFF000000)
-    } else {
-        uiState.currentColor
-    }
+    val effectivePenColor = if (uiState.currentColor == Color.Unspecified || (uiState.currentColor == Color.White && !isDarkCanvas) || (uiState.currentColor == Color.Black && isDarkCanvas)) MaterialTheme.colorScheme.onSurface else uiState.currentColor
 
     Box(
         modifier = modifier
@@ -646,7 +640,7 @@ fun CanvasViewportScreen(
                 onAction(OotbAction.DuplicateElements(selectedStrokes, selectedTexts))
             },
             onRecolor = {
-                showRecolorSheet = true
+                onAction(OotbAction.RecolorElements(selectedStrokes, selectedTexts, effectivePenColor))
             },
             onDelete = {
                 selectedStrokes.forEach { onAction(OotbAction.DeleteStroke(it)) }
@@ -658,18 +652,6 @@ fun CanvasViewportScreen(
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .padding(top = 54.dp)
-        )
-
-        // 4.5 Recolor Modal Sheet using 24 M3 Swatches
-        RecolorModalBottomSheet(
-            visible = showRecolorSheet,
-            currentColor = effectivePenColor,
-            onColorSelected = { chosenColor ->
-                onAction(OotbAction.RecolorElements(selectedStrokes, selectedTexts, chosenColor))
-                onAction(OotbAction.SelectColor(chosenColor))
-                showRecolorSheet = false
-            },
-            onDismiss = { showRecolorSheet = false }
         )
 
         // 5. Callout backdrop overlay (dismisses callouts when tapping canvas)
