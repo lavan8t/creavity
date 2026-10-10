@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -110,8 +115,15 @@ fun CanvasBottomToolbar(
 ) {
     val haptic = LocalHapticFeedback.current
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val fabFocusRequester = remember { FocusRequester() }
 
     BackHandler(fabMenuExpanded) { fabMenuExpanded = false }
+
+    LaunchedEffect(fabMenuExpanded) {
+        if (fabMenuExpanded) {
+            fabFocusRequester.requestFocus()
+        }
+    }
 
     Box(
         contentAlignment = Alignment.BottomCenter,
@@ -251,6 +263,13 @@ fun CanvasBottomToolbar(
                 },
                 horizontalAlignment = Alignment.End,
                 modifier = Modifier
+                    .focusRequester(fabFocusRequester)
+                    .focusable()
+                    .onFocusChanged { focusState ->
+                        if (!focusState.hasFocus && fabMenuExpanded) {
+                            fabMenuExpanded = false
+                        }
+                    }
                     .padding(bottom = 4.dp)
                     .layout { measurable, constraints ->
                         // FloatingActionButtonMenu internally applies 16.dp FabMenuButtonPaddingBottom below the button.

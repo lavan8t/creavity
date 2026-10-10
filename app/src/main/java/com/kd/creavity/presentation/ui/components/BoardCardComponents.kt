@@ -58,11 +58,11 @@ fun BoardGridCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest
+            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
             else MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         shape = RoundedCornerShape(14.dp),
-        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = null,
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
@@ -171,9 +171,9 @@ fun BoardListRow(
     thumbnailModifier: Modifier = Modifier
 ) {
     Surface(
-        color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,
+        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f) else Color.Transparent,
         shape = RoundedCornerShape(12.dp),
-        border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+        border = null,
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))

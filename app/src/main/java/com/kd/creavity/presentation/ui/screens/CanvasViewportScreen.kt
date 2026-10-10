@@ -473,12 +473,7 @@ fun CanvasViewportScreen(
                         onMoreClick = {
                             showOptionsMenu = true
                         },
-                        zoom = uiState.zoom,
-                        isHost = uiState.isHost,
-                        onBirdsEyeClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            showBirdsEyeSheet = true
-                        }
+                        zoom = uiState.zoom
                     )
 
                     // 3-dot overflow menu
@@ -489,10 +484,10 @@ fun CanvasViewportScreen(
                             shape = RoundedCornerShape(20.dp),
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ) {
-                            // Host Bird's Eye View
-                            if (uiState.isHost) {
+                            // Bird's Eye View (Shown only to host when collab is connected)
+                            if (uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
                                 DropdownMenuItem(
-                                    text = { Text("Bird's Eye View (Host)") },
+                                    text = { Text("Bird's eye view") },
                                     leadingIcon = {
                                         MaterialSymbol(name = "filter_center_focus", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
                                     },

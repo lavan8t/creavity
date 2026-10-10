@@ -1,5 +1,6 @@
 package com.kd.creavity.presentation.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.Board
+import com.kd.creavity.presentation.ui.motion.BrevityMotion
 
 enum class LibraryViewMode(val label: String, val icon: String) {
     FOLDERS("Folders", "folder"),
@@ -51,7 +53,7 @@ enum class LibraryViewMode(val label: String, val icon: String) {
 
 /**
  * Unified 3-way view switcher for Home screen: Folders, Grid, and List.
- * Clean Material 3 segmented pill design.
+ * Clean Material 3 button group with icons only (no text labels).
  */
 @Composable
 fun LibraryViewModeSwitcher(
@@ -64,7 +66,7 @@ fun LibraryViewModeSwitcher(
     Surface(
         shape = RoundedCornerShape(50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.height(42.dp)
+        modifier = modifier.height(40.dp)
     ) {
         Row(
             modifier = Modifier.padding(3.dp),
@@ -73,38 +75,41 @@ fun LibraryViewModeSwitcher(
         ) {
             LibraryViewMode.entries.forEach { mode ->
                 val isSelected = viewMode == mode
-                val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-                val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                val targetContainerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                val containerColor by animateColorAsState(
+                    targetValue = targetContainerColor,
+                    animationSpec = BrevityMotion.springEffects(),
+                    label = "ViewModeContainerColor"
+                )
+                val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                val contentColor by animateColorAsState(
+                    targetValue = targetContentColor,
+                    animationSpec = BrevityMotion.springEffects(),
+                    label = "ViewModeContentColor"
+                )
 
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = containerColor,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .clickable {
-                            if (!isSelected) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onViewModeChange(mode)
+                TooltipHint(text = mode.label) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = containerColor,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable {
+                                if (!isSelected) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    onViewModeChange(mode)
+                                }
                             }
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        MaterialSymbol(
-                            name = mode.icon,
-                            filled = isSelected,
-                            tint = contentColor,
-                            size = 18.dp
-                        )
-                        if (isSelected) {
-                            Text(
-                                text = mode.label,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = contentColor
+                        Box(
+                            modifier = Modifier.size(34.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            MaterialSymbol(
+                                name = mode.icon,
+                                filled = isSelected,
+                                tint = contentColor,
+                                size = 20.dp
                             )
                         }
                     }

@@ -43,202 +43,174 @@ fun JamboardTopBar(
     onBirdsEyeClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .height(48.dp)
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Row 1: Header Bar (Back + Title on Left, Controls on Right)
+        // Left: Back button + Title
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.weight(1f, fill = false)
         ) {
-            // Left: Back button + Title
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                TooltipHint(text = "Back to boards") {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        MaterialSymbol(
-                            name = "arrow_back",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            size = 22.dp
-                        )
-                    }
-                }
-
-                TooltipHint(text = "Rename board") {
-                    Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClick = onTitleClick)
-                            .padding(horizontal = 6.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = title.ifBlank { "Untitled" },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+            TooltipHint(text = "Back to boards") {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    MaterialSymbol(
+                        name = "arrow_back",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        size = 22.dp
+                    )
                 }
             }
 
-            // Right: Cast and 3-dots Menu
+            TooltipHint(text = "Rename board") {
+                Surface(
+                    color = Color.Transparent,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onTitleClick)
+                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = title.ifBlank { "Untitled" },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        // Center: Frame Navigator Pill (Moved to top area)
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(50),
+            shadowElevation = 2.dp,
+            modifier = Modifier.height(34.dp)
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(horizontal = 4.dp)
             ) {
-
-                // Host Bird's Eye View Button
-                if (isHost && onBirdsEyeClick != null) {
-                    TooltipHint(text = "Bird's eye view (Host)") {
-                        IconButton(
-                            onClick = onBirdsEyeClick,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "filter_center_focus",
-                                tint = MaterialTheme.colorScheme.primary,
-                                size = 20.dp
-                            )
-                        }
-                    }
-                }
-
-                // Cast to Screen / Peers
-                TooltipHint(text = "Cast to screen") {
+                TooltipHint(text = "Previous frame") {
                     IconButton(
-                        onClick = onCastClick,
-                        modifier = Modifier.size(38.dp)
+                        onClick = onPrevPage,
+                        enabled = activePageIndex > 0,
+                        modifier = Modifier.size(28.dp)
                     ) {
                         MaterialSymbol(
-                            name = "devices",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            size = 20.dp
+                            name = "chevron_left",
+                            tint = if (activePageIndex > 0) MaterialTheme.colorScheme.onSurface
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            size = 18.dp
                         )
                     }
                 }
 
-                // 3-dots Overflow Menu trigger
-                TooltipHint(text = "More options") {
-                    IconButton(
-                        onClick = onMoreClick,
-                        modifier = Modifier.size(38.dp)
+                // Frame count button
+                TooltipHint(text = "Frames & pages") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(onClick = onFrameCountClick)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         MaterialSymbol(
-                            name = "more_vert",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            size = 20.dp
+                            name = "filter_none",
+                            tint = MaterialTheme.colorScheme.primary,
+                            size = 15.dp
+                        )
+                        Text(
+                            text = "${activePageIndex + 1}/${totalPages.coerceAtLeast(1)}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                TooltipHint(text = "Next frame") {
+                    IconButton(
+                        onClick = onNextPage,
+                        enabled = activePageIndex < totalPages - 1,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "chevron_right",
+                            tint = if (activePageIndex < totalPages - 1) MaterialTheme.colorScheme.onSurface
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            size = 18.dp
+                        )
+                    }
+                }
+
+                // Divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(16.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                // Add Frame shortcut (+)
+                TooltipHint(text = "New frame") {
+                    IconButton(
+                        onClick = onAddPage,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "add",
+                            tint = MaterialTheme.colorScheme.primary,
+                            size = 18.dp
                         )
                     }
                 }
             }
         }
 
-        // Row 2: Sub-bar (Centered compact frame navigator pill + optional zoom reset)
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
+        // Right: Cast and 3-dots Menu
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = RoundedCornerShape(50),
-                shadowElevation = 2.dp,
-                modifier = Modifier.height(34.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.padding(horizontal = 4.dp)
+            // Cast to Screen / Peers
+            TooltipHint(text = "Cast to screen") {
+                IconButton(
+                    onClick = onCastClick,
+                    modifier = Modifier.size(38.dp)
                 ) {
-                    TooltipHint(text = "Previous frame") {
-                        IconButton(
-                            onClick = onPrevPage,
-                            enabled = activePageIndex > 0,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "chevron_left",
-                                tint = if (activePageIndex > 0) MaterialTheme.colorScheme.onSurface
-                                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                size = 18.dp
-                            )
-                        }
-                    }
-
-                    // Frame count button
-                    TooltipHint(text = "Frames & pages") {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .clickable(onClick = onFrameCountClick)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "filter_none",
-                                tint = MaterialTheme.colorScheme.primary,
-                                size = 15.dp
-                            )
-                            Text(
-                                text = "${activePageIndex + 1}/${totalPages.coerceAtLeast(1)}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    TooltipHint(text = "Next frame") {
-                        IconButton(
-                            onClick = onNextPage,
-                            enabled = activePageIndex < totalPages - 1,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "chevron_right",
-                                tint = if (activePageIndex < totalPages - 1) MaterialTheme.colorScheme.onSurface
-                                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                size = 18.dp
-                            )
-                        }
-                    }
-
-                    // Divider
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(16.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    MaterialSymbol(
+                        name = "devices",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        size = 20.dp
                     )
+                }
+            }
 
-                    // Add Frame shortcut (+)
-                    TooltipHint(text = "New frame") {
-                        IconButton(
-                            onClick = onAddPage,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "add",
-                                tint = MaterialTheme.colorScheme.primary,
-                                size = 18.dp
-                            )
-                        }
-                    }
+            // 3-dots Overflow Menu trigger
+            TooltipHint(text = "More options") {
+                IconButton(
+                    onClick = onMoreClick,
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    MaterialSymbol(
+                        name = "more_vert",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        size = 20.dp
+                    )
                 }
             }
         }

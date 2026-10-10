@@ -2,10 +2,13 @@ package com.kd.creavity.presentation.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -251,48 +254,65 @@ fun BoardsLibraryScreen(
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // 1. Top Bar: [ Contextual Selection Bar OR Search Bar ]
-                if (isSelectionMode) {
-                    val allStarred = selectedBoardIds.isNotEmpty() && selectedBoardIds.all { id -> activeBoards.find { it.id == id }?.isStarred == true }
-                    LibrarySelectionTopBar(
-                        selectedCount = selectedBoardIds.size,
-                        totalCount = filteredBoards.size,
-                        isAllStarred = allStarred,
-                        onClose = {
-                            isSelectionMode = false
-                            selectedBoardIds = emptySet()
-                        },
-                        onToggleSelectAll = {
-                            val allSelected = selectedBoardIds.size == filteredBoards.size && filteredBoards.isNotEmpty()
-                            selectedBoardIds = if (allSelected) emptySet() else filteredBoards.map { it.id }.toSet()
-                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                        },
-                        onToggleStar = {
-                            val anyUnstarred = selectedBoardIds.any { id -> activeBoards.find { it.id == id }?.isStarred != true }
-                            selectedBoardIds.forEach { id ->
-                                val isStarred = activeBoards.find { it.id == id }?.isStarred == true
-                                if (anyUnstarred && !isStarred) {
-                                    onAction(OotbAction.ToggleStarBoard(id))
-                                } else if (!anyUnstarred && isStarred) {
-                                    onAction(OotbAction.ToggleStarBoard(id))
+                // 1. Top Bar: [ Contextual Selection Bar OR Search Bar ] with Spring Transition
+                AnimatedContent(
+                    targetState = isSelectionMode,
+                    transitionSpec = {
+                        (slideInVertically(
+                            initialOffsetY = { -it },
+                            animationSpec = BrevityMotion.springSpatial()
+                        ) + fadeIn(animationSpec = BrevityMotion.springEffects()))
+                            .togetherWith(
+                                slideOutVertically(
+                                    targetOffsetY = { -it },
+                                    animationSpec = BrevityMotion.springSpatial()
+                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
+                            )
+                    },
+                    label = "SelectionTopBarMotion"
+                ) { selectionActive ->
+                    if (selectionActive) {
+                        val allStarred = selectedBoardIds.isNotEmpty() && selectedBoardIds.all { id -> activeBoards.find { it.id == id }?.isStarred == true }
+                        LibrarySelectionTopBar(
+                            selectedCount = selectedBoardIds.size,
+                            totalCount = filteredBoards.size,
+                            isAllStarred = allStarred,
+                            onClose = {
+                                isSelectionMode = false
+                                selectedBoardIds = emptySet()
+                            },
+                            onToggleSelectAll = {
+                                val allSelected = selectedBoardIds.size == filteredBoards.size && filteredBoards.isNotEmpty()
+                                selectedBoardIds = if (allSelected) emptySet() else filteredBoards.map { it.id }.toSet()
+                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                            },
+                            onToggleStar = {
+                                val anyUnstarred = selectedBoardIds.any { id -> activeBoards.find { it.id == id }?.isStarred != true }
+                                selectedBoardIds.forEach { id ->
+                                    val isStarred = activeBoards.find { it.id == id }?.isStarred == true
+                                    if (anyUnstarred && !isStarred) {
+                                        onAction(OotbAction.ToggleStarBoard(id))
+                                    } else if (!anyUnstarred && isStarred) {
+                                        onAction(OotbAction.ToggleStarBoard(id))
+                                    }
                                 }
+                            },
+                            onEditDetails = {
+                                val singleId = selectedBoardIds.firstOrNull() ?: return@LibrarySelectionTopBar
+                                val target = activeBoards.find { it.id == singleId } ?: return@LibrarySelectionTopBar
+                                boardToEditMetadata = target
+                            },
+                            onMoveToTrash = {
+                                showBatchDeleteConfirm = true
                             }
-                        },
-                        onEditDetails = {
-                            val singleId = selectedBoardIds.firstOrNull() ?: return@LibrarySelectionTopBar
-                            val target = activeBoards.find { it.id == singleId } ?: return@LibrarySelectionTopBar
-                            boardToEditMetadata = target
-                        },
-                        onMoveToTrash = {
-                            showBatchDeleteConfirm = true
-                        }
-                    )
-                } else {
-                    LibrarySearchBar(
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        onOpenDrawer = { scope.launch { drawerState.open() } }
-                    )
+                        )
+                    } else {
+                        LibrarySearchBar(
+                            searchQuery = searchQuery,
+                            onSearchQueryChange = { searchQuery = it },
+                            onOpenDrawer = { scope.launch { drawerState.open() } }
+                        )
+                    }
                 }
 
                 // 2. Sub-header Bar: Unified View Mode Switcher (Folders, Grid, List) + Actions
@@ -385,24 +405,6 @@ fun BoardsLibraryScreen(
                                         size = 22.dp
                                     )
                                 }
-                            }
-                        }
-
-                        // Selection Mode Toggle Button
-                        TooltipHint(text = if (isSelectionMode) "Done selecting" else "Select boards") {
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    isSelectionMode = !isSelectionMode
-                                    if (!isSelectionMode) selectedBoardIds = emptySet()
-                                },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                MaterialSymbol(
-                                    name = if (isSelectionMode) "check_circle" else "checklist",
-                                    tint = if (isSelectionMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    size = 22.dp
-                                )
                             }
                         }
                     }
@@ -782,11 +784,21 @@ fun BoardsLibraryScreen(
                 }
             }
 
-            // Bottom Action Bar: Connect & New Board (hidden in selection mode)
-            if (!isSelectionMode) {
+            // Bottom Action Bar: Connect & New Board (slides down & fades out in selection mode)
+            AnimatedVisibility(
+                visible = !isSelectionMode,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = BrevityMotion.springSpatial()
+                ) + fadeIn(animationSpec = BrevityMotion.springEffects()),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = BrevityMotion.springSpatial()
+                ) + fadeOut(animationSpec = BrevityMotion.springEffects()),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
                 Row(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 16.dp),
