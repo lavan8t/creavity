@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OutoftheBoard"
+rootProject.name = "CreaVITy"
 include(":app")
