@@ -7,8 +7,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.kd.brevity.data.nearby.ConnectivityCheckResult
@@ -30,15 +28,12 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Permissions are required for offline P2P connection", Toast.LENGTH_SHORT).show()
         }
     }
-
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestRequiredPermissions()
 
         setContent {
-            val windowSizeClass = calculateWindowSizeClass(this)
             val uiState by viewModel.uiState.collectAsState()
 
             val isDark = when (uiState.themeMode) {
@@ -53,7 +48,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 AdaptiveWhiteboardScreen(
                     uiState = uiState,
-                    windowWidthSizeClass = windowSizeClass.widthSizeClass,
                     onAction = { action ->
                         when (action) {
                             is OotbAction.StartAdvertising -> startAdvertisingWithCheck(action.deviceName)

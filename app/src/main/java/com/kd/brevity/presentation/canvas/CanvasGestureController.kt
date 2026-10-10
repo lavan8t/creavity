@@ -80,6 +80,11 @@ class CanvasGestureController(
     var isStylusButtonActive = false
         private set
 
+    // Palm rejection & active drawing pointer tracking
+    private var lastStylusTimestampMs: Long = 0L
+    private var activeStrokeIsStylus: Boolean = false
+    private var activeDrawingPointerId: Int = -1
+
     // Viewport dimensions & display density for edge rejection
     var viewWidth = 0f
     var viewHeight = 0f
@@ -93,6 +98,34 @@ class CanvasGestureController(
     private var pendingEdgeTool = DrawingTool.PEN
     private var pendingEdgeColor = Color.Black
     private var pendingEdgeWidth = 2f
+
+    private fun isPalmContact(event: MotionEvent, pointerIndex: Int): Boolean {
+        if (pointerIndex < 0 || pointerIndex >= event.pointerCount) return false
+        val tool = event.getToolType(pointerIndex)
+        if (tool == 5) return true // MotionEvent.TOOL_TYPE_PALM
+        if (tool == MotionEvent.TOOL_TYPE_FINGER) {
+            val size = event.getSize(pointerIndex)
+            if (size > 0.35f) return true
+        }
+        return false
+    }
+
+    private fun discardActiveStroke() {
+        if (activePoints.isNotEmpty()) {
+            activePoints.clear()
+            activePath.reset()
+            if (activeStrokeId.isNotEmpty()) {
+                onStrokeBroadcastEnd(activeStrokeId)
+                activeStrokeId = ""
+            }
+            laserPoints.clear()
+            requestInvalidate()
+        }
+        isEdgeGesturePending = false
+        pendingEdgeWorldPoint = null
+        activeDrawingPointerId = -1
+        activeStrokeIsStylus = false
+    }
 
     private fun distanceSqToSegment(p: Point, a: Point, b: Point): Float {
         val l2 = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)
@@ -148,34 +181,46 @@ class CanvasGestureController(
         }
         val effectiveTool = if (eraserTip || stylusPressed) DrawingTool.ERASER else selectedTool
 
-        val primaryToolType = event.getToolType(0)
-        val hasStylusPointer = (0 until pointerCount).any {
-            val t = event.getToolType(it)
-            t == MotionEvent.TOOL_TYPE_STYLUS || t == MotionEvent.TOOL_TYPE_ERASER
+        var activeStylusIndex = -1
+        for (i in 0 until pointerCount) {
+            val t = event.getToolType(i)
+            if (t == MotionEvent.TOOL_TYPE_STYLUS || t == MotionEvent.TOOL_TYPE_ERASER) {
+                activeStylusIndex = i
+                break
+            }
+        }
+        val hasStylusPointer = (activeStylusIndex != -1)
+        val now = android.os.SystemClock.uptimeMillis()
+        if (hasStylusPointer) {
+            lastStylusTimestampMs = now
+            // If stylus touches down while a finger stroke was in progress (e.g. palm touched first),
+            // immediately cancel and discard the finger stroke!
+            if (activePoints.isNotEmpty() && !activeStrokeIsStylus) {
+                discardActiveStroke()
+            }
         }
 
-        // If stylus is active, discard all finger touches as palm
-        if (hasStylusPointer && primaryToolType == MotionEvent.TOOL_TYPE_FINGER) {
+        // Check if ANY pointer is classified as palm by digitizer (TOOL_TYPE_PALM == 5)
+        val hasPalmPointer = (0 until pointerCount).any { event.getToolType(it) == 5 }
+        if (hasPalmPointer) {
+            if (!activeStrokeIsStylus) {
+                discardActiveStroke()
+            }
             return true
         }
-        if (primaryToolType == 5) { // TOOL_TYPE_PALM
+
+        // Stylus Guard Window: If stylus was lifted recently, ignore single-finger touches (resting palm)
+        val inStylusGuardWindow = (now - lastStylusTimestampMs) < 700L
+        if (!hasStylusPointer && inStylusGuardWindow && pointerCount == 1) {
+            if (activePoints.isNotEmpty() && !activeStrokeIsStylus) {
+                discardActiveStroke()
+            }
             return true
         }
 
         // 3. Multi-touch Pinch to Zoom & Pan (Finger mode only, when no stylus is touching)
         if (!hasStylusPointer && pointerCount >= 2) {
-            // Cancel and discard any active single-finger stroke
-            if (activePoints.isNotEmpty()) {
-                activePoints.clear()
-                activePath.reset()
-                if (activeStrokeId.isNotEmpty()) {
-                    onStrokeBroadcastEnd(activeStrokeId)
-                    activeStrokeId = ""
-                }
-                requestInvalidate()
-            }
-            isEdgeGesturePending = false
-            pendingEdgeWorldPoint = null
+            discardActiveStroke()
             isPinching = true
 
             val x0 = event.getX(0)
@@ -216,22 +261,12 @@ class CanvasGestureController(
             return true
         }
 
-        // 4. Handle cancellation (OS back gesture intercept, home gesture, window focus lost)
+        // 4. Handle cancellation (OS back gesture intercept, home gesture, window focus lost, OS palm cancel)
         if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
             onTransformStateChanged(false, emptyList())
             isPinching = false
             lastDist = 0f
-            isEdgeGesturePending = false
-            pendingEdgeWorldPoint = null
-
-            // Discard active stroke without committing
-            if (activeStrokeId.isNotEmpty()) {
-                onStrokeBroadcastEnd(activeStrokeId)
-                activeStrokeId = ""
-            }
-            activePoints.clear()
-            activePath.reset()
-            laserPoints.clear()
+            discardActiveStroke()
 
             // Discard moving selection without committing
             isMovingSelection = false
@@ -247,12 +282,23 @@ class CanvasGestureController(
             return true
         }
 
-        // 4b. Handle finger lift (Stroke / gesture completion)
-        if (event.actionMasked == MotionEvent.ACTION_UP) {
+        // 4b. Handle pointer lift (Stroke / gesture completion)
+        if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
+            val liftingPointerId = event.getPointerId(event.actionIndex)
+            val isDrawingPointerLifting = (event.actionMasked == MotionEvent.ACTION_UP) ||
+                    (activeDrawingPointerId != -1 && liftingPointerId == activeDrawingPointerId)
+
+            if (!isDrawingPointerLifting) {
+                // Secondary non-drawing pointer lifted (e.g. palm lifted while stylus still down). Continue drawing!
+                return true
+            }
+
             onTransformStateChanged(false, emptyList())
             val wasPinching = isPinching
             isPinching = false
             lastDist = 0f
+            activeDrawingPointerId = -1
+            activeStrokeIsStylus = false
 
             if (isEdgeGesturePending) {
                 isEdgeGesturePending = false
@@ -337,7 +383,25 @@ class CanvasGestureController(
             return true
         }
 
-        val worldPoint = StylusInputHandler.extractPoint(event, panOffset, zoom)
+        // Determine target pointer index for drawing/interaction
+        val targetIndex = if (hasStylusPointer) {
+            activeStylusIndex
+        } else if (activeDrawingPointerId != -1) {
+            val idx = event.findPointerIndex(activeDrawingPointerId)
+            if (idx != -1) idx else 0
+        } else {
+            0
+        }
+
+        // Reject if target pointer is palm touch (large contact area)
+        if (!hasStylusPointer && isPalmContact(event, targetIndex)) {
+            if (activePoints.isNotEmpty() && !activeStrokeIsStylus) {
+                discardActiveStroke()
+            }
+            return true
+        }
+
+        val worldPoint = StylusInputHandler.extractPoint(event, panOffset, zoom, targetIndex)
         if (isReadOnly) return true
 
         // 6. Text Tool
@@ -565,16 +629,24 @@ class CanvasGestureController(
 
         // 9. Standard Inking / Drawing Tools & Laser Pointer
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                // If it's a secondary touch down and not a stylus, ignore as palm contact
+                if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN && !hasStylusPointer) {
+                    return true
+                }
+
+                activeDrawingPointerId = event.getPointerId(targetIndex)
+                activeStrokeIsStylus = hasStylusPointer
+
                 val effectiveWidth = if (viewWidth > 0f) viewWidth else 1080f
                 val edgeGutter = 28f * density
-                val isEdgeZone = (event.x <= edgeGutter || event.x >= (effectiveWidth - edgeGutter))
-                val isFinger = (primaryToolType == MotionEvent.TOOL_TYPE_FINGER)
+                val isEdgeZone = (event.getX(targetIndex) <= edgeGutter || event.getX(targetIndex) >= (effectiveWidth - edgeGutter))
+                val isFinger = !hasStylusPointer
 
                 if (isFinger && isEdgeZone) {
                     isEdgeGesturePending = true
-                    pendingEdgeStartX = event.x
-                    pendingEdgeStartY = event.y
+                    pendingEdgeStartX = event.getX(targetIndex)
+                    pendingEdgeStartY = event.getY(targetIndex)
                     pendingEdgeWorldPoint = worldPoint
                     pendingEdgeTool = effectiveTool
                     pendingEdgeColor = currentColor
@@ -605,7 +677,7 @@ class CanvasGestureController(
                     laserPoints.add(worldPoint)
                     laserActiveToken++
                 } else {
-                    drawingHaptics.onStrokeStart(event.x, event.y, event.eventTime)
+                    drawingHaptics.onStrokeStart(event.getX(targetIndex), event.getY(targetIndex), event.eventTime)
                     onStrokeBroadcastStart(
                         activeStrokeId,
                         currentColor.toArgb().toLong(),
@@ -619,7 +691,7 @@ class CanvasGestureController(
             }
             MotionEvent.ACTION_MOVE -> {
                 if (isEdgeGesturePending) {
-                    val moveDist = hypot(event.x - pendingEdgeStartX, event.y - pendingEdgeStartY)
+                    val moveDist = hypot(event.getX(targetIndex) - pendingEdgeStartX, event.getY(targetIndex) - pendingEdgeStartY)
                     val edgeSlop = 20f * density
                     if (moveDist >= edgeSlop) {
                         isEdgeGesturePending = false
@@ -669,7 +741,7 @@ class CanvasGestureController(
                     laserPoints.removeAll { now - it.timestampMs > 1200L }
                     laserActiveToken++
                 } else {
-                    drawingHaptics.onStrokeMove(event.x, event.y, event.eventTime, hapticsEnabled)
+                    drawingHaptics.onStrokeMove(event.getX(targetIndex), event.getY(targetIndex), event.eventTime, hapticsEnabled)
                 }
 
                 if (activePoints.isEmpty()) {
@@ -679,7 +751,7 @@ class CanvasGestureController(
                     if (isCurved) {
                         val historySize = event.historySize
                         for (h in 0 until historySize) {
-                            val histPt = StylusInputHandler.extractHistoricalPoint(event, h, panOffset, zoom)
+                            val histPt = StylusInputHandler.extractHistoricalPoint(event, h, panOffset, zoom, targetIndex)
                             val lastPt = activePoints.last()
                             val midX = (lastPt.x + histPt.x) / 2f
                             val midY = (lastPt.y + histPt.y) / 2f

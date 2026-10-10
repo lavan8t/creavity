@@ -20,14 +20,15 @@ object StylusInputHandler {
     }
 
     fun extractPoint(event: MotionEvent, panOffset: Offset, zoom: Float, pointerIndex: Int = 0): Point {
-        val screenX = event.getX(pointerIndex)
-        val screenY = event.getY(pointerIndex)
+        val safeIndex = pointerIndex.coerceIn(0, (event.pointerCount - 1).coerceAtLeast(0))
+        val screenX = event.getX(safeIndex)
+        val screenY = event.getY(safeIndex)
         val worldX = (screenX - panOffset.x) / zoom
         val worldY = (screenY - panOffset.y) / zoom
-        val rawPressure = event.getPressure(pointerIndex)
+        val rawPressure = event.getPressure(safeIndex)
         val pressure = if (rawPressure > 0f) rawPressure.coerceIn(0f, 1f) else 1.0f
-        val tilt = event.getAxisValue(MotionEvent.AXIS_TILT, pointerIndex)
-        val orientation = event.getAxisValue(MotionEvent.AXIS_ORIENTATION, pointerIndex)
+        val tilt = event.getAxisValue(MotionEvent.AXIS_TILT, safeIndex)
+        val orientation = event.getAxisValue(MotionEvent.AXIS_ORIENTATION, safeIndex)
 
         return Point(
             x = worldX,
@@ -39,15 +40,22 @@ object StylusInputHandler {
         )
     }
 
-    fun extractHistoricalPoint(event: MotionEvent, histIndex: Int, panOffset: Offset, zoom: Float): Point {
-        val histScreenX = event.getHistoricalX(histIndex)
-        val histScreenY = event.getHistoricalY(histIndex)
+    fun extractHistoricalPoint(
+        event: MotionEvent,
+        histIndex: Int,
+        panOffset: Offset,
+        zoom: Float,
+        pointerIndex: Int = 0
+    ): Point {
+        val safeIndex = pointerIndex.coerceIn(0, (event.pointerCount - 1).coerceAtLeast(0))
+        val histScreenX = event.getHistoricalX(safeIndex, histIndex)
+        val histScreenY = event.getHistoricalY(safeIndex, histIndex)
         val histWorldX = (histScreenX - panOffset.x) / zoom
         val histWorldY = (histScreenY - panOffset.y) / zoom
-        val rawPressure = event.getHistoricalPressure(histIndex)
+        val rawPressure = event.getHistoricalPressure(safeIndex, histIndex)
         val histPressure = if (rawPressure > 0f) rawPressure.coerceIn(0f, 1f) else 1.0f
-        val histTilt = event.getHistoricalAxisValue(MotionEvent.AXIS_TILT, 0, histIndex)
-        val histOrientation = event.getHistoricalAxisValue(MotionEvent.AXIS_ORIENTATION, 0, histIndex)
+        val histTilt = event.getHistoricalAxisValue(MotionEvent.AXIS_TILT, safeIndex, histIndex)
+        val histOrientation = event.getHistoricalAxisValue(MotionEvent.AXIS_ORIENTATION, safeIndex, histIndex)
 
         return Point(
             x = histWorldX,
