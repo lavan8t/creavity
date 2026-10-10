@@ -315,21 +315,12 @@ fun BoardsLibraryScreen(
                     }
                 }
 
-                // 2. Sub-header Bar: Unified View Mode Switcher (Folders, Grid, List) + Actions
+                // 2. Sub-header Bar: Swapped Actions (New Folder / Sort) on Left, View Mode Switcher on Right
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Unified 3-way view mode switcher: Folders | Grid | List
-                    LibraryViewModeSwitcher(
-                        viewMode = viewMode,
-                        onViewModeChange = { mode ->
-                            viewMode = mode
-                            openedFolder = null
-                        }
-                    )
-
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -408,6 +399,15 @@ fun BoardsLibraryScreen(
                             }
                         }
                     }
+
+                    // Unified 3-way view mode switcher: Folders | Grid | List
+                    LibraryViewModeSwitcher(
+                        viewMode = viewMode,
+                        onViewModeChange = { mode ->
+                            viewMode = mode
+                            openedFolder = null
+                        }
+                    )
                 }
 
                 // Group folders filter row (in Grid or List mode when groups exist)
