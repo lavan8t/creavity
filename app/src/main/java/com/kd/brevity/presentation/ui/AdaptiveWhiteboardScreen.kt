@@ -3,8 +3,6 @@ package com.kd.brevity.presentation.ui
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -55,7 +53,6 @@ import androidx.navigation.compose.rememberNavController
 import com.kd.brevity.domain.model.DrawingTool
 import com.kd.brevity.presentation.ui.components.MaterialSymbol
 import com.kd.brevity.presentation.ui.components.TooltipHint
-import com.kd.brevity.presentation.ui.motion.BrevityMotion
 import com.kd.brevity.presentation.ui.screens.AboutScreen
 import com.kd.brevity.presentation.ui.screens.BinScreen
 import com.kd.brevity.presentation.ui.screens.BoardsLibraryScreen
@@ -172,8 +169,8 @@ fun AdaptiveWhiteboardScreen(
             // 1. Adaptive Navigation Rail for Tablets and Desktop
             AnimatedVisibility(
                 visible = isLargeScreen,
-                enter = BrevityMotion.enterSlideRight(),
-                exit = BrevityMotion.exitSlideLeft()
+                enter = slideInHorizontally(initialOffsetX = { -it }),
+                exit = slideOutHorizontally(targetOffsetX = { -it })
             ) {
                 FlatAdaptiveNavRail(
                     currentRoute = if (isExpanded && sidePaneDestination != null) sidePaneDestination!! else currentRoute,
@@ -224,8 +221,8 @@ fun AdaptiveWhiteboardScreen(
                         // Companion Supporting Side-Pane
                         AnimatedVisibility(
                             visible = sidePaneDestination != null,
-                            enter = BrevityMotion.enterSlideLeft(),
-                            exit = BrevityMotion.exitSlideRight()
+                            enter = slideInHorizontally(initialOffsetX = { it }),
+                            exit = slideOutHorizontally(targetOffsetX = { it })
                         ) {
                             Surface(
                                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -280,35 +277,21 @@ fun AdaptiveWhiteboardScreen(
                         }
                     }
                 } else {
-                    // Compose Navigation implementation with spring animations and flipped predictive back slide
+                    // Official Compose Navigation horizontal slide transitions compatible with Predictive Back
                     NavHost(
                         navController = navController,
                         startDestination = NavDestination.BOARDS.name,
                         enterTransition = {
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = BrevityMotion.springSpatial()
-                            ) + fadeIn(animationSpec = BrevityMotion.springEffects())
+                            slideInHorizontally(initialOffsetX = { it })
                         },
                         exitTransition = {
-                            slideOutHorizontally(
-                                targetOffsetX = { -it },
-                                animationSpec = BrevityMotion.springSpatial()
-                            ) + fadeOut(animationSpec = BrevityMotion.springEffects())
+                            slideOutHorizontally(targetOffsetX = { -it })
                         },
                         popEnterTransition = {
-                            // Flipped predictive back slide: enters from right instead of left
-                            slideInHorizontally(
-                                initialOffsetX = { it },
-                                animationSpec = BrevityMotion.springSpatial()
-                            ) + fadeIn(animationSpec = BrevityMotion.springEffects())
+                            slideInHorizontally(initialOffsetX = { -it })
                         },
                         popExitTransition = {
-                            // Flipped predictive back slide: exits to left instead of right
-                            slideOutHorizontally(
-                                targetOffsetX = { -it },
-                                animationSpec = BrevityMotion.springSpatial()
-                            ) + fadeOut(animationSpec = BrevityMotion.springEffects())
+                            slideOutHorizontally(targetOffsetX = { it })
                         },
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -321,33 +304,7 @@ fun AdaptiveWhiteboardScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        composable(
-                            route = NavDestination.CANVAS.name,
-                            enterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            exitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popEnterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popExitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            }
-                        ) {
+                        composable(NavDestination.CANVAS.name) {
                             CanvasViewportScreen(
                                 uiState = latestUiState,
                                 onAction = onAction,
@@ -361,33 +318,7 @@ fun AdaptiveWhiteboardScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        composable(
-                            route = NavDestination.PEERS.name,
-                            enterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            exitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popEnterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popExitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            }
-                        ) {
+                        composable(NavDestination.PEERS.name) {
                             PeerConnectScreen(
                                 uiState = latestUiState,
                                 onAction = onAction,
@@ -395,33 +326,7 @@ fun AdaptiveWhiteboardScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        composable(
-                            route = NavDestination.SETTINGS.name,
-                            enterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            exitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popEnterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popExitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            }
-                        ) {
+                        composable(NavDestination.SETTINGS.name) {
                             SettingsScreen(
                                 uiState = latestUiState,
                                 onAction = onAction,
@@ -429,33 +334,7 @@ fun AdaptiveWhiteboardScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        composable(
-                            route = NavDestination.BIN.name,
-                            enterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            exitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popEnterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popExitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            }
-                        ) {
+                        composable(NavDestination.BIN.name) {
                             BinScreen(
                                 uiState = latestUiState,
                                 onAction = onAction,
@@ -463,33 +342,7 @@ fun AdaptiveWhiteboardScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
-                        composable(
-                            route = NavDestination.ABOUT.name,
-                            enterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            exitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popEnterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeIn(animationSpec = BrevityMotion.springEffects())
-                            },
-                            popExitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { -it },
-                                    animationSpec = BrevityMotion.springSpatial()
-                                ) + fadeOut(animationSpec = BrevityMotion.springEffects())
-                            }
-                        ) {
+                        composable(NavDestination.ABOUT.name) {
                             AboutScreen(
                                 onBackPressed = { navigateBack() },
                                 modifier = Modifier.fillMaxSize()
