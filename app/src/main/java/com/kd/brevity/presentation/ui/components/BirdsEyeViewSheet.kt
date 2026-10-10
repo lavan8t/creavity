@@ -18,10 +18,12 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
+import com.kd.brevity.presentation.canvas.CanvasColorUtils
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -190,12 +192,15 @@ fun BirdsEyeViewSheet(
             val radarCenterX = (radarMinX + radarMaxX) / 2f
             val radarCenterY = (radarMinY + radarMaxY) / 2f
 
+            val radarBg = MaterialTheme.colorScheme.surfaceContainerHighest
+            val isDarkSheet = radarBg.luminance() < 0.5f
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f))
+                    .background(radarBg.copy(alpha = 0.55f))
             ) {
                 Canvas(
                     modifier = Modifier
@@ -249,7 +254,7 @@ fun BirdsEyeViewSheet(
                             }
                             drawPath(
                                 path = path,
-                                color = if (stroke.isEraser) Color.DarkGray else Color(stroke.color),
+                                color = if (stroke.isEraser) Color.DarkGray else CanvasColorUtils.getAdaptiveStrokeColor(Color(stroke.color), isDarkSheet),
                                 style = DrawStroke(width = 1.2f, cap = StrokeCap.Round, join = StrokeJoin.Round)
                             )
                         }

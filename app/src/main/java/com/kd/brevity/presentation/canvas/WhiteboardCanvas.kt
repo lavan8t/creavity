@@ -284,7 +284,7 @@ fun WhiteboardCanvas(
                 val path = pathCache.getOrPut(strokeKey) {
                     PathUtils.createToolPath(activeStroke.tool, activeStroke.points)
                 }
-                val baseColor = Color(activeStroke.color)
+                val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(Color(activeStroke.color), isDark)
                 val drawColor = if (activeStroke.isEraser) effectiveBg else baseColor
 
                 with(StrokeDrawer) {
@@ -307,7 +307,7 @@ fun WhiteboardCanvas(
                     val path = pathCache.getOrPut(pending.id) {
                         PathUtils.createToolPath(pending.tool, pending.points)
                     }
-                    val baseColor = Color(pending.color)
+                    val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(Color(pending.color), isDark)
                     val drawColor = if (pending.isEraser) effectiveBg else baseColor
                     with(StrokeDrawer) {
                         drawStyledStroke(
@@ -382,7 +382,7 @@ fun WhiteboardCanvas(
 
             // 5. Draw Active In-Progress Stroke
             if (controller.activePoints.isNotEmpty() && controller.activeToolUsed != DrawingTool.LASER) {
-                val baseColor = effectiveColor
+                val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(effectiveColor, isDark)
                 val drawColor = if (controller.activeToolUsed == DrawingTool.ERASER) effectiveBg else baseColor
 
                 with(StrokeDrawer) {

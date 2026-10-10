@@ -36,7 +36,7 @@ object StrokeDrawer {
 
         when (tool) {
             DrawingTool.PEN -> {
-                if (cachedPath != null && points.size > 1 && !hasDynamicPressure(points)) {
+                if (cachedPath != null && points.size > 1) {
                     drawPath(
                         path = cachedPath,
                         color = color,
@@ -63,7 +63,19 @@ object StrokeDrawer {
                 )
             }
             DrawingTool.BRUSH -> {
-                drawPressureSensitiveStroke(points, color.copy(alpha = 0.85f), width * 2.5f)
+                if (cachedPath != null && points.size > 1) {
+                    drawPath(
+                        path = cachedPath,
+                        color = color.copy(alpha = 0.85f),
+                        style = CanvasStrokeStyle(
+                            width = width * 2.0f,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                } else {
+                    drawPressureSensitiveStroke(points, color.copy(alpha = 0.85f), width * 2.5f)
+                }
             }
             DrawingTool.PENCIL -> {
                 if (cachedPath != null && points.size > 1) {

@@ -10,6 +10,47 @@ import kotlin.math.sin
 
 object PathUtils {
     /**
+     * Filters out sub-pixel jitter and applies a Gaussian smoothing kernel
+     * to eliminate hand tremble and touch sensor noise.
+     */
+    fun smoothAndSimplifyPoints(points: List<Point>, minDistance: Float = 2.0f): List<Point> {
+        if (points.size <= 2) return points
+
+        // 1. Distance filter: discard micro-jitter points that are too close
+        val filtered = ArrayList<Point>(points.size)
+        filtered.add(points.first())
+        var lastPt = points.first()
+        val minDistSq = minDistance * minDistance
+
+        for (i in 1 until points.size - 1) {
+            val pt = points[i]
+            val dx = pt.x - lastPt.x
+            val dy = pt.y - lastPt.y
+            if (dx * dx + dy * dy >= minDistSq) {
+                filtered.add(pt)
+                lastPt = pt
+            }
+        }
+        filtered.add(points.last())
+        if (filtered.size <= 2) return filtered
+
+        // 2. Laplacian smoothing pass for organic, fluid ink curves
+        val smoothed = ArrayList<Point>(filtered.size)
+        smoothed.add(filtered.first())
+        for (i in 1 until filtered.size - 1) {
+            val pPrev = filtered[i - 1]
+            val pCurr = filtered[i]
+            val pNext = filtered[i + 1]
+            val sx = pPrev.x * 0.2f + pCurr.x * 0.6f + pNext.x * 0.2f
+            val sy = pPrev.y * 0.2f + pCurr.y * 0.6f + pNext.y * 0.2f
+            val sp = pPrev.pressure * 0.2f + pCurr.pressure * 0.6f + pNext.pressure * 0.2f
+            smoothed.add(pCurr.copy(x = sx, y = sy, pressure = sp))
+        }
+        smoothed.add(filtered.last())
+        return smoothed
+    }
+
+    /**
      * Builds a smooth Compose Path from a list of continuous touch points
      * using quadratic Bezier curves for low-latency, smooth drawing.
      */

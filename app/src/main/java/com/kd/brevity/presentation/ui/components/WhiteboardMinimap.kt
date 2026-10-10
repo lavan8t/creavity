@@ -37,10 +37,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.luminance
 import com.kd.brevity.domain.math.PathUtils
 import com.kd.brevity.domain.model.PeerPresence
 import com.kd.brevity.domain.model.Stroke
 import com.kd.brevity.domain.model.TextElement
+import com.kd.brevity.presentation.canvas.CanvasColorUtils
 import kotlin.math.max
 
 /**
@@ -122,6 +124,7 @@ fun WhiteboardMinimap(
 
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainerHigh
     val mapSurface = MaterialTheme.colorScheme.surfaceContainerLowest
+    val isDarkMap = mapSurface.luminance() < 0.5f
     val primaryColor = MaterialTheme.colorScheme.primary
     val onSurface = MaterialTheme.colorScheme.onSurface
     val eraserColor = MaterialTheme.colorScheme.surface
@@ -243,7 +246,7 @@ fun WhiteboardMinimap(
                             }
                             drawPath(
                                 path = path,
-                                color = if (stroke.isEraser) eraserColor else Color(stroke.color),
+                                color = if (stroke.isEraser) eraserColor else CanvasColorUtils.getAdaptiveStrokeColor(Color(stroke.color), isDarkMap),
                                 style = DrawStroke(
                                     width = stroke.strokeWidth.coerceAtLeast(1.4f / scale),
                                     cap = StrokeCap.Round,
@@ -253,7 +256,7 @@ fun WhiteboardMinimap(
                         } else if (stroke.points.size == 1) {
                             val pt = stroke.points.first()
                             drawCircle(
-                                color = if (stroke.isEraser) eraserColor else Color(stroke.color),
+                                color = if (stroke.isEraser) eraserColor else CanvasColorUtils.getAdaptiveStrokeColor(Color(stroke.color), isDarkMap),
                                 radius = 2f / scale,
                                 center = Offset(pt.x, pt.y)
                             )

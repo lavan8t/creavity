@@ -15,10 +15,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawScopeStroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.dp
 import com.kd.brevity.domain.model.Board
+import com.kd.brevity.presentation.canvas.CanvasColorUtils
 
 @Composable
 fun BoardThumbnailPreview(
@@ -59,13 +61,14 @@ fun BoardThumbnailPreview(
                 if (minX == Float.MAX_VALUE) { minX = 0f; minY = 0f; maxX = 1920f; maxY = 1080f }
                 val spanX = (maxX - minX).coerceAtLeast(1f)
                 val spanY = (maxY - minY).coerceAtLeast(1f)
+                val isDarkBg = Color(board.backgroundColor).luminance() < 0.5f
                 val paths = previewStrokes.mapNotNull { stroke ->
                     if (stroke.points.size > 1) {
                         val path = Path().apply {
                             moveTo(stroke.points[0].x, stroke.points[0].y)
                             for (i in 1 until stroke.points.size) lineTo(stroke.points[i].x, stroke.points[i].y)
                         }
-                        Triple(path, Color(stroke.color), stroke.strokeWidth)
+                        Triple(path, CanvasColorUtils.getAdaptiveStrokeColor(Color(stroke.color), isDarkBg), stroke.strokeWidth)
                     } else null
                 }
                 val notes = stickyNotes.map { floatArrayOf(it.x, it.y, it.width, it.height, it.color.toFloat()) }

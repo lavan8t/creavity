@@ -305,7 +305,7 @@ class CanvasGestureController(
                             activeToolUsed == DrawingTool.HIGHLIGHTER || activeToolUsed == DrawingTool.ERASER
 
                     val finalPoints = if (isCurved) {
-                        activePoints.toList()
+                        PathUtils.smoothAndSimplifyPoints(activePoints)
                     } else {
                         listOf(activePoints.first(), activePoints.last())
                     }

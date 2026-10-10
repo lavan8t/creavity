@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.brevity.domain.model.Point
 import com.kd.brevity.domain.model.StickyNote
+import com.kd.brevity.presentation.canvas.CanvasColorUtils
 import com.kd.brevity.presentation.canvas.WhiteboardCanvas
 import com.kd.brevity.presentation.ui.NavDestination
 import com.kd.brevity.presentation.ui.OotbAction
@@ -238,11 +239,10 @@ fun CanvasViewportScreen(
 
     val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
     val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
-    val effectivePenColor = if (uiState.currentColor == Color.Unspecified) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        uiState.currentColor
-    }
+    val effectivePenColor = CanvasColorUtils.getAdaptiveStrokeColor(
+        if (uiState.currentColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else uiState.currentColor,
+        isDarkCanvas
+    )
 
     Box(
         modifier = modifier
