@@ -6,6 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -111,13 +112,15 @@ fun CanvasBottomToolbar(
     BackHandler(fabMenuExpanded) { fabMenuExpanded = false }
 
     Box(
+        contentAlignment = Alignment.BottomCenter,
         modifier = modifier
+            .fillMaxWidth()
             .navigationBarsPadding()
             .padding(bottom = 16.dp)
     ) {
         Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             HorizontalFloatingToolbar(
                 expanded = true,
@@ -257,7 +260,7 @@ fun CanvasBottomToolbar(
                     icon = { MaterialSymbol(name = "note_add", size = 20.dp, tint = LocalContentColor.current) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -275,7 +278,7 @@ fun CanvasBottomToolbar(
                     icon = { MaterialSymbol(name = "image", size = 20.dp, tint = LocalContentColor.current) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -284,7 +287,7 @@ fun CanvasBottomToolbar(
                     },
                     text = {
                         Text(
-                            text = "Drive / Presentation",
+                            text = "Presentation",
                             maxLines = 1,
                             softWrap = false,
                             style = MaterialTheme.typography.labelLarge
@@ -293,7 +296,7 @@ fun CanvasBottomToolbar(
                     icon = { MaterialSymbol(name = "slideshow", size = 20.dp, tint = LocalContentColor.current) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -315,7 +318,7 @@ fun CanvasBottomToolbar(
                     icon = { MaterialSymbol(name = "title", size = 20.dp, tint = LocalContentColor.current) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -333,7 +336,7 @@ fun CanvasBottomToolbar(
                     icon = { MaterialSymbol(name = "circle", size = 20.dp, tint = LocalContentColor.current) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -351,7 +354,7 @@ fun CanvasBottomToolbar(
                     icon = { MaterialSymbol(name = "rectangle", size = 20.dp, tint = LocalContentColor.current) },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
                 FloatingActionButtonMenuItem(
                     onClick = {
@@ -376,7 +379,7 @@ fun CanvasBottomToolbar(
                     },
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                     contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.wrapContentWidth().widthIn(min = 200.dp).heightIn(min = 40.dp).padding(vertical = 1.dp)
+                    modifier = Modifier.wrapContentWidth().heightIn(min = 40.dp).padding(vertical = 1.dp)
                 )
             }
         }

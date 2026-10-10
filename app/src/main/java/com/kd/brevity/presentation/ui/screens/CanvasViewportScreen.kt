@@ -306,25 +306,27 @@ fun CanvasViewportScreen(
                 inlineTextContent = ""
             },
             isReadOnly = uiState.isCanvasReadOnly,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .blur {
+                    radius = BlurRadiusSpec.verticalGradient(
+                        listOf(
+                            BlurStop(fraction = 0f, radius = 28.dp),
+                            BlurStop(fraction = 0.08f, radius = 0.dp),
+                            BlurStop(fraction = 0.88f, radius = 0.dp),
+                            BlurStop(fraction = 1f, radius = 28.dp)
+                        )
+                    )
+                    edgeTreatment = BlurredEdgeTreatment.Unbounded
+                }
         )
 
-        // Top Progressive Blur Scrim (Progressive Blur APIs - Multi-Stop Gradient)
+        // Top Surface Fade Scrim
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .height(124.dp)
-                .blur {
-                    radius = BlurRadiusSpec.verticalGradient(
-                        listOf(
-                            BlurStop(fraction = 0f, radius = 28.dp),
-                            BlurStop(fraction = 0.5f, radius = 14.dp),
-                            BlurStop(fraction = 1f, radius = 0.dp)
-                        )
-                    )
-                    edgeTreatment = BlurredEdgeTreatment.Unbounded
-                }
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -735,22 +737,12 @@ fun CanvasViewportScreen(
             )
         }
 
-        // Bottom Progressive Blur Scrim (Progressive Blur APIs - Multi-Stop Gradient)
+        // Bottom Surface Fade Scrim
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(136.dp)
-                .blur {
-                    radius = BlurRadiusSpec.verticalGradient(
-                        listOf(
-                            BlurStop(fraction = 0f, radius = 0.dp),
-                            BlurStop(fraction = 0.5f, radius = 14.dp),
-                            BlurStop(fraction = 1f, radius = 28.dp)
-                        )
-                    )
-                    edgeTreatment = BlurredEdgeTreatment.Unbounded
-                }
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(

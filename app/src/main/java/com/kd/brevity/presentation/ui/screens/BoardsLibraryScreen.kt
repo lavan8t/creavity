@@ -1,5 +1,7 @@
 package com.kd.brevity.presentation.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -7,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -65,41 +68,21 @@ enum class LibrarySortOrder(val label: String) {
 
 fun Modifier.drawListScrollbar(state: LazyListState, color: Color): Modifier = this.drawWithContent {
     drawContent()
-    val totalItems = state.layoutInfo.totalItemsCount
-    val visibleItems = state.layoutInfo.visibleItemsInfo.size
-    if (totalItems > visibleItems && visibleItems > 0) {
-        val firstVisible = state.firstVisibleItemIndex
-        val viewportHeight = size.height
-        val barHeight = (viewportHeight * (visibleItems.toFloat() / totalItems)).coerceAtLeast(32.dp.toPx())
-        val scrollProgress = (firstVisible.toFloat() / (totalItems - visibleItems).coerceAtLeast(1))
-        val barOffsetY = (viewportHeight - barHeight) * scrollProgress
-
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(size.width - 4.dp.toPx(), barOffsetY),
-            size = Size(3.dp.toPx(), barHeight),
-            cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
-        )
+    val (total, visible) = state.layoutInfo.totalItemsCount to state.layoutInfo.visibleItemsInfo.size
+    if (total > visible && visible > 0) {
+        val barH = (size.height * (visible.toFloat() / total)).coerceAtLeast(32.dp.toPx())
+        val barY = (size.height - barH) * (state.firstVisibleItemIndex.toFloat() / (total - visible).coerceAtLeast(1))
+        drawRoundRect(color, Offset(size.width - 4.dp.toPx(), barY), Size(3.dp.toPx(), barH), CornerRadius(2.dp.toPx(), 2.dp.toPx()))
     }
 }
 
 fun Modifier.drawGridScrollbar(state: LazyGridState, color: Color): Modifier = this.drawWithContent {
     drawContent()
-    val totalItems = state.layoutInfo.totalItemsCount
-    val visibleItems = state.layoutInfo.visibleItemsInfo.size
-    if (totalItems > visibleItems && visibleItems > 0) {
-        val firstVisible = state.firstVisibleItemIndex
-        val viewportHeight = size.height
-        val barHeight = (viewportHeight * (visibleItems.toFloat() / totalItems)).coerceAtLeast(32.dp.toPx())
-        val scrollProgress = (firstVisible.toFloat() / (totalItems - visibleItems).coerceAtLeast(1))
-        val barOffsetY = (viewportHeight - barHeight) * scrollProgress
-
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(size.width - 4.dp.toPx(), barOffsetY),
-            size = Size(3.dp.toPx(), barHeight),
-            cornerRadius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
-        )
+    val (total, visible) = state.layoutInfo.totalItemsCount to state.layoutInfo.visibleItemsInfo.size
+    if (total > visible && visible > 0) {
+        val barH = (size.height * (visible.toFloat() / total)).coerceAtLeast(32.dp.toPx())
+        val barY = (size.height - barH) * (state.firstVisibleItemIndex.toFloat() / (total - visible).coerceAtLeast(1))
+        drawRoundRect(color, Offset(size.width - 4.dp.toPx(), barY), Size(3.dp.toPx(), barH), CornerRadius(2.dp.toPx(), 2.dp.toPx()))
     }
 }
 
@@ -126,49 +109,32 @@ fun BoardThumbnailPreview(
         } else {
             // Precompute bounds and paths once per board version outside draw pass
             val thumbnailData = remember(board.id, board.modifiedAt, strokes.size, stickyNotes.size) {
-                var minX = Float.MAX_VALUE
-                var minY = Float.MAX_VALUE
-                var maxX = Float.MIN_VALUE
-                var maxY = Float.MIN_VALUE
-
+                var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE
+                var maxX = Float.MIN_VALUE; var maxY = Float.MIN_VALUE
                 val previewStrokes = strokes.take(40)
                 for (s in previewStrokes) {
                     for (pt in s.points) {
-                        if (pt.x < minX) minX = pt.x
-                        if (pt.y < minY) minY = pt.y
-                        if (pt.x > maxX) maxX = pt.x
-                        if (pt.y > maxY) maxY = pt.y
+                        minX = minOf(minX, pt.x); minY = minOf(minY, pt.y)
+                        maxX = maxOf(maxX, pt.x); maxY = maxOf(maxY, pt.y)
                     }
                 }
                 for (sn in stickyNotes) {
-                    if (sn.x < minX) minX = sn.x
-                    if (sn.y < minY) minY = sn.y
-                    if (sn.x + sn.width > maxX) maxX = sn.x + sn.width
-                    if (sn.y + sn.height > maxY) maxY = sn.y + sn.height
+                    minX = minOf(minX, sn.x); minY = minOf(minY, sn.y)
+                    maxX = maxOf(maxX, sn.x + sn.width); maxY = maxOf(maxY, sn.y + sn.height)
                 }
-
-                if (minX == Float.MAX_VALUE) {
-                    minX = 0f; minY = 0f; maxX = 1920f; maxY = 1080f
-                }
-
+                if (minX == Float.MAX_VALUE) { minX = 0f; minY = 0f; maxX = 1920f; maxY = 1080f }
                 val spanX = (maxX - minX).coerceAtLeast(1f)
                 val spanY = (maxY - minY).coerceAtLeast(1f)
-
                 val paths = previewStrokes.mapNotNull { stroke ->
                     if (stroke.points.size > 1) {
-                        val path = Path()
-                        path.moveTo(stroke.points[0].x, stroke.points[0].y)
-                        for (i in 1 until stroke.points.size) {
-                            path.lineTo(stroke.points[i].x, stroke.points[i].y)
+                        val path = Path().apply {
+                            moveTo(stroke.points[0].x, stroke.points[0].y)
+                            for (i in 1 until stroke.points.size) lineTo(stroke.points[i].x, stroke.points[i].y)
                         }
                         Triple(path, Color(stroke.color), stroke.strokeWidth)
                     } else null
                 }
-
-                val notes = stickyNotes.map { sn ->
-                    floatArrayOf(sn.x, sn.y, sn.width, sn.height, sn.color.toFloat())
-                }
-
+                val notes = stickyNotes.map { floatArrayOf(it.x, it.y, it.width, it.height, it.color.toFloat()) }
                 Triple(floatArrayOf(minX, minY, spanX, spanY), paths, notes)
             }
 
@@ -240,6 +206,13 @@ fun BoardsLibraryScreen(
     var renameBoardTitle by remember { mutableStateOf("") }
     var selectedBoardForActions by remember { mutableStateOf<Board?>(null) }
     var boardToExport by remember { mutableStateOf<Board?>(null) }
+    var isSelectionMode by rememberSaveable { mutableStateOf(false) }
+    var selectedBoardIds by rememberSaveable { mutableStateOf(setOf<String>()) }
+
+    BackHandler(enabled = isSelectionMode) {
+        isSelectionMode = false
+        selectedBoardIds = emptySet()
+    }
 
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
@@ -290,89 +263,220 @@ fun BoardsLibraryScreen(
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // 1. Top Bar: [ Hamburger Menu icon on left ] [ Search Bar with search icon on left ]
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Navigation Drawer Hamburger Menu Button
-                    TooltipHint(text = "Open menu") {
-                        IconButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                scope.launch { drawerState.open() }
-                            },
-                            modifier = Modifier.size(44.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "menu",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                size = 24.dp
-                            )
-                        }
-                    }
-
-                    // Search Bar
+                // 1. Top Bar: [ Contextual Selection Bar OR Search Bar ]
+                if (isSelectionMode) {
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            // Search icon on LEFT before "Search Boards"
-                            MaterialSymbol(
-                                name = "search",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 22.dp
-                            )
-
-                            Box(
-                                modifier = Modifier.weight(1f),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        text = "Search Boards",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Normal
-                                    )
+                            TooltipHint(text = "Close selection") {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        isSelectionMode = false
+                                        selectedBoardIds = emptySet()
+                                    },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    MaterialSymbol(name = "close", size = 22.dp, tint = MaterialTheme.colorScheme.onSurface)
                                 }
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = { searchQuery = it },
-                                    singleLine = true,
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontSize = 15.sp
-                                    ),
-                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
                             }
 
-                            if (searchQuery.isNotEmpty()) {
-                                TooltipHint(text = "Clear search") {
-                                    IconButton(
-                                        onClick = { searchQuery = "" },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        MaterialSymbol(
-                                            name = "close",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            size = 18.dp
+                            Text(
+                                text = "${selectedBoardIds.size} selected",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 4.dp)
+                            )
+
+                            // Select All / Deselect All
+                            val allSelected = selectedBoardIds.size == filteredBoards.size && filteredBoards.isNotEmpty()
+                            TooltipHint(text = if (allSelected) "Deselect all" else "Select all") {
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedBoardIds = if (allSelected) emptySet() else filteredBoards.map { it.id }.toSet()
+                                        if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    MaterialSymbol(
+                                        name = if (allSelected) "deselect" else "select_all",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        size = 22.dp
+                                    )
+                                }
+                            }
+
+                            // Favourite / Star selected boards
+                            TooltipHint(text = "Favourite selected") {
+                                IconButton(
+                                    enabled = selectedBoardIds.isNotEmpty(),
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val anyUnstarred = selectedBoardIds.any { id -> activeBoards.find { it.id == id }?.isStarred != true }
+                                        selectedBoardIds.forEach { id ->
+                                            val isStarred = activeBoards.find { it.id == id }?.isStarred == true
+                                            if (anyUnstarred && !isStarred) {
+                                                onAction(OotbAction.ToggleStarBoard(id))
+                                            } else if (!anyUnstarred && isStarred) {
+                                                onAction(OotbAction.ToggleStarBoard(id))
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    val allStarred = selectedBoardIds.isNotEmpty() && selectedBoardIds.all { id -> activeBoards.find { it.id == id }?.isStarred == true }
+                                    MaterialSymbol(
+                                        name = if (allStarred) "star" else "star_outline",
+                                        filled = allStarred,
+                                        tint = if (allStarred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        size = 22.dp
+                                    )
+                                }
+                            }
+
+                            // Edit / Rename (active when exactly 1 board selected)
+                            TooltipHint(text = "Edit title") {
+                                IconButton(
+                                    enabled = selectedBoardIds.size == 1,
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val singleId = selectedBoardIds.firstOrNull() ?: return@IconButton
+                                        val target = activeBoards.find { it.id == singleId } ?: return@IconButton
+                                        boardToRename = target
+                                        renameBoardTitle = target.title
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    MaterialSymbol(
+                                        name = "edit",
+                                        tint = if (selectedBoardIds.size == 1) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                        size = 22.dp
+                                    )
+                                }
+                            }
+
+                            // Delete / Move to Bin
+                            TooltipHint(text = "Move to bin") {
+                                IconButton(
+                                    enabled = selectedBoardIds.isNotEmpty(),
+                                    onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedBoardIds.forEach { id ->
+                                            onAction(OotbAction.MoveBoardToBin(id))
+                                        }
+                                        selectedBoardIds = emptySet()
+                                        isSelectionMode = false
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    MaterialSymbol(
+                                        name = "delete",
+                                        tint = if (selectedBoardIds.isNotEmpty()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.error.copy(alpha = 0.38f),
+                                        size = 22.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Navigation Drawer Hamburger Menu Button
+                        TooltipHint(text = "Open menu") {
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    scope.launch { drawerState.open() }
+                                },
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                MaterialSymbol(
+                                    name = "menu",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    size = 24.dp
+                                )
+                            }
+                        }
+
+                        // Search Bar
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // Search icon on LEFT before "Search Boards"
+                                MaterialSymbol(
+                                    name = "search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 22.dp
+                                )
+
+                                Box(
+                                    modifier = Modifier.weight(1f),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search Boards",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Normal
                                         )
+                                    }
+                                    BasicTextField(
+                                        value = searchQuery,
+                                        onValueChange = { searchQuery = it },
+                                        singleLine = true,
+                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 15.sp
+                                        ),
+                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                if (searchQuery.isNotEmpty()) {
+                                    TooltipHint(text = "Clear search") {
+                                        IconButton(
+                                            onClick = { searchQuery = "" },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            MaterialSymbol(
+                                                name = "close",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                size = 18.dp
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -429,20 +533,43 @@ fun BoardsLibraryScreen(
                     }
                 }
 
-                // Grid / List Toggle Button (Screen 1 & Screen 2)
-                TooltipHint(text = if (isGridView) "Switch to list view" else "Switch to grid view") {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            isGridView = !isGridView
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        MaterialSymbol(
-                            name = if (isGridView) "view_list" else "grid_view",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            size = 22.dp
-                        )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Selection Mode Toggle Button
+                    TooltipHint(text = if (isSelectionMode) "Done selecting" else "Select boards") {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isSelectionMode = !isSelectionMode
+                                if (!isSelectionMode) selectedBoardIds = emptySet()
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = if (isSelectionMode) "check_circle" else "checklist",
+                                tint = if (isSelectionMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 22.dp
+                            )
+                        }
+                    }
+
+                    // Grid / List Toggle Button (Screen 1 & Screen 2)
+                    TooltipHint(text = if (isGridView) "Switch to list view" else "Switch to grid view") {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isGridView = !isGridView
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = if (isGridView) "view_list" else "grid_view",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 22.dp
+                            )
+                        }
                     }
                 }
             }
@@ -450,30 +577,20 @@ fun BoardsLibraryScreen(
             // 3. Main Content: Grid Mode (Screen 1) or List Mode (Screen 2)
             if (filteredBoards.isEmpty()) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .padding(24.dp)
+                        modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 28.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            MaterialSymbol(
-                                name = "draw",
-                                size = 48.dp,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            MaterialSymbol(name = "draw", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
                             Text(
                                 text = if (searchQuery.isNotEmpty()) "No boards match '$searchQuery'" else "No whiteboards yet",
                                 fontSize = 16.sp,
@@ -497,22 +614,39 @@ fun BoardsLibraryScreen(
                         .drawGridScrollbar(gridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
                 ) {
                     items(filteredBoards, key = { it.id }) { board ->
+                        val isSelected = selectedBoardIds.contains(board.id)
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest
+                                                 else MaterialTheme.colorScheme.surfaceContainerHigh
+                            ),
                             shape = RoundedCornerShape(14.dp),
+                            border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
                             modifier = Modifier
                                 .animateItem()
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
                                 .combinedClickable(
                                     onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                        onNavigateToCanvas()
+                                        if (isSelectionMode) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                        } else {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                            onNavigateToCanvas()
+                                        }
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        selectedBoardForActions = board
+                                        if (!isSelectionMode) {
+                                            isSelectionMode = true
+                                            selectedBoardIds = setOf(board.id)
+                                        } else {
+                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                        }
                                     }
                                 )
                         ) {
@@ -528,15 +662,33 @@ fun BoardsLibraryScreen(
                                         board = board,
                                         modifier = Modifier.fillMaxSize()
                                     )
+
+                                    if (isSelectionMode) {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(6.dp)
+                                                .size(24.dp)
+                                                .background(
+                                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                                    shape = CircleShape
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (isSelected) {
+                                                MaterialSymbol(name = "check", size = 16.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                                            }
+                                        }
+                                    }
                                 }
 
-                                // Card Footer: Title + info | 3-dots
+                                // Card Footer: Title + Favourite + 3-dots
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -547,6 +699,24 @@ fun BoardsLibraryScreen(
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
+                                    }
+
+                                    // Favourite Star Button
+                                    TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                onAction(OotbAction.ToggleStarBoard(board.id))
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            MaterialSymbol(
+                                                name = if (board.isStarred) "star" else "star_outline",
+                                                filled = board.isStarred,
+                                                tint = if (board.isStarred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                size = 18.dp
+                                            )
+                                        }
                                     }
 
                                     // 3-dots overflow to open action sheet
@@ -578,30 +748,66 @@ fun BoardsLibraryScreen(
                         .drawListScrollbar(listState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
                 ) {
                     items(filteredBoards, key = { it.id }) { board ->
+                        val isSelected = selectedBoardIds.contains(board.id)
                         Surface(
-                            color = Color.Transparent,
+                            color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent,
+                            shape = RoundedCornerShape(12.dp),
+                            border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
                             modifier = Modifier
                                 .animateItem()
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
                                 .combinedClickable(
                                     onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                        onNavigateToCanvas()
+                                        if (isSelectionMode) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                        } else {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                            onNavigateToCanvas()
+                                        }
                                     },
                                     onLongClick = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        selectedBoardForActions = board
+                                        if (!isSelectionMode) {
+                                            isSelectionMode = true
+                                            selectedBoardIds = setOf(board.id)
+                                        } else {
+                                            selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
+                                            if (selectedBoardIds.isEmpty()) isSelectionMode = false
+                                        }
                                     }
                                 )
-                                .padding(vertical = 8.dp, horizontal = 4.dp)
+                                .padding(vertical = 6.dp, horizontal = 4.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
+                                if (isSelectionMode) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .background(
+                                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                shape = CircleShape
+                                            )
+                                            .border(
+                                                width = if (isSelected) 0.dp else 1.5.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant,
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            MaterialSymbol(name = "check", size = 16.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                                        }
+                                    }
+                                }
+
                                 BoardThumbnailPreview(
                                     board = board,
                                     modifier = Modifier
@@ -626,6 +832,24 @@ fun BoardsLibraryScreen(
                                     )
                                 }
 
+                                // Favourite Star Button
+                                TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
+                                    IconButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onAction(OotbAction.ToggleStarBoard(board.id))
+                                        },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        MaterialSymbol(
+                                            name = if (board.isStarred) "star" else "star_outline",
+                                            filled = board.isStarred,
+                                            tint = if (board.isStarred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            size = 20.dp
+                                        )
+                                    }
+                                }
+
                                 // 3-dots Menu to open action sheet
                                 TooltipHint(text = "Board options") {
                                     IconButton(
@@ -645,71 +869,51 @@ fun BoardsLibraryScreen(
             }
         }
 
-        // Bottom Action Bar: Connect & New Board (2 buttons in same row)
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilledTonalButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onNavigateToDestination(NavDestination.PEERS)
-                },
+        // Bottom Action Bar: Connect & New Board (hidden in selection mode)
+        if (!isSelectionMode) {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                MaterialSymbol(
-                    name = "sensors",
-                    filled = true,
-                    size = 22.dp,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Connect",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+                FilledTonalButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onNavigateToDestination(NavDestination.PEERS)
+                    },
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    MaterialSymbol(name = "sensors", filled = true, size = 22.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Connect", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                }
 
-            Button(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onAction(OotbAction.CreateNewBoard("Untitled Board"))
-                    onNavigateToCanvas()
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                MaterialSymbol(
-                    name = "add",
-                    filled = true,
-                    size = 22.dp,
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "New Board",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onAction(OotbAction.CreateNewBoard("Untitled Board"))
+                        onNavigateToCanvas()
+                    },
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    MaterialSymbol(name = "add", filled = true, size = 22.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "New Board", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
 
@@ -723,19 +927,10 @@ fun BoardsLibraryScreen(
                 modifier = Modifier.imePadding()
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 28.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Rename Board",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
+                    Text("Rename Board", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     OutlinedTextField(
                         value = renameBoardTitle,
                         onValueChange = { renameBoardTitle = it },
@@ -745,15 +940,12 @@ fun BoardsLibraryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = { boardToRename = null }) {
-                            Text("Cancel")
-                        }
+                        TextButton(onClick = { boardToRename = null }) { Text("Cancel") }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
                             onClick = {
@@ -776,10 +968,7 @@ fun BoardsLibraryScreen(
             board = selectedBoardForActions,
             onDismiss = { selectedBoardForActions = null },
             onToggleStar = { board -> onAction(OotbAction.ToggleStarBoard(board.id)) },
-            onRename = { board ->
-                boardToRename = board
-                renameBoardTitle = board.title
-            },
+            onRename = { board -> boardToRename = board; renameBoardTitle = board.title },
             onDuplicate = { board -> onAction(OotbAction.DuplicateBoard(board.id)) },
             onExport = { board -> boardToExport = board },
             onMoveToBin = { board -> onAction(OotbAction.MoveBoardToBin(board.id)) }
@@ -789,11 +978,7 @@ fun BoardsLibraryScreen(
         BoardExportSheet(
             board = boardToExport,
             onDismiss = { boardToExport = null },
-            onFormatSelected = { format ->
-                boardToExport?.let { board ->
-                    BoardExporter.shareBoard(context, board, format)
-                }
-            }
+            onFormatSelected = { format -> boardToExport?.let { b -> BoardExporter.shareBoard(context, b, format) } }
         )
     }
 }

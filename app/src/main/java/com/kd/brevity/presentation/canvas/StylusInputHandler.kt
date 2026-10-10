@@ -33,7 +33,7 @@ object StylusInputHandler {
             x = worldX,
             y = worldY,
             pressure = pressure,
-            timestampMs = event.eventTime,
+            timestampMs = android.os.SystemClock.uptimeMillis(),
             tilt = tilt,
             orientation = orientation
         )
@@ -53,7 +53,7 @@ object StylusInputHandler {
             x = histWorldX,
             y = histWorldY,
             pressure = histPressure,
-            timestampMs = event.getHistoricalEventTime(histIndex),
+            timestampMs = android.os.SystemClock.uptimeMillis(),
             tilt = histTilt,
             orientation = histOrientation
         )

@@ -265,7 +265,7 @@ object StrokeDrawer {
         baseWidth: Float
     ) {
         if (points.isEmpty()) return
-        val now = System.currentTimeMillis()
+        val now = android.os.SystemClock.uptimeMillis()
         val durationMs = 1200f
 
         for (i in 0 until points.size - 1) {

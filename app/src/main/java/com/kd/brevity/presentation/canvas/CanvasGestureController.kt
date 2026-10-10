@@ -600,7 +600,7 @@ class CanvasGestureController(
                 }
 
                 if (activeToolUsed == DrawingTool.LASER) {
-                    val now = System.currentTimeMillis()
+                    val now = android.os.SystemClock.uptimeMillis()
                     laserPoints.removeAll { now - it.timestampMs > 1200L }
                     laserPoints.add(worldPoint)
                     laserActiveToken++
@@ -639,7 +639,7 @@ class CanvasGestureController(
                         }
 
                         if (activeToolUsed == DrawingTool.LASER) {
-                            val now = System.currentTimeMillis()
+                            val now = android.os.SystemClock.uptimeMillis()
                             laserPoints.removeAll { now - it.timestampMs > 1200L }
                             laserPoints.add(startPt)
                             laserActiveToken++
@@ -664,7 +664,7 @@ class CanvasGestureController(
                         activeToolUsed == DrawingTool.LASER
 
                 if (activeToolUsed == DrawingTool.LASER) {
-                    val now = System.currentTimeMillis()
+                    val now = android.os.SystemClock.uptimeMillis()
                     laserPoints.add(worldPoint)
                     laserPoints.removeAll { now - it.timestampMs > 1200L }
                     laserActiveToken++

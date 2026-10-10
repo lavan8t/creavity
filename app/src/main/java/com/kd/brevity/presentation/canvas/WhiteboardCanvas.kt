@@ -117,7 +117,7 @@ fun WhiteboardCanvas(
     LaunchedEffect(controller.laserActiveToken) {
         if (controller.laserPoints.isEmpty()) return@LaunchedEffect
         while (controller.laserPoints.isNotEmpty()) {
-            val now = System.currentTimeMillis()
+            val now = android.os.SystemClock.uptimeMillis()
             controller.laserPoints.removeAll { now - it.timestampMs > 1200L }
             drawInvalidator.longValue = System.nanoTime()
             if (controller.laserPoints.isEmpty()) break
