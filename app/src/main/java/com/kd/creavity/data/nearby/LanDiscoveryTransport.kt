@@ -312,11 +312,11 @@ class LanDiscoveryTransport(
     fun sendPacketToAll(packet: WhiteboardPacket, isMutation: Boolean = false, ticket: PermissionTicket? = null) {
         if (connectedSockets.isEmpty()) return
         val rawBytes = PacketSerializer.serialize(packet)
-        val (envelope, targets) = meshRoutingEngine.createOutbound(rawBytes, isMutation, ticket)
+        val (envelope, _) = meshRoutingEngine.createOutbound(rawBytes, isMutation, ticket)
         val envelopeBytes = envelope.toByteArray()
 
-        for (target in targets) {
-            connectedSockets[target]?.let { s -> sendRaw(s, envelopeBytes) }
+        for (socket in connectedSockets.values) {
+            sendRaw(socket, envelopeBytes)
         }
     }
 

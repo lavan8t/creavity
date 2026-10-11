@@ -16,10 +16,11 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
     when (packet) {
         is WhiteboardPacket.StrokeStart -> {
             val peerName = uiState.value.connectedPeers.firstOrNull()?.name ?: "Peer"
+            val validColor = if (packet.color == 0L || (packet.color and 0xFF000000L) == 0L) 0xFF1B1B1FL else packet.color
             val stroke = Stroke(
                 id = packet.strokeId,
                 points = listOf(packet.point),
-                color = packet.color,
+                color = validColor,
                 strokeWidth = packet.strokeWidth,
                 tool = if (packet.isEraser) DrawingTool.ERASER else DrawingTool.PEN,
                 isEraser = packet.isEraser,

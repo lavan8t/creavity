@@ -46,6 +46,9 @@ public sealed class LanMeshTransport : IDisposable
     public event Action<List<PeerDevice>>? ConnectedPeersChanged;
     public event Action<WhiteboardPacket>? PacketReceived;
 
+    private global::Windows.Devices.Bluetooth.Advertisement.BluetoothLEAdvertisementPublisher? _blePublisher;
+    private global::Windows.Devices.Bluetooth.Advertisement.BluetoothLEAdvertisementWatcher? _bleWatcher;
+
     public LanMeshTransport()
     {
         RoutingEngine = new MeshRoutingEngine(LocalNodeId, maxDegree: 6);
@@ -55,6 +58,20 @@ public sealed class LanMeshTransport : IDisposable
     {
         StopAdvertising();
         EnsureTcpServerStarted();
+
+        try
+        {
+            _blePublisher = new global::Windows.Devices.Bluetooth.Advertisement.BluetoothLEAdvertisementPublisher();
+            _blePublisher.Advertisement.LocalName = deviceName;
+            var mfData = new global::Windows.Devices.Bluetooth.Advertisement.BluetoothLEManufacturerData();
+            mfData.CompanyId = 0x00E0;
+            var writer = new global::Windows.Storage.Streams.DataWriter();
+            writer.WriteString($"CRV:{roomCode}:{_boundTcpPort}");
+            mfData.Data = writer.DetachBuffer();
+            _blePublisher.Advertisement.ManufacturerData.Add(mfData);
+            _blePublisher.Start();
+        }
+        catch { }
 
         _advCts = new CancellationTokenSource();
         var token = _advCts.Token;
@@ -94,11 +111,39 @@ public sealed class LanMeshTransport : IDisposable
     {
         _advCts?.Cancel();
         _advCts = null;
+        try { _blePublisher?.Stop(); } catch { }
+        _blePublisher = null;
     }
 
     public void StartDiscovery()
     {
         StopDiscovery();
+
+        try
+        {
+            _bleWatcher = new global::Windows.Devices.Bluetooth.Advertisement.BluetoothLEAdvertisementWatcher();
+            _bleWatcher.ScanningMode = global::Windows.Devices.Bluetooth.Advertisement.BluetoothLEScanningMode.Active;
+            _bleWatcher.Received += (s, args) =>
+            {
+                var name = args.Advertisement.LocalName;
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    string endpointId = $"ble_{args.BluetoothAddress:X}";
+                    _discoveredPeers[endpointId] = new DiscoveredPeerInfo(
+                        endpointId,
+                        name,
+                        "127.0.0.1",
+                        DefaultTcpPort,
+                        "",
+                        MeshRole.Viewer,
+                        DateTime.UtcNow
+                    );
+                    NotifyDiscoveredPeers();
+                }
+            };
+            _bleWatcher.Start();
+        }
+        catch { }
 
         _discCts = new CancellationTokenSource();
         var token = _discCts.Token;
@@ -194,6 +239,8 @@ public sealed class LanMeshTransport : IDisposable
     {
         _discCts?.Cancel();
         _discCts = null;
+        try { _bleWatcher?.Stop(); } catch { }
+        _bleWatcher = null;
         try { _udpListener?.Close(); } catch { }
         _udpListener = null;
         _discoveredPeers.Clear();
@@ -361,15 +408,12 @@ public sealed class LanMeshTransport : IDisposable
         if (_connectedPeers.IsEmpty) return;
 
         var rawBytes = PacketSerializer.Serialize(packet);
-        var (envelope, targets) = RoutingEngine.CreateOutbound(rawBytes, isMutation, ticket);
+        var (envelope, _) = RoutingEngine.CreateOutbound(rawBytes, isMutation, ticket);
         var envelopeBytes = envelope.ToByteArray();
 
-        foreach (var target in targets)
+        foreach (var conn in _connectedPeers.Values)
         {
-            if (_connectedPeers.TryGetValue(target, out var conn))
-            {
-                SendRawFrame(conn, envelopeBytes);
-            }
+            SendRawFrame(conn, envelopeBytes);
         }
     }
 

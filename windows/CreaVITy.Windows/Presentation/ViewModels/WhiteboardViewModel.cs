@@ -595,7 +595,7 @@ public partial class WhiteboardViewModel : ObservableObject
     /// <summary>
     /// Adds a text annotation element to the active page and records an AddText mutation.
     /// </summary>
-    public void AddTextElement(string text, float x, float y, long color, float fontSize, string fontName)
+    public void AddTextElement(string text, float x, float y, long color, float fontSize, string fontName, bool broadcast = true)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
         var state = UiState;
@@ -643,12 +643,19 @@ public partial class WhiteboardViewModel : ObservableObject
 
         PersistBoard(updatedBoard);
         RecordMutation(new BoardMutation.AddText(newText));
+
+        if (broadcast && UiState.ConnectedPeers.Count > 0)
+        {
+            _transport.SendPacketToAll(new WhiteboardPacket.TextAdd(
+                newText.Id, newText.Text, newText.X, newText.Y, newText.Color, newText.FontSize, newText.FontName
+            ));
+        }
     }
 
     /// <summary>
     /// Removes a stroke by ID and logs a DeleteStroke mutation.
     /// </summary>
-    public void DeleteStrokeById(string strokeId)
+    public void DeleteStrokeById(string strokeId, bool broadcast = true)
     {
         var state = UiState;
         var activePage = state.ActivePage;
@@ -675,12 +682,17 @@ public partial class WhiteboardViewModel : ObservableObject
         {
             RecordMutation(new BoardMutation.DeleteStroke(deletedStroke));
         }
+
+        if (broadcast && UiState.ConnectedPeers.Count > 0)
+        {
+            _transport.SendPacketToAll(new WhiteboardPacket.StrokeDelete(strokeId));
+        }
     }
 
     /// <summary>
     /// Removes a text element by ID and logs a DeleteText mutation.
     /// </summary>
-    public void DeleteTextElementById(string textId)
+    public void DeleteTextElementById(string textId, bool broadcast = true)
     {
         var state = UiState;
         var activePage = state.ActivePage;
@@ -706,6 +718,11 @@ public partial class WhiteboardViewModel : ObservableObject
         if (deletedText != null)
         {
             RecordMutation(new BoardMutation.DeleteText(deletedText));
+        }
+
+        if (broadcast && UiState.ConnectedPeers.Count > 0)
+        {
+            _transport.SendPacketToAll(new WhiteboardPacket.TextDelete(textId));
         }
     }
 
@@ -744,7 +761,7 @@ public partial class WhiteboardViewModel : ObservableObject
     /// <summary>
     /// Adds a sticky note to the active page.
     /// </summary>
-    public void AddStickyNote(StickyNote note)
+    public void AddStickyNote(StickyNote note, bool broadcast = true)
     {
         var currentBoard = UiState.CurrentBoard;
         int activePageIndex = currentBoard.ActivePageIndex;
@@ -770,12 +787,19 @@ public partial class WhiteboardViewModel : ObservableObject
             LastAccessedAt = now
         };
         PersistBoard(updatedBoard);
+
+        if (broadcast && UiState.ConnectedPeers.Count > 0)
+        {
+            _transport.SendPacketToAll(new WhiteboardPacket.StickyNoteAdd(
+                note.Id, note.Text, note.X, note.Y, note.Width, note.Height, note.Color, note.Author
+            ));
+        }
     }
 
     /// <summary>
     /// Deletes a sticky note by ID from the active page.
     /// </summary>
-    public void DeleteStickyNoteById(string noteId)
+    public void DeleteStickyNoteById(string noteId, bool broadcast = true)
     {
         var currentBoard = UiState.CurrentBoard;
         int activePageIndex = currentBoard.ActivePageIndex;
@@ -797,6 +821,11 @@ public partial class WhiteboardViewModel : ObservableObject
             LastAccessedAt = now
         };
         PersistBoard(updatedBoard);
+
+        if (broadcast && UiState.ConnectedPeers.Count > 0)
+        {
+            _transport.SendPacketToAll(new WhiteboardPacket.StickyNoteDelete(noteId));
+        }
     }
 
     /// <summary>
@@ -1656,17 +1685,49 @@ public partial class WhiteboardViewModel : ObservableObject
             }
             case WhiteboardPacket.StrokeDelete sd:
             {
-                DeleteStrokeById(sd.StrokeId);
+                DeleteStrokeById(sd.StrokeId, broadcast: false);
                 break;
             }
             case WhiteboardPacket.TextAdd ta:
             {
-                AddTextElement(ta.Text, ta.X, ta.Y, ta.Color, ta.FontSize, ta.FontName);
+                AddTextElement(ta.Text, ta.X, ta.Y, ta.Color, ta.FontSize, ta.FontName, broadcast: false);
                 break;
             }
             case WhiteboardPacket.TextDelete td:
             {
-                DeleteTextElementById(td.Id);
+                DeleteTextElementById(td.Id, broadcast: false);
+                break;
+            }
+            case WhiteboardPacket.StickyNoteAdd sa:
+            {
+                AddStickyNote(new StickyNote
+                {
+                    Id = sa.Id,
+                    Text = sa.Text,
+                    X = sa.X,
+                    Y = sa.Y,
+                    Width = sa.Width,
+                    Height = sa.Height,
+                    Color = sa.Color,
+                    Author = sa.Author
+                }, broadcast: false);
+                break;
+            }
+            case WhiteboardPacket.StickyNoteDelete sd:
+            {
+                DeleteStickyNoteById(sd.Id, broadcast: false);
+                break;
+            }
+            case WhiteboardPacket.ViewportPresence vp:
+            {
+                var presences = new Dictionary<string, PeerPresence>(UiState.LivePeerPresences);
+                presences[vp.EndpointId] = new PeerPresence(vp.EndpointId, vp.Name)
+                {
+                    Color = vp.Color,
+                    Viewport = new ViewportBounds { Left = vp.Left, Top = vp.Top, Right = vp.Right, Bottom = vp.Bottom },
+                    LastUpdatedMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+                UpdateUiState(s => s with { LivePeerPresences = presences });
                 break;
             }
             case WhiteboardPacket.CanvasClear:

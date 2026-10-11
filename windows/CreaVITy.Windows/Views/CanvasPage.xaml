@@ -12,38 +12,86 @@
         </Grid.RowDefinitions>
 
         <!-- Canvas Top Bar -->
-        <CommandBar Grid.Row="0" DefaultLabelPosition="Right">
-            <AppBarButton Icon="Back" Label="Back to Boards" Click="BackToBoards_Click" />
+        <CommandBar Grid.Row="0" DefaultLabelPosition="Right" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <AppBarButton Icon="Back" Label="Boards" Click="BackToBoards_Click" ToolTipService.ToolTip="Back to Board Gallery" />
             <AppBarSeparator />
-            <AppBarButton Icon="Undo" Label="Undo" Click="UndoButton_Click" />
-            <AppBarButton Icon="Redo" Label="Redo" Click="RedoButton_Click" />
+            <AppBarButton x:Name="UndoBtn" Icon="Undo" Label="Undo" Click="UndoButton_Click" ToolTipService.ToolTip="Undo (Ctrl+Z)" />
+            <AppBarButton x:Name="RedoBtn" Icon="Redo" Label="Redo" Click="RedoButton_Click" ToolTipService.ToolTip="Redo (Ctrl+Y)" />
             <AppBarSeparator />
-            <AppBarButton Icon="Save" Label="Save" Click="SaveButton_Click" />
-            <AppBarButton Icon="Share" Label="Export" Click="ExportButton_Click" />
+
+            <!-- Zoom & Pan Controls in App Bar -->
+            <AppBarElementContainer VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,0" VerticalAlignment="Center">
+                    <Button Click="ZoomOut_Click" Padding="6,4" ToolTipService.ToolTip="Zoom Out (-)">
+                        <FontIcon Glyph="&#xE71F;" FontSize="13" />
+                    </Button>
+                    <TextBlock x:Name="ZoomPercentText" Text="100%" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" MinWidth="42" TextAlignment="Center" />
+                    <Button Click="ZoomIn_Click" Padding="6,4" ToolTipService.ToolTip="Zoom In (+)">
+                        <FontIcon Glyph="&#xE710;" FontSize="13" />
+                    </Button>
+                    <Button Content="1:1" Click="ResetView_Click" Padding="8,4" FontSize="12" ToolTipService.ToolTip="Reset Zoom and Center View" />
+                </StackPanel>
+            </AppBarElementContainer>
+
             <AppBarSeparator />
-            <AppBarButton Icon="Delete" Label="Clear" Click="ClearButton_Click" />
+            <AppBarButton Icon="OutlineStar" Label="Chalkboard" Click="ToggleTheme_Click" ToolTipService.ToolTip="Toggle Light / Chalkboard Dark Canvas" />
+            <AppBarButton Icon="Save" Label="Save" Click="SaveButton_Click" ToolTipService.ToolTip="Save Board" />
+            <AppBarButton Icon="Share" Label="Export" Click="ExportButton_Click" ToolTipService.ToolTip="Export PNG" />
+            <AppBarSeparator />
+            <AppBarButton Icon="Delete" Label="Clear" Click="ClearButton_Click" ToolTipService.ToolTip="Clear Canvas" />
         </CommandBar>
 
-        <!-- Win2D Canvas Viewport -->
+        <!-- Win2D Canvas Viewport with Zoom, Pan, Multi-touch & Mouse Wheel -->
         <canvas:CanvasControl
             x:Name="CanvasView"
             Grid.Row="1"
             Draw="CanvasView_Draw"
             PointerPressed="CanvasView_PointerPressed"
             PointerMoved="CanvasView_PointerMoved"
-            PointerReleased="CanvasView_PointerReleased" />
+            PointerReleased="CanvasView_PointerReleased"
+            PointerWheelChanged="CanvasView_PointerWheelChanged" />
 
         <!-- Drawing Tools Bar -->
-        <Border Grid.Row="2" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
-                <RadioButton Content="Pen" IsChecked="True" Tag="Pen" Checked="Tool_Checked" />
-                <RadioButton Content="Pencil" Tag="Pencil" Checked="Tool_Checked" />
-                <RadioButton Content="Calligraphy" Tag="Calligraphy" Checked="Tool_Checked" />
-                <RadioButton Content="Highlighter" Tag="Highlighter" Checked="Tool_Checked" />
-                <RadioButton Content="Eraser" Tag="Eraser" Checked="Tool_Checked" />
-                <RadioButton Content="Arrow" Tag="Arrow" Checked="Tool_Checked" />
-                <RadioButton Content="Rectangle" Tag="Rectangle" Checked="Tool_Checked" />
-                <RadioButton Content="Circle" Tag="Circle" Checked="Tool_Checked" />
+        <Border Grid.Row="2" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="16,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+                <!-- Tool Selector -->
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <RadioButton Content="Pen" IsChecked="True" Tag="Pen" Checked="Tool_Checked" />
+                    <RadioButton Content="Pencil" Tag="Pencil" Checked="Tool_Checked" />
+                    <RadioButton Content="Calligraphy" Tag="Calligraphy" Checked="Tool_Checked" />
+                    <RadioButton Content="Highlighter" Tag="Highlighter" Checked="Tool_Checked" />
+                    <RadioButton Content="Eraser" Tag="Eraser" Checked="Tool_Checked" />
+                    <RadioButton Content="Text" Tag="Text" Checked="Tool_Checked" />
+                    <RadioButton Content="Note" Tag="StickyNote" Checked="Tool_Checked" />
+                    <RadioButton Content="Arrow" Tag="Arrow" Checked="Tool_Checked" />
+                    <RadioButton Content="Rectangle" Tag="Rectangle" Checked="Tool_Checked" />
+                    <RadioButton Content="Circle" Tag="Circle" Checked="Tool_Checked" />
+                    <RadioButton Content="Hand (Pan)" Tag="SelectMove" Checked="Tool_Checked" />
+                </StackPanel>
+
+                <Rectangle Width="1" Height="24" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+
+                <!-- Stroke Width Quick Selector -->
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <Button Content="2px" Tag="2" Click="WidthBtn_Click" Padding="6,2" FontSize="11" />
+                    <Button Content="6px" Tag="6" Click="WidthBtn_Click" Padding="6,2" FontSize="11" />
+                    <Button Content="12px" Tag="12" Click="WidthBtn_Click" Padding="6,2" FontSize="11" />
+                    <Button Content="24px" Tag="24" Click="WidthBtn_Click" Padding="6,2" FontSize="11" />
+                </StackPanel>
+
+                <Rectangle Width="1" Height="24" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+
+                <!-- Color Palette Swatches -->
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FF1B1B1F" Tag="4279974687" Click="ColorSwatch_Click" ToolTipService.ToolTip="Charcoal Ink" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FFFBF8F6" BorderBrush="#888888" BorderThickness="1" Tag="4294695158" Click="ColorSwatch_Click" ToolTipService.ToolTip="Paper White" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FF2979FF" Tag="4280924671" Click="ColorSwatch_Click" ToolTipService.ToolTip="Electric Blue" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FFFF5252" Tag="4294922834" Click="ColorSwatch_Click" ToolTipService.ToolTip="Coral Red" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FF00E676" Tag="4278257270" Click="ColorSwatch_Click" ToolTipService.ToolTip="Emerald Green" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FFFF9100" Tag="4294938880" Click="ColorSwatch_Click" ToolTipService.ToolTip="Amber Orange" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FFE040FB" Tag="4292886779" Click="ColorSwatch_Click" ToolTipService.ToolTip="Vivid Purple" />
+                    <Button Width="24" Height="24" CornerRadius="12" Padding="0" Background="#FFFFEA00" Tag="4294961664" Click="ColorSwatch_Click" ToolTipService.ToolTip="Sunny Yellow" />
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

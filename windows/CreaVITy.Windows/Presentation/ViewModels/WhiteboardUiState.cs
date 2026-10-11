@@ -53,11 +53,19 @@ public sealed record WhiteboardUiState
     /// <summary>User-defined board folder names.</summary>
     public IReadOnlySet<string> UserFolders { get; init; } = new HashSet<string>();
 
-    /// <summary>Current active drawing color as ARGB-packed 64-bit integer (0 = unspecified).</summary>
-    public long CurrentColor { get; init; } = 0L;
+    /// <summary>Current active drawing color as ARGB-packed 64-bit integer.</summary>
+    public long CurrentColor { get; init; } = unchecked((long)0xFF1B1B1F);
 
-    /// <summary>Canvas background color override as ARGB-packed 64-bit integer (0 = unspecified).</summary>
-    public long BackgroundColor { get; init; } = 0L;
+    /// <summary>Canvas background color override as ARGB-packed 64-bit integer.</summary>
+    public long BackgroundColor { get; init; } = unchecked((long)0xFFFBF8F6);
+
+    /// <summary>Effective canvas background color matching M3 / Compose theme.</summary>
+    public long EffectiveBackgroundColor =>
+        BackgroundColor != 0L ? BackgroundColor : (ThemeMode == ThemeMode.Dark ? unchecked((long)0xFF1E1F22) : unchecked((long)0xFFFBF8F6));
+
+    /// <summary>Effective ink drawing color matching M3 / Compose theme.</summary>
+    public long EffectivePenColor =>
+        CurrentColor != 0L ? CurrentColor : (ThemeMode == ThemeMode.Dark ? unchecked((long)0xFFFBF8F6) : unchecked((long)0xFF1B1B1F));
 
     /// <summary>Pattern rendered on the canvas background.</summary>
     public CanvasBackgroundPattern BackgroundPattern { get; init; } = CanvasBackgroundPattern.IsometricDots;
