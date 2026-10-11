@@ -1,0 +1,31 @@
+<Page
+    x:Class="CreaVITy.Windows.Views.AboutPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="32">
+        <StackPanel MaxWidth="640" HorizontalAlignment="Left" Spacing="16">
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,16">
+                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" Width="56" Height="56" CornerRadius="12">
+                    <FontIcon Glyph="&#xED63;" FontSize="28" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="CreaVITy" FontSize="26" FontWeight="Bold" />
+                    <TextBlock Text="Version 1.0.0 (Native Windows WinUI 3)" Opacity="0.6" FontSize="13" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="CreaVITy is an offline-first collaborative whiteboard application designed for rapid sketching, peer-to-peer real-time mesh collaboration, and low-latency drawing." TextWrapping="Wrap" LineHeight="22" Opacity="0.85" />
+
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,12,0,0">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Architecture &amp; Features" FontWeight="SemiBold" FontSize="15" />
+                    <TextBlock Text="• Win2D GPU-accelerated Direct2D canvas" Opacity="0.75" />
+                    <TextBlock Text="• Byte-for-byte binary packet wire protocol matching Android" Opacity="0.75" />
+                    <TextBlock Text="• Zero-allocation Laplacian smoothing &amp; quadratic Bézier paths" Opacity="0.75" />
+                    <TextBlock Text="• Offline vector SVG, PNG, and PDF document export" Opacity="0.75" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</Page>
