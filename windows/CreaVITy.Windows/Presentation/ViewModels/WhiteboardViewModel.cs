@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CreaVITy.Windows.Data.Storage;
+using CreaVITy.Windows.Data.Mesh;
+using CreaVITy.Windows.Data.Binary;
 using CreaVITy.Windows.Domain.Models;
 using CreaVITy.Windows.Domain.Mutations;
 
@@ -40,6 +42,8 @@ public partial class WhiteboardViewModel : ObservableObject
     private readonly BoardManager _boardManager;
     private readonly AppSettingsManager _appSettings;
     private readonly MutationHistory _mutationHistory;
+    private readonly LanMeshTransport _transport;
+    private readonly Dictionary<string, Stroke> _remoteStrokesMap = new();
     private readonly object _persistLock = new();
     private CancellationTokenSource? _persistDebounceCts;
 
@@ -55,14 +59,19 @@ public partial class WhiteboardViewModel : ObservableObject
     /// <summary>Access to undo/redo mutation history subsystem.</summary>
     public MutationHistory MutationHistory => _mutationHistory;
 
+    /// <summary>Access to LAN P2P mesh transport subsystem.</summary>
+    public LanMeshTransport Transport => _transport;
+
     public WhiteboardViewModel(
         BoardManager? boardManager = null,
         AppSettingsManager? appSettings = null,
-        MutationHistory? mutationHistory = null)
+        MutationHistory? mutationHistory = null,
+        LanMeshTransport? transport = null)
     {
         _boardManager = boardManager ?? BoardManager.Instance;
         _appSettings = appSettings ?? AppSettingsManager.Instance;
         _mutationHistory = mutationHistory ?? new MutationHistory();
+        _transport = transport ?? new LanMeshTransport();
 
         _uiState = new WhiteboardUiState
         {
@@ -70,6 +79,39 @@ public partial class WhiteboardViewModel : ObservableObject
             HapticsEnabled = _appSettings.HapticsEnabled,
             CurrentWidth = _appSettings.DefaultStrokeWidth,
             ThemeMode = (ThemeMode)(int)_appSettings.ThemeMode
+        };
+
+        var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+        _transport.DiscoveredPeersChanged += peers =>
+        {
+            void Action()
+            {
+                var connectedIds = UiState.ConnectedPeers.Select(p => p.EndpointId).ToHashSet();
+                UpdateUiState(s => s with { DiscoveredPeers = peers.Where(p => !connectedIds.Contains(p.EndpointId)).ToList() });
+            }
+            if (dispatcher != null) dispatcher.TryEnqueue(Action); else Action();
+        };
+
+        _transport.ConnectedPeersChanged += peers =>
+        {
+            void Action()
+            {
+                var connectedIds = peers.Select(p => p.EndpointId).ToHashSet();
+                UpdateUiState(s => s with
+                {
+                    ConnectedPeers = peers,
+                    DiscoveredPeers = s.DiscoveredPeers.Where(p => !connectedIds.Contains(p.EndpointId)).ToList(),
+                    RoomCode = peers.Count > 0 ? (s.RoomCode ?? GenerateRoomCode()) : (s.IsAdvertising ? s.RoomCode : null)
+                });
+            }
+            if (dispatcher != null) dispatcher.TryEnqueue(Action); else Action();
+        };
+
+        _transport.PacketReceived += packet =>
+        {
+            void Action() => HandleIncomingPacket(packet);
+            if (dispatcher != null) dispatcher.TryEnqueue(Action); else Action();
         };
 
         LoadSavedBoards();
@@ -1472,6 +1514,313 @@ public partial class WhiteboardViewModel : ObservableObject
             Labels = b.Labels,
             Pages = b.Pages.Select(ToDomainPage).ToList()
         };
+
+    #endregion
+
+    #region P2P Mesh Collaboration & Wire Protocol
+
+    public void StartAdvertising(string? customName = null)
+    {
+        var code = UiState.RoomCode ?? GenerateRoomCode();
+        var name = string.IsNullOrWhiteSpace(customName) ? UiState.DisplayName : customName.Trim();
+        _transport.StartAdvertising($"{name} [{code}]", code);
+        UpdateUiState(s => s with { IsAdvertising = true, RoomCode = code });
+    }
+
+    public void StopAdvertising()
+    {
+        _transport.StopAdvertising();
+        UpdateUiState(s => s with { IsAdvertising = false });
+    }
+
+    public void StartDiscovery()
+    {
+        _transport.StartDiscovery();
+        UpdateUiState(s => s with { IsDiscovering = true });
+    }
+
+    public void StopDiscovery()
+    {
+        _transport.StopDiscovery();
+        UpdateUiState(s => s with { IsDiscovering = false });
+    }
+
+    public async Task<bool> ConnectToPeerAsync(string endpointId)
+    {
+        var success = await _transport.ConnectToPeerAsync(endpointId, UiState.DisplayName);
+        if (success)
+        {
+            var peer = UiState.DiscoveredPeers.FirstOrDefault(p => p.EndpointId == endpointId);
+            if (peer != null)
+            {
+                var match = Regex.Match(peer.Name, @"\[([A-Z0-9]+)\]");
+                if (match.Success)
+                {
+                    UpdateUiState(s => s with { RoomCode = match.Groups[1].Value });
+                }
+            }
+        }
+        return success;
+    }
+
+    public void DisconnectPeer(string endpointId)
+    {
+        _transport.DisconnectFromPeer(endpointId);
+    }
+
+    public void StopAllEndpoints()
+    {
+        _transport.StopAllEndpoints();
+        UpdateUiState(s => s with
+        {
+            IsAdvertising = false,
+            IsDiscovering = false,
+            ConnectedPeers = Array.Empty<PeerDevice>(),
+            DiscoveredPeers = Array.Empty<PeerDevice>(),
+            RoomCode = null
+        });
+    }
+
+    private static string GenerateRoomCode()
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        var rng = new Random();
+        return new string(Enumerable.Range(0, 5).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
+    }
+
+    public void BroadcastStrokeStart(string strokeId, long color, float width, bool isEraser, Point firstPoint)
+    {
+        if (UiState.ConnectedPeers.Count == 0) return;
+        _transport.SendPacketToAll(new WhiteboardPacket.StrokeStart(
+            strokeId, color, width, isEraser,
+            new WhiteboardPacket.StrokePoint(strokeId, firstPoint.X, firstPoint.Y, firstPoint.Pressure, firstPoint.TimestampMs)
+        ));
+    }
+
+    public void BroadcastStrokePoint(string strokeId, Point point)
+    {
+        if (UiState.ConnectedPeers.Count == 0) return;
+        _transport.SendPacketToAll(new WhiteboardPacket.StrokePoint(
+            strokeId, point.X, point.Y, point.Pressure, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        ));
+    }
+
+    public void BroadcastStrokeEnd(string strokeId)
+    {
+        if (UiState.ConnectedPeers.Count == 0) return;
+        _transport.SendPacketToAll(new WhiteboardPacket.StrokeEnd(strokeId));
+    }
+
+    public void BroadcastCanvasClear()
+    {
+        if (UiState.ConnectedPeers.Count == 0) return;
+        _transport.SendPacketToAll(new WhiteboardPacket.CanvasClear());
+    }
+
+    public void HandleIncomingPacket(WhiteboardPacket packet)
+    {
+        switch (packet)
+        {
+            case WhiteboardPacket.StrokeStart ss:
+            {
+                var stroke = new Stroke
+                {
+                    Id = ss.StrokeId,
+                    Color = ss.Color,
+                    StrokeWidth = ss.Width,
+                    Tool = ss.IsEraser ? DrawingTool.Eraser : DrawingTool.Pen,
+                    IsEraser = ss.IsEraser,
+                    Points = new List<Point> { new(ss.FirstPoint.X, ss.FirstPoint.Y, ss.FirstPoint.Pressure) }
+                };
+                _remoteStrokesMap[ss.StrokeId] = stroke;
+                UpdateRemoteStrokes();
+                break;
+            }
+            case WhiteboardPacket.StrokePoint sp:
+            {
+                if (_remoteStrokesMap.TryGetValue(sp.StrokeId, out var existing))
+                {
+                    var updatedPoints = existing.Points.Append(new Point(sp.X, sp.Y, sp.Pressure)).ToList();
+                    _remoteStrokesMap[sp.StrokeId] = existing with { Points = updatedPoints };
+                    UpdateRemoteStrokes();
+                }
+                break;
+            }
+            case WhiteboardPacket.StrokeEnd se:
+            {
+                if (_remoteStrokesMap.Remove(se.StrokeId, out var finished))
+                {
+                    OnStrokeCompleted(finished);
+                }
+                break;
+            }
+            case WhiteboardPacket.StrokeDelete sd:
+            {
+                DeleteStrokeById(sd.StrokeId);
+                break;
+            }
+            case WhiteboardPacket.TextAdd ta:
+            {
+                AddTextElement(ta.Text, ta.X, ta.Y, ta.Color, ta.FontSize, ta.FontName);
+                break;
+            }
+            case WhiteboardPacket.TextDelete td:
+            {
+                DeleteTextElementById(td.Id);
+                break;
+            }
+            case WhiteboardPacket.CanvasClear:
+            {
+                _remoteStrokesMap.Clear();
+                ClearCanvas();
+                break;
+            }
+            case WhiteboardPacket.SyncRequest:
+            {
+                var state = UiState;
+                var activeP = state.ActivePage;
+                var strokeDataList = activeP.Strokes.Select(s => new StrokeData(
+                    s.Id,
+                    s.Color,
+                    s.StrokeWidth,
+                    (CreaVITy.Windows.Data.Binary.DrawingTool)(byte)s.Tool,
+                    s.IsEraser,
+                    s.Points.Select(p => new StrokePointData(p.X, p.Y, p.Pressure, 0L)).ToArray()
+                )).ToArray();
+
+                var textDataList = activeP.TextElements.Select(t => new TextElementData(
+                    t.Id,
+                    t.Text,
+                    t.X,
+                    t.Y,
+                    t.Color,
+                    t.FontSize,
+                    t.FontName
+                )).ToArray();
+
+                _transport.SendPacketToAll(new WhiteboardPacket.BoardSync(
+                    state.CurrentBoard.Id,
+                    state.CurrentBoard.Title,
+                    state.CurrentBoard.BackgroundColor,
+                    state.CurrentBoard.IsReadOnly,
+                    strokeDataList,
+                    textDataList
+                ));
+                break;
+            }
+            case WhiteboardPacket.SyncResponse sr:
+            {
+                ApplySyncedElements(sr.Strokes, sr.Texts);
+                break;
+            }
+            case WhiteboardPacket.BoardSync bs:
+            {
+                ApplySyncedBoard(bs);
+                break;
+            }
+        }
+    }
+
+    private void ApplySyncedBoard(WhiteboardPacket.BoardSync bs)
+    {
+        var strokes = bs.Strokes.Select(sd => new Stroke
+        {
+            Id = sd.Id,
+            Color = sd.Color,
+            StrokeWidth = sd.Width,
+            Tool = (CreaVITy.Windows.Domain.Models.DrawingTool)(int)sd.Tool,
+            IsEraser = sd.IsEraser,
+            Points = sd.Points.Select(p => new Point(p.X, p.Y, p.Pressure)).ToList()
+        }).ToList();
+
+        var texts = bs.Texts.Select(td => new TextElement
+        {
+            Id = td.Id,
+            Text = td.Text,
+            X = td.X,
+            Y = td.Y,
+            Color = td.Color,
+            FontSize = td.FontSize,
+            FontName = td.FontName
+        }).ToList();
+
+        UpdateUiState(state =>
+        {
+            var newBoard = new Board
+            {
+                Id = bs.BoardId,
+                Title = bs.Title,
+                BackgroundColor = bs.BgColor,
+                IsReadOnly = bs.IsReadOnly || state.MyAccessReadOnly,
+                Pages = new List<BoardPage>
+                {
+                    new()
+                    {
+                        Strokes = strokes,
+                        TextElements = texts
+                    }
+                },
+                ActivePageIndex = 0
+            };
+            return state with { CurrentBoard = newBoard, BackgroundColor = bs.BgColor };
+        });
+    }
+
+    private void ApplySyncedElements(StrokeData[] strokeDatas, TextElementData[] textDatas)
+    {
+        var strokes = strokeDatas.Select(sd => new Stroke
+        {
+            Id = sd.Id,
+            Color = sd.Color,
+            StrokeWidth = sd.Width,
+            Tool = (CreaVITy.Windows.Domain.Models.DrawingTool)(int)sd.Tool,
+            IsEraser = sd.IsEraser,
+            Points = sd.Points.Select(p => new Point(p.X, p.Y, p.Pressure)).ToList()
+        }).ToList();
+
+        var texts = textDatas.Select(td => new TextElement
+        {
+            Id = td.Id,
+            Text = td.Text,
+            X = td.X,
+            Y = td.Y,
+            Color = td.Color,
+            FontSize = td.FontSize,
+            FontName = td.FontName
+        }).ToList();
+
+        UpdateUiState(state =>
+        {
+            var activeP = state.ActivePage with
+            {
+                Strokes = strokes,
+                TextElements = texts
+            };
+            var pages = state.CurrentBoard.Pages.ToList();
+            if (state.CurrentBoard.ActivePageIndex >= 0 && state.CurrentBoard.ActivePageIndex < pages.Count)
+            {
+                pages[state.CurrentBoard.ActivePageIndex] = activeP;
+            }
+            return state with { CurrentBoard = state.CurrentBoard with { Pages = pages } };
+        });
+    }
+
+    private void UpdateRemoteStrokes()
+    {
+        var remoteList = _remoteStrokesMap.Values.ToList();
+        UpdateUiState(state =>
+        {
+            var activeP = state.ActivePage;
+            var localStrokes = activeP.Strokes.Where(s => !_remoteStrokesMap.ContainsKey(s.Id)).ToList();
+            var mergedPage = activeP with { Strokes = localStrokes.Concat(remoteList).ToList() };
+            var pages = state.CurrentBoard.Pages.ToList();
+            if (state.CurrentBoard.ActivePageIndex >= 0 && state.CurrentBoard.ActivePageIndex < pages.Count)
+            {
+                pages[state.CurrentBoard.ActivePageIndex] = mergedPage;
+            }
+            return state with { CurrentBoard = state.CurrentBoard with { Pages = pages } };
+        });
+    }
 
     #endregion
 }

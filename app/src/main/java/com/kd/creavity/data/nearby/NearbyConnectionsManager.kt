@@ -28,20 +28,29 @@ import com.kd.creavity.data.mesh.MeshRoutingEngine
 import com.kd.creavity.data.mesh.PermissionTicket
 import java.util.UUID
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 class NearbyConnectionsManager(context: Context) {
     private val appContext = context.applicationContext
     private val connectionsClient: ConnectionsClient = Nearby.getConnectionsClient(appContext)
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
     private val SERVICE_ID = "com.kd.creavity.SERVICE_ID"
     private val STRATEGY = Strategy.P2P_CLUSTER
 
     val localNodeId: String = UUID.randomUUID().toString()
     val meshRoutingEngine = MeshRoutingEngine(nodeId = localNodeId, maxDegree = 6)
+    val lanTransport = LanDiscoveryTransport(context, localNodeId, meshRoutingEngine)
 
+    private val _discoveredNearbyEndpoints = MutableStateFlow<List<PeerDevice>>(emptyList())
     private val _discoveredEndpoints = MutableStateFlow<List<PeerDevice>>(emptyList())
     val discoveredEndpoints: StateFlow<List<PeerDevice>> = _discoveredEndpoints.asStateFlow()
 
+    private val _connectedNearbyPeers = MutableStateFlow<List<PeerDevice>>(emptyList())
     private val _connectedPeers = MutableStateFlow<List<PeerDevice>>(emptyList())
     val connectedPeers: StateFlow<List<PeerDevice>> = _connectedPeers.asStateFlow()
 
@@ -53,6 +62,34 @@ class NearbyConnectionsManager(context: Context) {
 
     private val _isDiscovering = MutableStateFlow(false)
     val isDiscovering: StateFlow<Boolean> = _isDiscovering.asStateFlow()
+
+    init {
+        lanTransport.discoveredEndpoints.onEach { lanPeers ->
+            mergeDiscoveredPeers(lanPeers)
+        }.launchIn(coroutineScope)
+
+        lanTransport.connectedPeers.onEach { lanPeers ->
+            mergeConnectedPeers(lanPeers)
+        }.launchIn(coroutineScope)
+
+        lanTransport.incomingPackets.onEach { packet ->
+            _incomingPackets.tryEmit(packet)
+        }.launchIn(coroutineScope)
+    }
+
+    private fun mergeDiscoveredPeers(lanPeers: List<PeerDevice> = emptyList()) {
+        val currentNearby = _discoveredNearbyEndpoints.value
+        val combined = (currentNearby + lanPeers).distinctBy { it.endpointId }
+        val connectedIds = _connectedPeers.value.map { it.endpointId }.toSet()
+        _discoveredEndpoints.value = combined.filter { it.endpointId !in connectedIds }
+    }
+
+    private fun mergeConnectedPeers(lanPeers: List<PeerDevice> = emptyList()) {
+        val currentNearby = _connectedNearbyPeers.value
+        val combined = (currentNearby + lanPeers).distinctBy { it.endpointId }
+        _connectedPeers.value = combined
+        mergeDiscoveredPeers()
+    }
 
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
@@ -101,8 +138,9 @@ class NearbyConnectionsManager(context: Context) {
                 val peer = currentList.find { it.endpointId == endpointId }
                     ?: PeerDevice(endpointId = endpointId, name = "Peer $endpointId")
 
-                _discoveredEndpoints.value = _discoveredEndpoints.value.filter { it.endpointId != endpointId }
-                _connectedPeers.value = _connectedPeers.value.filter { it.endpointId != endpointId } + peer.copy(isConnected = true)
+                _discoveredNearbyEndpoints.value = _discoveredNearbyEndpoints.value.filter { it.endpointId != endpointId }
+                _connectedNearbyPeers.value = _connectedNearbyPeers.value.filter { it.endpointId != endpointId } + peer.copy(isConnected = true)
+                mergeConnectedPeers()
                 meshRoutingEngine.addNeighbor(endpointId)
 
                 // Trigger immediate initial state synchronization
@@ -112,7 +150,8 @@ class NearbyConnectionsManager(context: Context) {
         }
 
         override fun onDisconnected(endpointId: String) {
-            _connectedPeers.value = _connectedPeers.value.filter { it.endpointId != endpointId }
+            _connectedNearbyPeers.value = _connectedNearbyPeers.value.filter { it.endpointId != endpointId }
+            mergeConnectedPeers()
             meshRoutingEngine.removeNeighbor(endpointId)
         }
     }
@@ -120,17 +159,18 @@ class NearbyConnectionsManager(context: Context) {
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
             val peer = PeerDevice(endpointId = endpointId, name = info.endpointName)
-            if (_connectedPeers.value.none { it.endpointId == endpointId } && _discoveredEndpoints.value.none { it.endpointId == endpointId }) {
-                _discoveredEndpoints.value = _discoveredEndpoints.value + peer
-            }
+            _discoveredNearbyEndpoints.value = _discoveredNearbyEndpoints.value.filter { it.endpointId != endpointId } + peer
+            mergeDiscoveredPeers()
         }
 
         override fun onEndpointLost(endpointId: String) {
-            _discoveredEndpoints.value = _discoveredEndpoints.value.filter { it.endpointId != endpointId }
+            _discoveredNearbyEndpoints.value = _discoveredNearbyEndpoints.value.filter { it.endpointId != endpointId }
+            mergeDiscoveredPeers()
         }
     }
 
     fun startAdvertising(deviceName: String) {
+        lanTransport.startAdvertising(deviceName)
         val options = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
         connectionsClient.startAdvertising(
             deviceName,
@@ -140,16 +180,18 @@ class NearbyConnectionsManager(context: Context) {
         ).addOnSuccessListener {
             _isAdvertising.value = true
         }.addOnFailureListener {
-            _isAdvertising.value = false
+            _isAdvertising.value = true // LAN advertising is still active
         }
     }
 
     fun stopAdvertising() {
+        lanTransport.stopAdvertising()
         connectionsClient.stopAdvertising()
         _isAdvertising.value = false
     }
 
     fun startDiscovery() {
+        lanTransport.startDiscovery()
         val options = DiscoveryOptions.Builder()
             .setStrategy(STRATEGY)
             .build()
@@ -160,38 +202,54 @@ class NearbyConnectionsManager(context: Context) {
         ).addOnSuccessListener {
             _isDiscovering.value = true
         }.addOnFailureListener {
-            _isDiscovering.value = false
+            _isDiscovering.value = true // LAN discovery is still active
         }
     }
 
     fun stopDiscovery() {
+        lanTransport.stopDiscovery()
         connectionsClient.stopDiscovery()
         _isDiscovering.value = false
     }
 
     fun connectToPeer(endpointId: String, localName: String) {
-        connectionsClient.requestConnection(localName, endpointId, connectionLifecycleCallback)
+        if (endpointId.startsWith("lan_")) {
+            lanTransport.connectToPeer(endpointId)
+        } else {
+            connectionsClient.requestConnection(localName, endpointId, connectionLifecycleCallback)
+        }
     }
 
     fun sendPacketToAll(packet: WhiteboardPacket, isMutation: Boolean = false, ticket: PermissionTicket? = null) {
-        val connectedList = _connectedPeers.value
+        lanTransport.sendPacketToAll(packet, isMutation, ticket)
+
+        val connectedList = _connectedNearbyPeers.value
         if (connectedList.isEmpty()) return
         val rawBytes = PacketSerializer.serialize(packet)
         val (envelope, targets) = meshRoutingEngine.createOutbound(rawBytes, isMutation, ticket)
-        if (targets.isEmpty()) return
+        val nearbyTargets = targets.filterNot { it.startsWith("lan_") }
+        if (nearbyTargets.isEmpty()) return
         val payload = Payload.fromBytes(envelope.toByteArray())
-        connectionsClient.sendPayload(targets, payload)
+        connectionsClient.sendPayload(nearbyTargets, payload)
     }
 
     fun disconnectFromPeer(endpointId: String) {
-        connectionsClient.disconnectFromEndpoint(endpointId)
-        _connectedPeers.value = _connectedPeers.value.filter { it.endpointId != endpointId }
-        meshRoutingEngine.removeNeighbor(endpointId)
+        if (endpointId.startsWith("lan_")) {
+            lanTransport.disconnectPeer(endpointId)
+        } else {
+            connectionsClient.disconnectFromEndpoint(endpointId)
+            _connectedNearbyPeers.value = _connectedNearbyPeers.value.filter { it.endpointId != endpointId }
+            mergeConnectedPeers()
+            meshRoutingEngine.removeNeighbor(endpointId)
+        }
     }
 
     fun stopAllEndpoints() {
+        lanTransport.stopAll()
         connectionsClient.stopAllEndpoints()
         meshRoutingEngine.clear()
+        _connectedNearbyPeers.value = emptyList()
+        _discoveredNearbyEndpoints.value = emptyList()
         _connectedPeers.value = emptyList()
         _discoveredEndpoints.value = emptyList()
         _isAdvertising.value = false

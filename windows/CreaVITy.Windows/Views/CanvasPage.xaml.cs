@@ -17,6 +17,7 @@ public sealed partial class CanvasPage : Page
     private WhiteboardViewModel _viewModel = null!;
     private readonly List<Point> _currentStrokePoints = new();
     private bool _isDrawing;
+    private string _currentStrokeId = Guid.NewGuid().ToString();
 
     public CanvasPage()
     {
@@ -92,17 +93,31 @@ public sealed partial class CanvasPage : Page
         if (!pt.Properties.IsLeftButtonPressed) return;
 
         _isDrawing = true;
+        _currentStrokeId = Guid.NewGuid().ToString();
+        var point = new Point((float)pt.Position.X, (float)pt.Position.Y, pt.Properties.Pressure);
         _currentStrokePoints.Clear();
-        _currentStrokePoints.Add(new Point((float)pt.Position.X, (float)pt.Position.Y, pt.Properties.Pressure));
+        _currentStrokePoints.Add(point);
+
+        _viewModel.BroadcastStrokeStart(
+            _currentStrokeId,
+            _viewModel.UiState.CurrentColor,
+            _viewModel.UiState.CurrentWidth,
+            _viewModel.UiState.SelectedTool == DrawingTool.Eraser,
+            point
+        );
+
         CanvasView.CapturePointer(e.Pointer);
         CanvasView.Invalidate();
     }
 
     private void CanvasView_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isDrawing) return;
+        if (!_isDrawing || _viewModel == null) return;
         var pt = e.GetCurrentPoint(CanvasView);
-        _currentStrokePoints.Add(new Point((float)pt.Position.X, (float)pt.Position.Y, pt.Properties.Pressure));
+        var point = new Point((float)pt.Position.X, (float)pt.Position.Y, pt.Properties.Pressure);
+        _currentStrokePoints.Add(point);
+
+        _viewModel.BroadcastStrokePoint(_currentStrokeId, point);
         CanvasView.Invalidate();
     }
 
@@ -112,14 +127,18 @@ public sealed partial class CanvasPage : Page
         _isDrawing = false;
         CanvasView.ReleasePointerCapture(e.Pointer);
 
+        _viewModel.BroadcastStrokeEnd(_currentStrokeId);
+
         if (_currentStrokePoints.Count > 0)
         {
             var stroke = new Stroke
             {
+                Id = _currentStrokeId,
                 Points = _currentStrokePoints.ToList(),
                 Color = _viewModel.UiState.CurrentColor,
                 StrokeWidth = _viewModel.UiState.CurrentWidth,
-                Tool = _viewModel.UiState.SelectedTool
+                Tool = _viewModel.UiState.SelectedTool,
+                IsEraser = _viewModel.UiState.SelectedTool == DrawingTool.Eraser
             };
             _viewModel.OnStrokeCompleted(stroke);
             _currentStrokePoints.Clear();
@@ -130,7 +149,11 @@ public sealed partial class CanvasPage : Page
     private void UndoButton_Click(object sender, RoutedEventArgs e) => _viewModel?.Undo();
     private void RedoButton_Click(object sender, RoutedEventArgs e) => _viewModel?.Redo();
     private void SaveButton_Click(object sender, RoutedEventArgs e) => _viewModel?.SaveCurrentBoard();
-    private void ClearButton_Click(object sender, RoutedEventArgs e) => _viewModel?.ClearCanvas();
+    private void ClearButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel?.BroadcastCanvasClear();
+        _viewModel?.ClearCanvas();
+    }
 
     private async void ExportButton_Click(object sender, RoutedEventArgs e)
     {
