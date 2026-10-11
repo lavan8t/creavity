@@ -31,6 +31,9 @@ public enum ModificationType
 /// <summary>Role a peer device plays in a collaborative mesh session.</summary>
 public enum MeshRole { Host, Editor, Viewer }
 
+/// <summary>Theme preset selection.</summary>
+public enum AppThemePreset { Dynamic }
+
 // ---------------------------------------------------------------------------
 // Core drawing primitives
 // ---------------------------------------------------------------------------
@@ -398,7 +401,7 @@ public sealed record Board
 
     /// <summary>Ordered list of pages; always contains at least one.</summary>
     public IReadOnlyList<BoardPage> Pages { get; init; } =
-        new[] { new BoardPage(Name: "Page 1") };
+        new[] { new BoardPage { Name = "Page 1" } };
 
     /// <summary>Zero-based index of the currently active page.</summary>
     public int ActivePageIndex { get; init; } = 0;

@@ -25,6 +25,7 @@ using DrawingTool = CreaVITy.Windows.Domain.Models.DrawingTool;
 using StickyNote = CreaVITy.Windows.Domain.Models.StickyNote;
 using TextElement = CreaVITy.Windows.Domain.Models.TextElement;
 using Point = CreaVITy.Windows.Domain.Models.Point;
+using ImageElement = CreaVITy.Windows.Domain.Models.ImageElement;
 using StorageBoard = CreaVITy.Windows.Data.Storage.Board;
 using StorageBoardPage = CreaVITy.Windows.Data.Storage.BoardPage;
 using StorageStroke = CreaVITy.Windows.Data.Storage.BoardStroke;
@@ -45,7 +46,12 @@ public enum ExportFormat
     PNG,
     SVG,
     CREAVITY,
-    BREVITY
+    BREVITY,
+    Pdf = PDF,
+    Png = PNG,
+    Svg = SVG,
+    Creavity = CREAVITY,
+    Brevity = BREVITY
 }
 
 /// <summary>
@@ -529,13 +535,13 @@ public static class BoardExporter
                 float sw = stroke.StrokeWidth * (isHighlighter ? 3f : (isMarker ? 2f : 1f));
                 var strokeColor = isHighlighter ? ToPdfColor(stroke.Color, 90) : ToPdfColor(stroke.Color, 255);
 
-                using var pen = new XPen(strokeColor, sw)
+                var pen = new XPen(strokeColor, sw)
                 {
                     LineCap = isHighlighter ? XLineCap.Square : XLineCap.Round,
                     LineJoin = XLineJoin.Round
                 };
 
-                using var path = new XGraphicsPath();
+                var path = new XGraphicsPath();
                 path.StartFigure();
 
                 var start = stroke.Points[0];

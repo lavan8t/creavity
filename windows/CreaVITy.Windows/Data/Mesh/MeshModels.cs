@@ -4,7 +4,11 @@ using System.Text;
 
 namespace CreaVITy.Windows.Data.Mesh
 {
-    public enum MeshRole { HOST, EDITOR, VIEWER }
+    public enum MeshRole 
+    { 
+        Host = 0, Editor = 1, Viewer = 2,
+        HOST = 0, EDITOR = 1, VIEWER = 2 
+    }
 
     public record PermissionTicket(
         string DeviceId,

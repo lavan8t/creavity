@@ -767,9 +767,9 @@ public partial class WhiteboardViewModel : ObservableObject
         if (activePage.Strokes.Count > 0 || activePage.TextElements.Count > 0 || activePage.ImageElements.Count > 0)
         {
             RecordMutation(new BoardMutation.ClearPage(
-                previousStrokes: activePage.Strokes,
-                previousTexts: activePage.TextElements,
-                previousImages: activePage.ImageElements
+                PreviousStrokes: activePage.Strokes,
+                PreviousTexts: activePage.TextElements,
+                PreviousImages: activePage.ImageElements
             ));
         }
 
@@ -843,12 +843,12 @@ public partial class WhiteboardViewModel : ObservableObject
         PersistBoard(updatedBoard);
 
         RecordMutation(new BoardMutation.MoveElements(
-            previousStrokes: previousStrokes,
-            newStrokes: movedStrokes,
-            previousTexts: previousTexts,
-            newTexts: movedTexts,
-            previousImages: previousImages,
-            newImages: movedImages
+            PreviousStrokes: previousStrokes,
+            NewStrokes: movedStrokes,
+            PreviousTexts: previousTexts,
+            NewTexts: movedTexts,
+            PreviousImages: previousImages,
+            NewImages: movedImages
         ));
     }
 
@@ -950,10 +950,10 @@ public partial class WhiteboardViewModel : ObservableObject
         PersistBoard(updatedBoard);
 
         RecordMutation(new BoardMutation.RecolorElements(
-            previousStrokes: previousStrokes,
-            newStrokes: updatedStrokes.Where(s => strokeIdSet.Contains(s.Id)).ToList(),
-            previousTexts: previousTexts,
-            newTexts: updatedTexts.Where(t => textIdSet.Contains(t.Id)).ToList()
+            PreviousStrokes: previousStrokes,
+            NewStrokes: updatedStrokes.Where(s => strokeIdSet.Contains(s.Id)).ToList(),
+            PreviousTexts: previousTexts,
+            NewTexts: updatedTexts.Where(t => textIdSet.Contains(t.Id)).ToList()
         ));
     }
 
@@ -1073,10 +1073,10 @@ public partial class WhiteboardViewModel : ObservableObject
         var activePage = state.ActivePage;
 
         RecordMutation(new BoardMutation.RestoreVersion(
-            previousStrokes: activePage.Strokes,
-            newStrokes: snapshot.Strokes,
-            previousTexts: activePage.TextElements,
-            newTexts: snapshot.TextElements
+            PreviousStrokes: activePage.Strokes,
+            NewStrokes: snapshot.Strokes,
+            PreviousTexts: activePage.TextElements,
+            NewTexts: snapshot.TextElements
         ));
 
         var updatedPage = activePage with
