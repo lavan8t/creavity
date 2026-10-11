@@ -21,9 +21,18 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        this.InitializeComponent();
-        _viewModel = new WhiteboardViewModel();
-        _viewModel.PropertyChanged += (s, e) => CanvasView?.Invalidate();
+        try
+        {
+            _viewModel = new WhiteboardViewModel();
+            this.InitializeComponent();
+            _viewModel.PropertyChanged += (s, e) => CanvasView?.Invalidate();
+        }
+        catch (Exception ex)
+        {
+            string logPath = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Desktop), "creavity_crash.txt");
+            System.IO.File.WriteAllText(logPath, "MainWindow ctor: " + ex.ToString());
+            throw;
+        }
     }
 
     private void CanvasView_Draw(CanvasControl sender, CanvasDrawEventArgs args)

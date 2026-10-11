@@ -11,3 +11,7 @@ captures/
 .kotlin/
 local.properties
 
+# .NET artifacts
+bin/
+obj/
+*.user
