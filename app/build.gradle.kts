@@ -1,6 +1,78 @@
 plugins {
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
+}
+
+kotlin {
+    jvmToolchain(17)
+    androidTarget()
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(compose.materialIconsExtended)
+            implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha10")
+            implementation("org.json:json:20240303")
+            implementation(libs.kotlinx.coroutines.core)
+        }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
+            implementation("androidx.fragment:fragment-ktx:1.8.5")
+            implementation(libs.play.services.nearby)
+            implementation(libs.kotlinx.coroutines.android)
+            implementation(libs.kotlinx.coroutines.play.services)
+        }
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.1")
+            }
+        }
+    }
+}
+
+compose.desktop {
+    application {
+        mainClass = "com.kd.creavity.MainKt"
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
+        nativeDistributions {
+            targetFormats(
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
+            )
+            packageName = "CreaVITy"
+            packageVersion = "1.0.0"
+            description = "CreaVITy Infinite Collaborative Whiteboard"
+            copyright = "© 2026 CreaVITy"
+            vendor = "CreaVITy"
+            windows {
+                console = true
+                menu = true
+                shortcut = true
+                dirChooser = true
+                perUserInstall = true
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation(libs.junit)
 }
 
 android {
@@ -10,6 +82,9 @@ android {
     }
     compileSdkMinor = 1
 
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+    sourceSets["main"].res.srcDirs("src/main/res")
+
     defaultConfig {
         applicationId = "com.kd.creavity"
         minSdk = 29
@@ -18,6 +93,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
     buildTypes {
@@ -32,72 +116,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
     }
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a", "x86_64")
-            isUniversalApk = true
-        }
-    }
-    lint {
-        abortOnError = false
-        checkReleaseBuilds = false
-    }
     packaging {
-        jniLibs {
-            useLegacyPackaging = false
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-    }
-}
-
-dependencies {
-    implementation(platform(libs.androidx.compose.bom))
-    implementation("androidx.compose.animation:animation")
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.foundation.layout)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material3.windowsize)
-    implementation(libs.androidx.compose.material3.adaptive)
-    implementation(libs.androidx.compose.material3.adaptive.layout)
-    implementation(libs.androidx.compose.material3.adaptive.navigation)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.play.services.nearby)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.play.services)
-    implementation(libs.androidx.compose.ui.text.googlefonts)
-    implementation(libs.androidx.compose.material.icons.extended)
-
-    val inkVersion = "1.0.0"
-    implementation("androidx.ink:ink-nativeloader:$inkVersion")
-    implementation("androidx.ink:ink-rendering:$inkVersion")
-    implementation("androidx.ink:ink-strokes:$inkVersion")
-    implementation("androidx.ink:ink-authoring-compose:$inkVersion")
-    implementation("androidx.ink:ink-brush-compose:$inkVersion")
-    implementation("androidx.ink:ink-geometry-compose:$inkVersion")
-    implementation("androidx.ink:ink-storage:$inkVersion")
-
-    testImplementation(libs.junit)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 }

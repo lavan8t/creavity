@@ -1,0 +1,88 @@
+package com.kd.creavity.presentation.viewmodel
+
+import com.kd.creavity.presentation.ui.OotbAction
+import kotlinx.coroutines.flow.update
+
+fun WhiteboardViewModel.dispatch(action: OotbAction) {
+    when (action) {
+        is OotbAction.StrokeCompleted -> onStrokeCompleted(action.stroke)
+        is OotbAction.StrokeBroadcastStart -> broadcastStrokeStart(action.id, action.color, action.width, action.isEraser, action.point)
+        is OotbAction.StrokeBroadcastPoint -> broadcastStrokePoint(action.id, action.point)
+        is OotbAction.StrokeBroadcastEnd -> broadcastStrokeEnd(action.id)
+        is OotbAction.TransformCanvas -> onTransform(action.zoomChange, action.focal, action.panChange)
+        is OotbAction.SetCanvasTransform -> setCanvasTransform(action.zoom, action.panOffset)
+        is OotbAction.ResetCanvasTransform -> resetCanvasTransform()
+        is OotbAction.SelectTool -> selectTool(action.tool)
+        is OotbAction.SelectColor -> setPenColor(action.color)
+        is OotbAction.SelectBackgroundColor -> setCanvasBackgroundColor(action.color)
+        is OotbAction.SelectBackgroundPattern -> setBackgroundPattern(action.pattern)
+        is OotbAction.ChangeStrokeWidth -> setStrokeWidth(action.width)
+        is OotbAction.ClearCanvas -> clearCanvas()
+        is OotbAction.AddText -> addTextElement(action.text, action.x, action.y, action.color, action.fontSize, action.fontName)
+        is OotbAction.DeleteStroke -> deleteStrokeById(action.strokeId)
+        is OotbAction.DeleteText -> deleteTextElementById(action.textId)
+        is OotbAction.AddImage -> addImageElement(action.pathOrUri)
+        is OotbAction.DeleteImage -> deleteImageElementById(action.imageId)
+        is OotbAction.MoveElements -> updateMovedElements(action.strokes, action.texts, action.images)
+        is OotbAction.DuplicateElements -> duplicateElements(action.strokeIds, action.textIds)
+        is OotbAction.RecolorElements -> recolorElements(action.strokeIds, action.textIds, action.color)
+        is OotbAction.Undo -> undo()
+        is OotbAction.Redo -> redo()
+        is OotbAction.CreateVersionSnapshot -> createVersionSnapshot(action.name)
+        is OotbAction.RestoreVersionSnapshot -> restoreVersionSnapshot(action.snapshot)
+        is OotbAction.AddNewPage -> addNewPage()
+        is OotbAction.SwitchPage -> switchPage(action.pageIndex)
+        is OotbAction.DeletePage -> deletePage(action.pageIndex)
+        is OotbAction.CreateNewBoard -> createNewBoard(action.title)
+        is OotbAction.SwitchBoard -> switchBoard(action.board)
+        is OotbAction.RenameBoard -> renameBoard(action.boardId, action.newTitle)
+        is OotbAction.DuplicateBoard -> duplicateBoard(action.boardId)
+        is OotbAction.DeleteBoard -> moveBoardToBin(action.boardId)
+        is OotbAction.MoveBoardToBin -> moveBoardToBin(action.boardId)
+        is OotbAction.RestoreBoardFromBin -> restoreBoardFromBin(action.boardId)
+        is OotbAction.DeleteBoardPermanently -> deleteBoardPermanently(action.boardId)
+        is OotbAction.EmptyBin -> emptyBin()
+        is OotbAction.ToggleReadOnlyBoard -> toggleReadOnlyBoard(action.boardId, action.isReadOnly)
+        is OotbAction.StartAdvertising -> startAdvertising(action.deviceName)
+        is OotbAction.StopAdvertising -> stopAdvertising()
+        is OotbAction.StartDiscovery -> startDiscovery()
+        is OotbAction.StopDiscovery -> stopDiscovery()
+        is OotbAction.ConnectPeer -> connectToPeer(action.endpointId, action.localName)
+        is OotbAction.DisconnectPeer -> disconnectPeer(action.endpointId)
+        is OotbAction.SetPeerPermission -> setPeerPermission(action.endpointId, action.isReadOnly)
+        is OotbAction.SetAllPeersPermission -> setAllPeersPermission(action.isReadOnly)
+        is OotbAction.LeaveRoom -> leaveRoom()
+        is OotbAction.ToggleStarBoard -> toggleStarBoard(action.boardId)
+        is OotbAction.AddStickyNote -> addStickyNote(action.note)
+        is OotbAction.DeleteStickyNote -> deleteStickyNoteById(action.noteId)
+        is OotbAction.UpdateDisplayName -> updateDisplayName(action.name)
+        is OotbAction.ToggleHaptics -> setHapticsEnabled(action.enabled)
+        is OotbAction.SetInfiniteCanvas -> toggleInfiniteCanvas(action.enabled)
+        is OotbAction.SetPresentationUrl -> setPresentationUrl(action.url)
+        is OotbAction.SetPresentationMode -> setPresentationMode(action.enabled)
+        is OotbAction.ImportPresentation -> importPresentation(action.pathOrUri)
+        is OotbAction.SetThemeMode -> setThemeMode(action.mode)
+        is OotbAction.UpdateBoardMetadata -> updateBoardMetadata(action.boardId, action.title, action.venue, action.group, action.labels)
+        is OotbAction.CreateFolder -> createFolder(action.folderName)
+        is OotbAction.DeleteFolder -> deleteFolder(action.folderName)
+    }
+}
+
+fun WhiteboardViewModel.createFolder(name: String) {
+    val trimmed = name.trim()
+    if (trimmed.isBlank() || trimmed.equals("Unfiled", ignoreCase = true)) return
+    val updated = _uiState.value.userFolders + trimmed
+    boardManager.saveCustomFolders(updated)
+    _uiState.update { it.copy(userFolders = updated) }
+}
+
+fun WhiteboardViewModel.deleteFolder(name: String) {
+    val trimmed = name.trim()
+    val hasActiveBoards = _uiState.value.savedBoards.any { !it.isInBin && it.group.equals(trimmed, ignoreCase = true) }
+    if (hasActiveBoards) return // Folder not deletable when contents are in it
+    val updated = _uiState.value.userFolders - trimmed
+    boardManager.saveCustomFolders(updated)
+    _uiState.update { it.copy(userFolders = updated) }
+}
+
+
