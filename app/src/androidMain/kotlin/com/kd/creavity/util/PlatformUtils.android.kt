@@ -52,6 +52,10 @@ actual fun decodeImageFile(path: String): ImageBitmap? {
 
 internal var appContext: android.content.Context? = null
 
+fun initAppContext(context: android.content.Context) {
+    appContext = context
+}
+
 actual fun getAppStorageDir(): File {
     val ctx = appContext
     return if (ctx != null) {
