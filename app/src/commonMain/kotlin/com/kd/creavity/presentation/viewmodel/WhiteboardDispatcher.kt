@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.update
 fun WhiteboardViewModel.dispatch(action: OotbAction) {
     when (action) {
         is OotbAction.StrokeCompleted -> onStrokeCompleted(action.stroke)
-        is OotbAction.StrokeBroadcastStart -> broadcastStrokeStart(action.id, action.color, action.width, action.isEraser, action.point)
+        is OotbAction.StrokeBroadcastStart -> broadcastStrokeStart(action.id, action.color, action.width, action.isEraser, action.point, action.tool)
         is OotbAction.StrokeBroadcastPoint -> broadcastStrokePoint(action.id, action.point)
         is OotbAction.StrokeBroadcastEnd -> broadcastStrokeEnd(action.id)
         is OotbAction.TransformCanvas -> onTransform(action.zoomChange, action.focal, action.panChange)

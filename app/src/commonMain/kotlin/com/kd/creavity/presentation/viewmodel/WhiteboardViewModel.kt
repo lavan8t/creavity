@@ -764,8 +764,8 @@ class WhiteboardViewModel(
         peerTransport.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedStrokes, updatedTexts))
     }
 
-    fun broadcastStrokeStart(strokeId: String, color: Long, strokeWidth: Float, isEraser: Boolean, point: Point) {
-        peerTransport.sendPacketToAll(WhiteboardPacket.StrokeStart(strokeId, color, strokeWidth, isEraser, point))
+    fun broadcastStrokeStart(strokeId: String, color: Long, strokeWidth: Float, isEraser: Boolean, point: Point, tool: DrawingTool = DrawingTool.PEN) {
+        peerTransport.sendPacketToAll(WhiteboardPacket.StrokeStart(strokeId, color, strokeWidth, isEraser, point, tool))
     }
 
     fun broadcastStrokePoint(strokeId: String, point: Point) {

@@ -14,7 +14,7 @@ import com.kd.creavity.domain.model.TextElement
 sealed interface OotbAction {
     // Canvas & Inking
     data class StrokeCompleted(val stroke: Stroke) : OotbAction
-    data class StrokeBroadcastStart(val id: String, val color: Long, val width: Float, val isEraser: Boolean, val point: Point) : OotbAction
+    data class StrokeBroadcastStart(val id: String, val color: Long, val width: Float, val isEraser: Boolean, val point: Point, val tool: DrawingTool = DrawingTool.PEN) : OotbAction
     data class StrokeBroadcastPoint(val id: String, val point: Point) : OotbAction
     data class StrokeBroadcastEnd(val id: String) : OotbAction
     data class TransformCanvas(val zoomChange: Float, val focal: Offset = Offset.Zero, val panChange: Offset = Offset.Zero) : OotbAction

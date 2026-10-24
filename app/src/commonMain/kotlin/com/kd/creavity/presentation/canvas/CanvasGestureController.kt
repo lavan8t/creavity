@@ -22,7 +22,7 @@ class CanvasGestureController(
     private val onTransform: (zoomChange: Float, focal: Offset, panChange: Offset) -> Unit,
     private val onTransformStateChanged: (isTransforming: Boolean, touchPoints: List<Offset>) -> Unit,
     private val onStrokeCompleted: (Stroke) -> Unit,
-    private val onStrokeBroadcastStart: (String, Long, Float, Boolean, Point) -> Unit,
+    private val onStrokeBroadcastStart: (String, Long, Float, Boolean, Point, DrawingTool) -> Unit,
     private val onStrokeBroadcastPoint: (String, Point) -> Unit,
     private val onStrokeBroadcastEnd: (String) -> Unit,
     private val onDeleteStroke: (String) -> Unit,
@@ -609,7 +609,8 @@ class CanvasGestureController(
                         currentColor.toArgb().toLong(),
                         currentWidth / zoom,
                         activeToolUsed == DrawingTool.ERASER,
-                        worldPoint
+                        worldPoint,
+                        activeToolUsed
                     )
                 }
                 requestInvalidate()

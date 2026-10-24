@@ -15,14 +15,15 @@ import kotlinx.coroutines.flow.update
 internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) {
     when (packet) {
         is WhiteboardPacket.StrokeStart -> {
-            val peerName = uiState.value.connectedPeers.firstOrNull()?.name ?: "Peer"
+            val peerName = uiState.value.connectedPeers.firstOrNull { it.endpointId == packet.strokeId }?.name
+                ?: uiState.value.connectedPeers.firstOrNull()?.name ?: "Peer"
             val validColor = if (packet.color == 0L || (packet.color and 0xFF000000L) == 0L) 0xFF1B1B1FL else packet.color
             val stroke = Stroke(
                 id = packet.strokeId,
                 points = listOf(packet.point),
                 color = validColor,
                 strokeWidth = packet.strokeWidth,
-                tool = if (packet.isEraser) DrawingTool.ERASER else DrawingTool.PEN,
+                tool = if (packet.isEraser) DrawingTool.ERASER else packet.tool,
                 isEraser = packet.isEraser,
                 author = peerName
             )
@@ -36,8 +37,8 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
                     name = peerName,
                     currentPoint = packet.point,
                     isDrawing = true,
-                    activeTool = if (packet.isEraser) DrawingTool.ERASER else DrawingTool.PEN,
-                    color = packet.color,
+                    activeTool = if (packet.isEraser) DrawingTool.ERASER else packet.tool,
+                    color = validColor,
                     viewport = ViewportBounds(
                         left = packet.point.x - 960f,
                         top = packet.point.y - 540f,
@@ -63,7 +64,7 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
                         currentPoint = packet.point,
                         isDrawing = true,
                         activeTool = existing?.activeTool ?: DrawingTool.PEN,
-                        color = existing?.color ?: packet.point.timestampMs,
+                        color = existing?.color ?: 0xFF1B1B1FL,
                         viewport = ViewportBounds(
                             left = packet.point.x - 960f,
                             top = packet.point.y - 540f,

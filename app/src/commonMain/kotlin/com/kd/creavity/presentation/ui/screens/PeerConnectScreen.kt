@@ -589,6 +589,44 @@ fun PeerConnectScreen(
                     }
                 }
 
+                // Board suggestion when connected
+                if (uiState.connectedPeers.isNotEmpty()) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "You're connected!",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Use an existing board or create a new one to start collaborating.",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilledTonalButton(
+                                        onClick = { onAction(OotbAction.CreateNewBoard()) },
+                                        shape = RoundedCornerShape(50),
+                                        modifier = Modifier.height(36.dp)
+                                    ) {
+                                        MaterialSymbol(name = "add", size = 16.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("New board", fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Disconnect Room Button
                 item {
                     Button(

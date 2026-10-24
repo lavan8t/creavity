@@ -277,7 +277,7 @@ fun CanvasViewportScreen(
                 }
             },
             onStrokeCompleted = { onAction(OotbAction.StrokeCompleted(it)) },
-            onStrokeBroadcastStart = { id, c, w, e, pt -> onAction(OotbAction.StrokeBroadcastStart(id, c, w, e, pt)) },
+            onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(OotbAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
             onStrokeBroadcastPoint = { id, pt -> onAction(OotbAction.StrokeBroadcastPoint(id, pt)) },
             onStrokeBroadcastEnd = { onAction(OotbAction.StrokeBroadcastEnd(it)) },
             onDeleteStroke = { onAction(OotbAction.DeleteStroke(it)) },

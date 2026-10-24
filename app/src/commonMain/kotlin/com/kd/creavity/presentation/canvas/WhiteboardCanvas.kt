@@ -73,7 +73,7 @@ fun WhiteboardCanvas(
     onTransform: (zoomChange: Float, focal: Offset, panChange: Offset) -> Unit,
     onTransformStateChanged: (isTransforming: Boolean, touchPoints: List<Offset>) -> Unit = { _, _ -> },
     onStrokeCompleted: (Stroke) -> Unit,
-    onStrokeBroadcastStart: (String, Long, Float, Boolean, Point) -> Unit,
+    onStrokeBroadcastStart: (String, Long, Float, Boolean, Point, DrawingTool) -> Unit,
     onStrokeBroadcastPoint: (String, Point) -> Unit,
     onStrokeBroadcastEnd: (String) -> Unit,
     onDeleteStroke: (String) -> Unit = {},
@@ -534,16 +534,23 @@ fun WhiteboardCanvas(
                     )
                     drawCircle(
                         color = cursorColor,
-                        radius = 6f / zoom,
+                        radius = 10f / zoom,
                         center = Offset(point.x, point.y)
                     )
                     drawCircle(
                         color = m3Surface,
-                        radius = 2.5f / zoom,
+                        radius = 3f / zoom,
                         center = Offset(point.x, point.y)
                     )
 
-                    val statusText = if (peer.isDrawing) "${peer.name} • drawing" else peer.name
+                    val iconName = when (abs(peer.name.hashCode()) % 4) { 0 -> "edit"; 1 -> "touch_app"; 2 -> "pan_tool"; else -> "mouse" }
+                    drawCircle(
+                        color = m3Surface,
+                        radius = 7f / zoom,
+                        center = Offset(point.x, point.y)
+                    )
+
+                    val statusText = if (peer.isDrawing) "${peer.name.take(6)} • drawing" else peer.name.take(8)
                     val measuredText = textMeasurer.measure(
                         text = AnnotatedString(statusText),
                         style = TextStyle(

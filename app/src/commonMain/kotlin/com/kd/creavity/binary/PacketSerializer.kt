@@ -15,7 +15,8 @@ sealed class WhiteboardPacket {
         val color: Long,
         val strokeWidth: Float,
         val isEraser: Boolean,
-        val point: Point
+        val point: Point,
+        val tool: DrawingTool = DrawingTool.PEN
     ) : WhiteboardPacket()
 
     data class StrokePoint(
@@ -174,13 +175,14 @@ object PacketSerializer {
         return when (packet) {
             is WhiteboardPacket.StrokeStart -> {
                 val idBytes = packet.strokeId.toByteArray(StandardCharsets.UTF_8)
-                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size + 8 + 4 + 1 + 4 + 4 + 4 + 8)
+                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size + 8 + 4 + 1 + 1 + 4 + 4 + 4 + 8)
                 buffer.put(TYPE_STROKE_START)
                 buffer.putShort(idBytes.size.toShort())
                 buffer.put(idBytes)
                 buffer.putLong(packet.color)
                 buffer.putFloat(packet.strokeWidth)
                 buffer.put(if (packet.isEraser) 1.toByte() else 0.toByte())
+                buffer.put(packet.tool.ordinal.toByte())
                 buffer.putFloat(packet.point.x)
                 buffer.putFloat(packet.point.y)
                 buffer.putFloat(packet.point.pressure)
@@ -344,8 +346,10 @@ object PacketSerializer {
                 val color = buffer.long
                 val width = buffer.float
                 val isEraser = buffer.get() == 1.toByte()
+                val toolOrdinal = buffer.get().toInt()
+                val tool = DrawingTool.entries.getOrElse(toolOrdinal) { DrawingTool.PEN }
                 val pt = Point(buffer.float, buffer.float, buffer.float, buffer.long)
-                WhiteboardPacket.StrokeStart(id, color, width, isEraser, pt)
+                WhiteboardPacket.StrokeStart(id, color, width, isEraser, pt, tool)
             }
             TYPE_STROKE_POINT -> {
                 val idLength = buffer.short.toInt()
