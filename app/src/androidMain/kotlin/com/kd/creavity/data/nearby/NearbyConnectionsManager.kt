@@ -271,12 +271,17 @@ class NearbyConnectionsManager(context: Context) : PeerTransport {
 
         val connectedList = _connectedNearbyPeers.value
         if (connectedList.isEmpty()) return
-        val rawBytes = PacketSerializer.serialize(packet)
-        val (envelope, targets) = meshRoutingEngine.createOutbound(rawBytes, isMutation, null)
-        val nearbyTargets = targets.filterNot { it.startsWith("lan_") }
-        if (nearbyTargets.isEmpty()) return
-        val payload = Payload.fromBytes(envelope.toByteArray())
-        connectionsClient.sendPayload(nearbyTargets, payload)
+        runCatching {
+            val rawBytes = PacketSerializer.serialize(packet)
+            val (envelope, targets) = meshRoutingEngine.createOutbound(rawBytes, isMutation, null)
+            val nearbyTargets = targets.filterNot { it.startsWith("lan_") }
+            if (nearbyTargets.isEmpty()) return
+            val envBytes = envelope.toByteArray()
+            if (envBytes.size <= 32768) {
+                val payload = Payload.fromBytes(envBytes)
+                connectionsClient.sendPayload(nearbyTargets, payload)
+            }
+        }
     }
 
     override fun sendPacketToPeer(endpointId: String, packet: WhiteboardPacket, isMutation: Boolean, ticket: Long) {
@@ -284,9 +289,14 @@ class NearbyConnectionsManager(context: Context) : PeerTransport {
             lanTransport.sendPacketToPeer(endpointId, packet, isMutation, ticket)
             return
         }
-        val rawBytes = PacketSerializer.serialize(packet)
-        val (envelope, _) = meshRoutingEngine.createOutbound(rawBytes, isMutation, null)
-        val payload = Payload.fromBytes(envelope.toByteArray())
-        connectionsClient.sendPayload(listOf(endpointId), payload)
+        runCatching {
+            val rawBytes = PacketSerializer.serialize(packet)
+            val (envelope, _) = meshRoutingEngine.createOutbound(rawBytes, isMutation, null)
+            val envBytes = envelope.toByteArray()
+            if (envBytes.size <= 32768) {
+                val payload = Payload.fromBytes(envBytes)
+                connectionsClient.sendPayload(listOf(endpointId), payload)
+            }
+        }
     }
 }

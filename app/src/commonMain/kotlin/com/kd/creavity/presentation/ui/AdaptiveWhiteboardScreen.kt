@@ -8,13 +8,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -67,17 +74,30 @@ fun AdaptiveWhiteboardScreen(
     }
 
     val latestUiState by rememberUpdatedState(uiState)
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     // Keyboard Shortcuts for Desktop / Windows / Stylus Keys
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .focusRequester(focusRequester)
+            .focusable()
             .onKeyEvent { keyEvent ->
+                if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
+
                 if (keyEvent.isCtrlPressed) {
                     when (keyEvent.key) {
                         Key.Z -> {
-                            onAction(BoardAction.Undo)
+                            if (keyEvent.isShiftPressed) {
+                                onAction(BoardAction.Redo)
+                            } else {
+                                onAction(BoardAction.Undo)
+                            }
                             true
                         }
                         Key.Y -> {
@@ -104,6 +124,10 @@ fun AdaptiveWhiteboardScreen(
                             onAction(BoardAction.SelectTool(DrawingTool.TEXT))
                             true
                         }
+                        Key.V, Key.S -> {
+                            onAction(BoardAction.SelectTool(DrawingTool.SELECT))
+                            true
+                        }
                         Key.R -> {
                             onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
                             true
@@ -112,11 +136,14 @@ fun AdaptiveWhiteboardScreen(
                             onAction(BoardAction.SelectTool(DrawingTool.CIRCLE))
                             true
                         }
+                        Key.Escape -> {
+                            onAction(BoardAction.SelectTool(DrawingTool.PEN))
+                            true
+                        }
                         else -> false
                     }
                 }
             }
-            .focusable()
     ) {
         val slideSpring = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(
             dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,

@@ -2,6 +2,22 @@ package com.kd.creavity.presentation.ui.components
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowRightAlt
+import androidx.compose.material.icons.automirrored.outlined.NoteAdd
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -161,8 +177,8 @@ fun MaterialSymbol(
         "edit_outline" -> Icons.Outlined.Edit
         "highlighter", "ink_highlighter" -> if (filled) ink_highlighter_filled else ink_highlighter
         "line", "horizontal_rule" -> if (filled) Icons.Filled.HorizontalRule else Icons.Outlined.HorizontalRule
-        "arrow", "arrow_forward" -> if (filled) Icons.Filled.ArrowForward else Icons.Outlined.ArrowForward
-        "arrow_right_alt" -> if (filled) Icons.Filled.ArrowRightAlt else Icons.Outlined.ArrowRightAlt
+        "arrow", "arrow_forward" -> if (filled) Icons.AutoMirrored.Filled.ArrowForward else Icons.AutoMirrored.Outlined.ArrowForward
+        "arrow_right_alt" -> if (filled) Icons.AutoMirrored.Filled.ArrowRightAlt else Icons.AutoMirrored.Outlined.ArrowRightAlt
         "arrow_upward", "north" -> Icons.Default.ArrowUpward
         "arrow_downward", "south" -> Icons.Default.ArrowDownward
         "rectangle", "crop_square", "filter_none" -> if (filled) Icons.Filled.Rectangle else Icons.Outlined.Rectangle
@@ -182,8 +198,8 @@ fun MaterialSymbol(
         "checklist" -> Icons.Default.Checklist
         "check_circle" -> Icons.Filled.CheckCircle
         "menu" -> if (filled) Icons.Filled.Menu else Icons.Outlined.Menu
-        "undo" -> if (filled) Icons.Filled.Undo else Icons.Outlined.Undo
-        "redo" -> if (filled) Icons.Filled.Redo else Icons.Outlined.Redo
+        "undo" -> if (filled) Icons.AutoMirrored.Filled.Undo else Icons.AutoMirrored.Outlined.Undo
+        "redo" -> if (filled) Icons.AutoMirrored.Filled.Redo else Icons.AutoMirrored.Outlined.Redo
         "restart_alt" -> if (filled) Icons.Filled.RestartAlt else Icons.Outlined.RestartAlt
         "chevron_left" -> if (filled) Icons.Filled.ChevronLeft else Icons.Outlined.ChevronLeft
         "chevron_right" -> if (filled) Icons.Filled.ChevronRight else Icons.Outlined.ChevronRight
@@ -191,7 +207,7 @@ fun MaterialSymbol(
         "delete", "bin", "trash", "delete_outline" -> if (filled) Icons.Filled.Delete else Icons.Outlined.Delete
         "delete_sweep" -> if (filled) Icons.Filled.DeleteSweep else Icons.Outlined.DeleteSweep
         "close" -> if (filled) Icons.Filled.Close else Icons.Outlined.Close
-        "arrow_back", "back" -> if (filled) Icons.Filled.ArrowBack else Icons.Outlined.ArrowBack
+        "arrow_back", "back" -> if (filled) Icons.AutoMirrored.Filled.ArrowBack else Icons.AutoMirrored.Outlined.ArrowBack
         "copy", "content_copy" -> if (filled) Icons.Filled.ContentCopy else Icons.Outlined.ContentCopy
         "palette" -> if (filled) Icons.Filled.Palette else Icons.Outlined.Palette
         "settings", "tune" -> if (filled) Icons.Filled.Settings else Icons.Outlined.Settings
@@ -218,13 +234,13 @@ fun MaterialSymbol(
         "auto_awesome" -> if (filled) Icons.Filled.AutoAwesome else Icons.Outlined.AutoAwesome
         "more_vert", "dots", "more" -> if (filled) Icons.Filled.MoreVert else Icons.Outlined.MoreVert
         "star", "favorite", "star_outline" -> if (filled) Icons.Filled.Star else Icons.Outlined.StarOutline
-        "note_add", "file_present" -> if (filled) Icons.Filled.NoteAdd else Icons.Outlined.NoteAdd
-        "sticky_note_2" -> if (filled) Icons.Filled.StickyNote2 else Icons.Outlined.StickyNote2
+        "note_add", "file_present" -> if (filled) Icons.AutoMirrored.Filled.NoteAdd else Icons.AutoMirrored.Outlined.NoteAdd
+        "sticky_note_2" -> if (filled) Icons.AutoMirrored.Filled.StickyNote2 else Icons.AutoMirrored.Outlined.StickyNote2
         "image" -> if (filled) Icons.Filled.Image else Icons.Outlined.Image
         "slideshow" -> if (filled) Icons.Filled.Slideshow else Icons.Outlined.Slideshow
         "flare" -> if (filled) Icons.Filled.Flare else Icons.Outlined.Flare
         "grid_view", "view_module" -> if (filled) Icons.Filled.GridView else Icons.Outlined.GridView
-        "view_list" -> if (filled) Icons.Filled.ViewList else Icons.Outlined.ViewList
+        "view_list" -> if (filled) Icons.AutoMirrored.Filled.ViewList else Icons.AutoMirrored.Outlined.ViewList
         "check" -> if (filled) Icons.Filled.Check else Icons.Outlined.Check
         else -> if (filled) Icons.Filled.Circle else Icons.Outlined.Circle
     }

@@ -10,9 +10,20 @@ import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
 import com.kd.creavity.domain.model.ViewportBounds
+import com.kd.creavity.domain.model.ImageElement
+import com.kd.creavity.util.getAppStorageDir
+import java.io.File
 import kotlinx.coroutines.flow.update
 
 internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) {
+    if (packet is WhiteboardPacket.BoardSync) {
+        hostOwnedBoardId = packet.boardId
+    } else if (packet !is WhiteboardPacket.SyncRequest && packet !is WhiteboardPacket.SyncResponse && packet !is WhiteboardPacket.PermissionUpdate) {
+        val hostBoard = hostOwnedBoardId
+        if (hostBoard != null && uiState.value.currentBoard.id != hostBoard) {
+            return
+        }
+    }
     when (packet) {
         is WhiteboardPacket.StrokeStart -> {
             val peerName = uiState.value.connectedPeers.firstOrNull { it.endpointId == packet.strokeId }?.name
@@ -102,6 +113,23 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
         is WhiteboardPacket.StickyNoteDelete -> {
             deleteStickyNoteLocally(packet.stickyNoteId)
         }
+        is WhiteboardPacket.ImageAdd -> {
+            addImageLocally(
+                id = packet.imageId,
+                x = packet.x,
+                y = packet.y,
+                width = packet.width,
+                height = packet.height,
+                author = packet.author,
+                imageData = packet.imageData
+            )
+        }
+        is WhiteboardPacket.ImageDelete -> {
+            deleteImageLocally(packet.imageId)
+        }
+        is WhiteboardPacket.ImageMove -> {
+            moveImageLocally(packet.imageId, packet.x, packet.y)
+        }
         is WhiteboardPacket.ViewportPresence -> {
             _uiState.update { state ->
                 val presences = state.livePeerPresences.toMutableMap()
@@ -136,6 +164,27 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
                     textElements = activeP.textElements
                 )
             )
+            activeP.stickyNotes.forEach { note ->
+                peerTransport.sendPacketToAll(WhiteboardPacket.StickyNoteAdd(note))
+            }
+            activeP.imageElements.forEach { img ->
+                runCatching {
+                    val file = File(img.path)
+                    if (file.exists()) {
+                        peerTransport.sendPacketToAll(
+                            WhiteboardPacket.ImageAdd(
+                                imageId = img.id,
+                                x = img.x,
+                                y = img.y,
+                                width = img.width,
+                                height = img.height,
+                                author = img.author,
+                                imageData = file.readBytes()
+                            )
+                        )
+                    }
+                }
+            }
         }
         is WhiteboardPacket.SyncResponse -> {
             _uiState.update { state ->
@@ -247,6 +296,75 @@ internal fun WhiteboardViewModel.deleteStickyNoteLocally(noteId: String) {
         val activePage = state.activePage.copy(stickyNotes = state.activePage.stickyNotes.filterNot { it.id == noteId })
         val updatedPages = state.currentBoard.pages.toMutableList().apply {
             this[state.currentBoard.activePageIndex] = activePage
+        }
+        state.copy(currentBoard = state.currentBoard.copy(pages = updatedPages))
+    }
+}
+
+internal fun WhiteboardViewModel.addImageLocally(
+    id: String,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    author: String,
+    imageData: ByteArray
+) {
+    val imagesDir = File(getAppStorageDir(), "images").apply { mkdirs() }
+    val localFile = File(imagesDir, "img_${id}.jpg")
+    runCatching {
+        if (!localFile.exists() || localFile.length() != imageData.size.toLong()) {
+            localFile.writeBytes(imageData)
+        }
+    }
+
+    val newImg = ImageElement(
+        id = id,
+        path = localFile.absolutePath,
+        x = x,
+        y = y,
+        width = width,
+        height = height,
+        author = author
+    )
+
+    _uiState.update { state ->
+        val activePage = state.activePage
+        val existingIndex = activePage.imageElements.indexOfFirst { it.id == id }
+        val updatedImages = if (existingIndex >= 0) {
+            activePage.imageElements.toMutableList().apply { this[existingIndex] = newImg }
+        } else {
+            activePage.imageElements + newImg
+        }
+        val updatedPage = activePage.copy(imageElements = updatedImages)
+        val updatedPages = state.currentBoard.pages.toMutableList().apply {
+            this[state.currentBoard.activePageIndex] = updatedPage
+        }
+        state.copy(currentBoard = state.currentBoard.copy(pages = updatedPages))
+    }
+}
+
+internal fun WhiteboardViewModel.deleteImageLocally(imageId: String) {
+    _uiState.update { state ->
+        val activePage = state.activePage
+        val updatedImages = activePage.imageElements.filterNot { it.id == imageId }
+        val updatedPage = activePage.copy(imageElements = updatedImages)
+        val updatedPages = state.currentBoard.pages.toMutableList().apply {
+            this[state.currentBoard.activePageIndex] = updatedPage
+        }
+        state.copy(currentBoard = state.currentBoard.copy(pages = updatedPages))
+    }
+}
+
+internal fun WhiteboardViewModel.moveImageLocally(imageId: String, x: Float, y: Float) {
+    _uiState.update { state ->
+        val activePage = state.activePage
+        val updatedImages = activePage.imageElements.map {
+            if (it.id == imageId) it.copy(x = x, y = y) else it
+        }
+        val updatedPage = activePage.copy(imageElements = updatedImages)
+        val updatedPages = state.currentBoard.pages.toMutableList().apply {
+            this[state.currentBoard.activePageIndex] = updatedPage
         }
         state.copy(currentBoard = state.currentBoard.copy(pages = updatedPages))
     }

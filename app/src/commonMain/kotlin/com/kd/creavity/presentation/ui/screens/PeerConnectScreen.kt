@@ -110,6 +110,7 @@ private fun parseEmojiAndName(raw: String): Pair<String, String> {
     return Pair(fallbackEmoji, trimmed)
 }
 
+@Suppress("DEPRECATION")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeerConnectScreen(

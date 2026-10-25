@@ -195,7 +195,8 @@ data class PeerDevice(
     val name: String,
     val isConnected: Boolean = false,
     val isReadOnly: Boolean = false,
-    val role: com.kd.creavity.data.mesh.MeshRole = com.kd.creavity.data.mesh.MeshRole.VIEWER
+    val role: com.kd.creavity.data.mesh.MeshRole = com.kd.creavity.data.mesh.MeshRole.VIEWER,
+    val boardId: String = ""
 )
 
 data class RoomState(

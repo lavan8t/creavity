@@ -33,6 +33,43 @@ sealed class WhiteboardPacket {
     data class StickyNoteAdd(val stickyNote: StickyNote) : WhiteboardPacket()
     data class StickyNoteDelete(val stickyNoteId: String) : WhiteboardPacket()
 
+    data class ImageAdd(
+        val imageId: String,
+        val x: Float,
+        val y: Float,
+        val width: Float,
+        val height: Float,
+        val author: String = "You",
+        val imageData: ByteArray
+    ) : WhiteboardPacket() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is ImageAdd) return false
+            return imageId == other.imageId &&
+                    x == other.x &&
+                    y == other.y &&
+                    width == other.width &&
+                    height == other.height &&
+                    author == other.author &&
+                    imageData.contentEquals(other.imageData)
+        }
+
+        override fun hashCode(): Int {
+            var result = imageId.hashCode()
+            result = 31 * result + x.hashCode()
+            result = 31 * result + y.hashCode()
+            result = 31 * result + width.hashCode()
+            result = 31 * result + height.hashCode()
+            result = 31 * result + author.hashCode()
+            result = 31 * result + imageData.contentHashCode()
+            return result
+        }
+    }
+
+    data class ImageDelete(val imageId: String) : WhiteboardPacket()
+
+    data class ImageMove(val imageId: String, val x: Float, val y: Float) : WhiteboardPacket()
+
     data class ViewportPresence(
         val endpointId: String,
         val name: String,
@@ -77,6 +114,9 @@ object PacketSerializer {
     private const val TYPE_STICKY_NOTE_ADD: Byte = 12
     private const val TYPE_STICKY_NOTE_DELETE: Byte = 13
     private const val TYPE_VIEWPORT_PRESENCE: Byte = 14
+    private const val TYPE_IMAGE_ADD: Byte = 15
+    private const val TYPE_IMAGE_DELETE: Byte = 16
+    private const val TYPE_IMAGE_MOVE: Byte = 17
 
     private fun serializeStrokes(strokes: List<Stroke>): List<ByteArray> {
         return strokes.map { stroke ->
@@ -337,6 +377,42 @@ object PacketSerializer {
                 buffer.put(if (packet.isReadOnly) 1.toByte() else 0.toByte())
                 buffer.array()
             }
+            is WhiteboardPacket.ImageAdd -> {
+                val idBytes = packet.imageId.toByteArray(StandardCharsets.UTF_8)
+                val authorBytes = packet.author.toByteArray(StandardCharsets.UTF_8)
+                val totalSize = 1 + 2 + idBytes.size + 4 + 4 + 4 + 4 + 2 + authorBytes.size + 4 + packet.imageData.size
+                val buffer = ByteBuffer.allocate(totalSize)
+                buffer.put(TYPE_IMAGE_ADD)
+                buffer.putShort(idBytes.size.toShort())
+                buffer.put(idBytes)
+                buffer.putFloat(packet.x)
+                buffer.putFloat(packet.y)
+                buffer.putFloat(packet.width)
+                buffer.putFloat(packet.height)
+                buffer.putShort(authorBytes.size.toShort())
+                buffer.put(authorBytes)
+                buffer.putInt(packet.imageData.size)
+                buffer.put(packet.imageData)
+                buffer.array()
+            }
+            is WhiteboardPacket.ImageDelete -> {
+                val idBytes = packet.imageId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size)
+                buffer.put(TYPE_IMAGE_DELETE)
+                buffer.putShort(idBytes.size.toShort())
+                buffer.put(idBytes)
+                buffer.array()
+            }
+            is WhiteboardPacket.ImageMove -> {
+                val idBytes = packet.imageId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size + 4 + 4)
+                buffer.put(TYPE_IMAGE_MOVE)
+                buffer.putShort(idBytes.size.toShort())
+                buffer.put(idBytes)
+                buffer.putFloat(packet.x)
+                buffer.putFloat(packet.y)
+                buffer.array()
+            }
         }
     }
 
@@ -513,6 +589,52 @@ object PacketSerializer {
                     color = color,
                     viewport = ViewportBounds(left = left, top = top, right = right, bottom = bottom)
                 )
+            }
+            TYPE_IMAGE_ADD -> {
+                val idLength = buffer.short.toInt()
+                val idBytes = ByteArray(idLength)
+                buffer.get(idBytes)
+                val id = String(idBytes, StandardCharsets.UTF_8)
+
+                val x = buffer.float
+                val y = buffer.float
+                val width = buffer.float
+                val height = buffer.float
+
+                val authorLength = buffer.short.toInt()
+                val authorBytes = ByteArray(authorLength)
+                buffer.get(authorBytes)
+                val author = String(authorBytes, StandardCharsets.UTF_8)
+
+                val dataLength = buffer.int
+                val dataBytes = ByteArray(dataLength)
+                buffer.get(dataBytes)
+
+                WhiteboardPacket.ImageAdd(
+                    imageId = id,
+                    x = x,
+                    y = y,
+                    width = width,
+                    height = height,
+                    author = author,
+                    imageData = dataBytes
+                )
+            }
+            TYPE_IMAGE_DELETE -> {
+                val idLength = buffer.short.toInt()
+                val idBytes = ByteArray(idLength)
+                buffer.get(idBytes)
+                val id = String(idBytes, StandardCharsets.UTF_8)
+                WhiteboardPacket.ImageDelete(id)
+            }
+            TYPE_IMAGE_MOVE -> {
+                val idLength = buffer.short.toInt()
+                val idBytes = ByteArray(idLength)
+                buffer.get(idBytes)
+                val id = String(idBytes, StandardCharsets.UTF_8)
+                val x = buffer.float
+                val y = buffer.float
+                WhiteboardPacket.ImageMove(id, x, y)
             }
             else -> null
         }

@@ -59,6 +59,12 @@ class WhiteboardViewModel(
     val uiState: StateFlow<WhiteboardUiState> = _uiState.asStateFlow()
 
     internal val remoteStrokesMap = mutableMapOf<String, Stroke>()
+    var hostOwnedBoardId: String? = null
+
+    fun canBroadcastSessionEdits(): Boolean {
+        val host = hostOwnedBoardId ?: return true
+        return _uiState.value.currentBoard.id == host
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) { loadSavedBoards() }
@@ -72,8 +78,16 @@ class WhiteboardViewModel(
         peerTransport.isDiscovering.onEach { isDisc -> _uiState.update { it.copy(isDiscovering = isDisc) } }.launchIn(viewModelScope)
 
         peerTransport.connectedPeers.onEach { peers ->
+            val distinct = peers.distinctBy { it.endpointId }
+            if (distinct.isNotEmpty()) {
+                distinct.forEach { appSettings.addKnownPeer(it.name) }
+                if (hostOwnedBoardId == null) {
+                    hostOwnedBoardId = _uiState.value.currentBoard.id
+                }
+            } else if (!_uiState.value.isAdvertising) {
+                hostOwnedBoardId = null
+            }
             _uiState.update { state ->
-                val distinct = peers.distinctBy { it.endpointId }
                 val connectedIds = distinct.map { it.endpointId }.toSet()
                 val code = if (distinct.isNotEmpty()) state.roomCode ?: generateRoomCode() else if (state.isAdvertising) state.roomCode else null
                 state.copy(connectedPeers = distinct, discoveredPeers = state.discoveredPeers.filter { it.endpointId !in connectedIds }, roomCode = code)
@@ -81,9 +95,23 @@ class WhiteboardViewModel(
         }.launchIn(viewModelScope)
 
         peerTransport.discoveredPeers.onEach { peers ->
-            _uiState.update { state ->
-                val connectedIds = state.connectedPeers.map { it.endpointId }.toSet()
-                state.copy(discoveredPeers = peers.filter { it.endpointId !in connectedIds }.distinctBy { it.endpointId })
+            val state = _uiState.value
+            val connectedIds = state.connectedPeers.map { it.endpointId }.toSet()
+            _uiState.update { s ->
+                s.copy(discoveredPeers = peers.filter { it.endpointId !in connectedIds }.distinctBy { it.endpointId })
+            }
+
+            if (appSettings.autoConnectSameBoard && state.connectedPeers.isEmpty() && !state.isAdvertising) {
+                val currentBoardId = state.currentBoard.id
+                val match = peers.find { peer ->
+                    peer.endpointId !in connectedIds &&
+                            peer.boardId.isNotBlank() &&
+                            peer.boardId == currentBoardId &&
+                            appSettings.isKnownPeer(peer.name)
+                }
+                if (match != null) {
+                    connectToPeer(match.endpointId, state.displayName)
+                }
             }
         }.launchIn(viewModelScope)
 
@@ -216,7 +244,10 @@ class WhiteboardViewModel(
             boardManager.saveBoard(updatedTarget)
         }
 
-        if (_uiState.value.connectedPeers.isNotEmpty()) {
+        val isHost = hostOwnedBoardId == null || hostOwnedBoardId == current.id
+        if (_uiState.value.connectedPeers.isNotEmpty() && isHost) {
+            hostOwnedBoardId = updatedTarget.id
+            (peerTransport as? com.kd.creavity.data.nearby.LanDiscoveryTransport)?.activeBoardId = updatedTarget.id
             val activeP = updatedTarget.pages.getOrElse(updatedTarget.activePageIndex) { BoardPage() }
             peerTransport.sendPacketToAll(
                 WhiteboardPacket.BoardSync(
@@ -610,6 +641,20 @@ class WhiteboardViewModel(
                     val updatedBoard = state.currentBoard.copy(pages = updatedPages, modifiedAt = System.currentTimeMillis(), lastAccessedAt = System.currentTimeMillis())
                     persistBoard(updatedBoard)
                     recordMutation(BoardMutation.AddImage(newImg))
+
+                    val bytes = imageFile.readBytes()
+                    peerTransport.sendPacketToAll(
+                        WhiteboardPacket.ImageAdd(
+                            imageId = newImg.id,
+                            x = newImg.x,
+                            y = newImg.y,
+                            width = newImg.width,
+                            height = newImg.height,
+                            author = newImg.author,
+                            imageData = bytes
+                        ),
+                        isMutation = true
+                    )
                 }
             } catch (_: Exception) {}
         }
@@ -629,6 +674,10 @@ class WhiteboardViewModel(
         if (deletedImg != null) {
             recordMutation(BoardMutation.DeleteImage(deletedImg))
         }
+        peerTransport.sendPacketToAll(
+            WhiteboardPacket.ImageDelete(imageId),
+            isMutation = true
+        )
     }
 
     fun disconnectPeer(endpointId: String) {
@@ -690,6 +739,12 @@ class WhiteboardViewModel(
         )
 
         peerTransport.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedStrokes, updatedTexts))
+        movedImages.forEach { img ->
+            peerTransport.sendPacketToAll(
+                WhiteboardPacket.ImageMove(img.id, img.x, img.y),
+                isMutation = true
+            )
+        }
     }
 
     fun duplicateElements(strokeIds: List<String>, textIds: List<String>) {
@@ -769,14 +824,17 @@ class WhiteboardViewModel(
     }
 
     fun broadcastStrokeStart(strokeId: String, color: Long, strokeWidth: Float, isEraser: Boolean, point: Point, tool: DrawingTool = DrawingTool.PEN) {
+        if (!canBroadcastSessionEdits()) return
         peerTransport.sendPacketToAll(WhiteboardPacket.StrokeStart(strokeId, color, strokeWidth, isEraser, point, tool))
     }
 
     fun broadcastStrokePoint(strokeId: String, point: Point) {
+        if (!canBroadcastSessionEdits()) return
         peerTransport.sendPacketToAll(WhiteboardPacket.StrokePoint(strokeId, point))
     }
 
     fun broadcastStrokeEnd(strokeId: String) {
+        if (!canBroadcastSessionEdits()) return
         peerTransport.sendPacketToAll(WhiteboardPacket.StrokeEnd(strokeId))
     }
 
@@ -893,6 +951,8 @@ class WhiteboardViewModel(
 
     fun startAdvertising(deviceName: String) {
         val roomCode = generateRoomCode()
+        hostOwnedBoardId = _uiState.value.currentBoard.id
+        (peerTransport as? com.kd.creavity.data.nearby.LanDiscoveryTransport)?.activeBoardId = hostOwnedBoardId ?: ""
         _uiState.update { it.copy(roomCode = roomCode) }
         val nameToUse = deviceName.ifBlank { _uiState.value.displayName }
         peerTransport.startAdvertising(nameToUse, roomCode)

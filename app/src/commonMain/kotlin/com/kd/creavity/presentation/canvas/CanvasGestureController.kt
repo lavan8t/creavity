@@ -148,6 +148,34 @@ class CanvasGestureController(
             return true
         }
 
+        // 1.5. Mouse Right-Click handling (Canvas Pan on drag, Deselect on click)
+        if (event.activePointer.isSecondaryButton) {
+            discardActiveStroke()
+            when (event.action) {
+                CanvasPointerAction.DOWN -> {
+                    lastMidX = event.x
+                    lastMidY = event.y
+                }
+                CanvasPointerAction.MOVE -> {
+                    val dx = event.x - lastMidX
+                    val dy = event.y - lastMidY
+                    onTransform(1.0f, Offset.Zero, Offset(dx, dy))
+                    lastMidX = event.x
+                    lastMidY = event.y
+                }
+                CanvasPointerAction.UP -> {
+                    if (selectedStrokeIds.isNotEmpty() || selectedTextIds.isNotEmpty() || selectedImageIds.isNotEmpty()) {
+                        selectedStrokeIds.clear()
+                        selectedTextIds.clear()
+                        selectedImageIds.clear()
+                        notifySelectionChanged(strokes, textElements, imageElements)
+                    }
+                }
+                else -> {}
+            }
+            return true
+        }
+
         // 2. Stylus button inspection
         val stylusPressed = StylusInputHandler.isStylusButtonPressed(event)
         val eraserTip = StylusInputHandler.isEraserTip(event)

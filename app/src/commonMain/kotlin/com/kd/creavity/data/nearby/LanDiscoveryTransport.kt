@@ -98,6 +98,8 @@ class LanDiscoveryTransport(
     private val _incomingPackets = MutableSharedFlow<WhiteboardPacket>(extraBufferCapacity = 128)
     override val incomingPackets: SharedFlow<WhiteboardPacket> = _incomingPackets.asSharedFlow()
 
+    var activeBoardId: String = ""
+
     private data class DiscoveredLanPeer(
         val endpointId: String,
         val name: String,
@@ -105,7 +107,8 @@ class LanDiscoveryTransport(
         val port: Int,
         val roomCode: String,
         val role: MeshRole,
-        val lastSeenMs: Long
+        val lastSeenMs: Long,
+        val boardId: String = ""
     )
 
     override fun startAdvertising(deviceName: String, roomCode: String) {
@@ -123,7 +126,7 @@ class LanDiscoveryTransport(
                 val mcastAddr = InetAddress.getByName(MULTICAST_GROUP)
 
                 while (isActive) {
-                    val beacon = "$BEACON_MAGIC\n$localNodeId\n$deviceName\n$roomCode\n$boundTcpPort\nHOST"
+                    val beacon = "$BEACON_MAGIC\n$localNodeId\n$deviceName\n$roomCode\n$boundTcpPort\nHOST\n$activeBoardId"
                     val bytes = beacon.toByteArray(StandardCharsets.UTF_8)
                     sendBeacon(bytes, udpSocket, mcastSocket, mcastAddr)
                     delay(1500)
@@ -257,6 +260,7 @@ class LanDiscoveryTransport(
                         val roomCode = lines[3].trim()
                         val remotePort = lines[4].trim().toIntOrNull() ?: DEFAULT_TCP_PORT
                         val roleStr = lines[5].trim()
+                        val boardId = if (lines.size >= 7) lines[6].trim() else ""
                         val rawIp = packet.address.hostAddress ?: continue
                         val ip = rawIp.substringBefore('%')
                         val endpointId = "lan_${ip}_$remotePort"
@@ -269,7 +273,8 @@ class LanDiscoveryTransport(
                             port = remotePort,
                             roomCode = roomCode,
                             role = role,
-                            lastSeenMs = System.currentTimeMillis()
+                            lastSeenMs = System.currentTimeMillis(),
+                            boardId = boardId
                         )
                         updateDiscoveredEndpoints()
                     }
@@ -483,7 +488,7 @@ class LanDiscoveryTransport(
 
     private fun updateDiscoveredEndpoints() {
         _discoveredEndpoints.value = discoveredPeersMap.values.map {
-            PeerDevice(endpointId = it.endpointId, name = it.name, role = it.role)
+            PeerDevice(endpointId = it.endpointId, name = it.name, role = it.role, boardId = it.boardId)
         }
     }
 

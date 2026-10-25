@@ -75,4 +75,38 @@ class AppSettingsManager(
             json.put("theme_mode", value.name)
             save()
         }
+
+    var autoConnectSameBoard: Boolean
+        get() = json.optBoolean("auto_connect_same_board", true)
+        set(value) {
+            json.put("auto_connect_same_board", value)
+            save()
+        }
+
+    fun addKnownPeer(peerName: String) {
+        if (peerName.isBlank()) return
+        val list = getKnownPeers().toMutableSet()
+        list.add(peerName.trim())
+        val arr = org.json.JSONArray()
+        list.forEach { arr.put(it) }
+        json.put("known_peers", arr)
+        save()
+    }
+
+    fun isKnownPeer(peerName: String): Boolean {
+        if (peerName.isBlank()) return false
+        val list = getKnownPeers()
+        val trimmed = peerName.trim()
+        return list.any { it.equals(trimmed, ignoreCase = true) || trimmed.contains(it, ignoreCase = true) }
+    }
+
+    fun getKnownPeers(): Set<String> {
+        val arr = json.optJSONArray("known_peers") ?: return emptySet()
+        val set = mutableSetOf<String>()
+        for (i in 0 until arr.length()) {
+            val s = arr.optString(i)
+            if (s.isNotBlank()) set.add(s)
+        }
+        return set
+    }
 }
