@@ -50,6 +50,7 @@ class LanDiscoveryTransportTest {
 
         assertFalse(transport.isDiscovering.value)
         transport.startDiscovery()
+        Thread.sleep(500)
         assertTrue(transport.isDiscovering.value)
         assertTrue(lock.acquireCount.get() >= 1)
 

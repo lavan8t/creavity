@@ -54,6 +54,21 @@ class LanDiscoveryTransport(
         const val DEFAULT_TCP_PORT = 53536
         const val MULTICAST_GROUP = "224.0.0.167"
         private const val BEACON_MAGIC = "CREAVITY_BEACON"
+
+        fun getLocalIpAddress(): String {
+            try {
+                val ifaces = NetworkInterface.getNetworkInterfaces() ?: return "127.0.0.1"
+                for (iface in ifaces) {
+                    if (!iface.isUp || iface.isLoopback) continue
+                    for (addr in iface.inetAddresses) {
+                        if (addr is java.net.Inet4Address && !addr.isLoopbackAddress) {
+                            return addr.hostAddress ?: ""
+                        }
+                    }
+                }
+            } catch (_: Throwable) {}
+            return "127.0.0.1"
+        }
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + Job())
@@ -133,31 +148,37 @@ class LanDiscoveryTransport(
         try {
             val limited = DatagramPacket(bytes, bytes.size, InetAddress.getByName("255.255.255.255"), DISCOVERY_PORT)
             udpSocket.send(limited)
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
 
         // 2. Subnet directed broadcast & multicast across all active network interfaces
         try {
             val ifaces = NetworkInterface.getNetworkInterfaces() ?: return
             for (iface in ifaces) {
-                if (!iface.isUp || iface.isLoopback) continue
-
-                for (addr in iface.interfaceAddresses) {
-                    val bcast = addr.broadcast
-                    if (bcast != null) {
-                        try {
-                            val packet = DatagramPacket(bytes, bytes.size, bcast, DISCOVERY_PORT)
-                            udpSocket.send(packet)
-                        } catch (_: Exception) {}
-                    }
-                }
-
                 try {
-                    mcastSocket.networkInterface = iface
-                    val mcastPacket = DatagramPacket(bytes, bytes.size, mcastAddr, DISCOVERY_PORT)
-                    mcastSocket.send(mcastPacket)
-                } catch (_: Exception) {}
+                    if (!iface.isUp || iface.isLoopback) continue
+                    val hasIpv4 = iface.inetAddresses.asSequence().any { it is java.net.Inet4Address }
+                    if (!hasIpv4) continue
+
+                    for (addr in iface.interfaceAddresses) {
+                        val bcast = addr.broadcast
+                        if (bcast != null) {
+                            try {
+                                val packet = DatagramPacket(bytes, bytes.size, bcast, DISCOVERY_PORT)
+                                udpSocket.send(packet)
+                            } catch (_: Throwable) {}
+                        }
+                    }
+
+                    if (iface.supportsMulticast()) {
+                        try {
+                            mcastSocket.networkInterface = iface
+                            val mcastPacket = DatagramPacket(bytes, bytes.size, mcastAddr, DISCOVERY_PORT)
+                            mcastSocket.send(mcastPacket)
+                        } catch (_: Throwable) {}
+                    }
+                } catch (_: Throwable) {}
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     override fun stopAdvertising() {
@@ -174,7 +195,6 @@ class LanDiscoveryTransport(
 
         discoveryJob = scope.launch {
             var socket: MulticastSocket? = null
-            val joinedInterfaces = mutableListOf<NetworkInterface>()
             val mcastAddr = InetAddress.getByName(MULTICAST_GROUP)
             val mcastGroup = InetSocketAddress(mcastAddr, DISCOVERY_PORT)
 
@@ -189,14 +209,22 @@ class LanDiscoveryTransport(
                     val ifaces = NetworkInterface.getNetworkInterfaces()
                     if (ifaces != null) {
                         for (iface in ifaces) {
-                            if (!iface.isUp || iface.isLoopback) continue
                             try {
+                                if (!iface.isUp || iface.isLoopback || !iface.supportsMulticast()) continue
+                                val hasIpv4 = iface.inetAddresses.asSequence().any { it is java.net.Inet4Address }
+                                if (!hasIpv4) continue
                                 socket.joinGroup(mcastGroup, iface)
-                                joinedInterfaces.add(iface)
-                            } catch (_: Exception) {}
+                            } catch (_: Throwable) {}
                         }
                     }
-                } catch (_: Exception) {}
+                } catch (_: Throwable) {}
+
+                // Send discovery wake-up ping
+                try {
+                    val ping = "$BEACON_MAGIC\n$localNodeId\n$localNodeId\n\n$DEFAULT_TCP_PORT\nVIEWER"
+                    val pingBytes = ping.toByteArray(StandardCharsets.UTF_8)
+                    socket.send(DatagramPacket(pingBytes, pingBytes.size, InetAddress.getByName("255.255.255.255"), DISCOVERY_PORT))
+                } catch (_: Throwable) {}
 
                 val buffer = ByteArray(2048)
 
@@ -246,14 +274,9 @@ class LanDiscoveryTransport(
                         updateDiscoveredEndpoints()
                     }
                 }
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
             } finally {
-                socket?.let { s ->
-                    for (iface in joinedInterfaces) {
-                        try { s.leaveGroup(mcastGroup, iface) } catch (_: Exception) {}
-                    }
-                    try { s.close() } catch (_: Exception) {}
-                }
+                runCatching { socket?.close() }
                 multicastLock?.release()
                 _isDiscovering.value = false
             }
@@ -311,14 +334,22 @@ class LanDiscoveryTransport(
     }
 
     override fun connectToPeer(endpointId: String, localDisplayName: String) {
-        val peer = discoveredPeersMap[endpointId] ?: return
         if (connectedSockets.containsKey(endpointId)) return
+        val peer = discoveredPeersMap[endpointId]
+        val (ip, port) = if (peer != null) {
+            peer.ip to peer.port
+        } else if (endpointId.startsWith("lan_")) {
+            val parts = endpointId.removePrefix("lan_").split("_")
+            val targetIp = parts.getOrNull(0) ?: return
+            val targetPort = parts.getOrNull(1)?.toIntOrNull() ?: DEFAULT_TCP_PORT
+            targetIp to targetPort
+        } else return
 
         scope.launch {
             try {
                 val socket = Socket()
                 socket.tcpNoDelay = true
-                socket.connect(InetSocketAddress(peer.ip, peer.port), 4000)
+                socket.connect(InetSocketAddress(ip, port), 4000)
                 connectedSockets[endpointId] = socket
                 meshRoutingEngine.addNeighbor(endpointId)
                 updateConnectedPeers()

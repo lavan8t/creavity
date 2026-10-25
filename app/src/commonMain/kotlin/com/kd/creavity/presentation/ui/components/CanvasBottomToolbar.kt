@@ -226,21 +226,6 @@ fun CanvasBottomToolbar(
                             onOpenStickyNote()
                         }
                     )
-
-                    // 5. Undo / Redo button
-                    ToolbarIconButton(
-                        icon = "undo",
-                        tooltip = "Undo (tap) / Redo (long-press)",
-                        enabled = uiState.canUndo || uiState.canRedo,
-                        onClick = {
-                            if (uiState.canUndo) {
-                                onAction(BoardAction.Undo)
-                            }
-                        },
-                        onLongClick = {
-                            onToggleCallout("UNDO_REDO")
-                        }
-                    )
                 }
             }
 

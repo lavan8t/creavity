@@ -57,6 +57,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -77,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.PeerDevice
+import com.kd.creavity.data.nearby.LanDiscoveryTransport
 import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
@@ -119,6 +121,8 @@ fun PeerConnectScreen(
     val clipboardManager = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current
     var showEditSheet by remember { mutableStateOf(false) }
+    var directIpInput by remember { mutableStateOf("") }
+    val localIp = remember { LanDiscoveryTransport.getLocalIpAddress() }
 
     PlatformBackHandler(enabled = showEditSheet) { showEditSheet = false }
 
@@ -306,6 +310,73 @@ fun PeerConnectScreen(
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
+                    }
+                }
+            }
+
+            // Same-Network Direct IP Connect Card
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Same-Network Connect",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "My IP: $localIp",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = directIpInput,
+                                onValueChange = { directIpInput = it.filter { ch -> ch.isDigit() || ch == '.' || ch == ':' } },
+                                placeholder = { Text("e.g. $localIp", fontSize = 13.sp) },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            Button(
+                                onClick = {
+                                    val target = directIpInput.trim()
+                                    if (target.isNotBlank()) {
+                                        val port = if (target.contains(":")) target.substringAfter(":") else "53536"
+                                        val ip = if (target.contains(":")) target.substringBefore(":") else target
+                                        onAction(BoardAction.ConnectPeer("lan_${ip}_${port}", uiState.displayName))
+                                    }
+                                },
+                                enabled = directIpInput.isNotBlank(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Connect", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }

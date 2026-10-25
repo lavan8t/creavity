@@ -18,7 +18,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
+import com.kd.creavity.data.mesh.MeshRole
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -447,9 +456,10 @@ fun CanvasViewportScreen(
                         onFrameCountClick = {
                             showFrameBar = !showFrameBar
                         },
-                        onCastClick = {
-                            onNavigateToDestination(NavDestination.PEERS)
-                        },
+                        canUndo = uiState.canUndo,
+                        canRedo = uiState.canRedo,
+                        onUndo = { onAction(BoardAction.Undo) },
+                        onRedo = { onAction(BoardAction.Redo) },
                         onMoreClick = {
                             showOptionsMenu = true
                         },
@@ -462,8 +472,159 @@ fun CanvasViewportScreen(
                             expanded = showOptionsMenu,
                             onDismissRequest = { showOptionsMenu = false },
                             shape = RoundedCornerShape(20.dp),
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.widthIn(min = 280.dp, max = 340.dp)
                         ) {
+                            // 1. Connect & Share Feature Button
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = if (uiState.connectedPeers.isNotEmpty()) "Collaborating" else "Connect & Share",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 15.sp
+                                        )
+                                        Text(
+                                            text = if (uiState.connectedPeers.isNotEmpty()) {
+                                                "${uiState.connectedPeers.size} peer(s) connected"
+                                            } else if (uiState.isAdvertising) {
+                                                "Broadcasting (Room ${uiState.roomCode ?: ""})"
+                                            } else if (uiState.isDiscovering) {
+                                                "Scanning nearby..."
+                                            } else {
+                                                "Nearby & same network whiteboard"
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                leadingIcon = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (uiState.connectedPeers.isNotEmpty()) MaterialTheme.colorScheme.primaryContainer
+                                                else MaterialTheme.colorScheme.surfaceContainerHighest
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        MaterialSymbol(
+                                            name = if (uiState.connectedPeers.isNotEmpty()) "hub" else "devices",
+                                            tint = if (uiState.connectedPeers.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            size = 20.dp
+                                        )
+                                    }
+                                },
+                                trailingIcon = {
+                                    MaterialSymbol(name = "chevron_right", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 18.dp)
+                                },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    onNavigateToDestination(NavDestination.PEERS)
+                                }
+                            )
+
+                            // 2. Connected Devices Scrollable Row & Details
+                            if (uiState.connectedPeers.isNotEmpty()) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "Connected devices (${uiState.connectedPeers.size})",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        items(uiState.connectedPeers, key = { it.endpointId }) { peer ->
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                modifier = Modifier.width(62.dp)
+                                            ) {
+                                                Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        val initial = peer.name.trim().take(1).uppercase().ifEmpty { "?" }
+                                                        Text(
+                                                            text = initial,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 15.sp,
+                                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                        )
+                                                    }
+                                                    // Active status dot
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(10.dp)
+                                                            .align(Alignment.BottomEnd)
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.surface)
+                                                            .padding(1.5.dp)
+                                                            .clip(CircleShape)
+                                                            .background(Color(0xFF4CAF50))
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = peer.name.ifBlank { "Peer" },
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = if (peer.role == MeshRole.HOST) "Host" else if (peer.isReadOnly) "Viewer" else "Editor",
+                                                    fontSize = 9.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    uiState.roomCode?.let { code ->
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Room Code: $code",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Text(
+                                                text = if (uiState.isHost) "Hosting" else "Joined",
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                             // Bird's Eye View (Shown only to host when collab is connected)
                             if (uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
                                 DropdownMenuItem(
@@ -665,14 +826,6 @@ fun CanvasViewportScreen(
                     onAction(BoardAction.SelectTool(tool))
                     activeCalloutTool = null
                 }
-            )
-
-            UndoRedoCalloutCard(
-                visible = activeCalloutTool == "UNDO_REDO",
-                canUndo = uiState.canUndo,
-                canRedo = uiState.canRedo,
-                onUndo = { onAction(BoardAction.Undo) },
-                onRedo = { onAction(BoardAction.Redo) }
             )
         }
 

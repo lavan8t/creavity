@@ -62,60 +62,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startAdvertisingWithCheck(deviceName: String) {
-        when (val result = ConnectivityHelper.checkReadiness(this)) {
-            is ConnectivityCheckResult.Ready -> {
-                viewModel.startAdvertising(deviceName)
-            }
-            is ConnectivityCheckResult.MissingPermissions -> {
-                permissionLauncher.launch(result.permissions.toTypedArray())
-            }
-            is ConnectivityCheckResult.BluetoothDisabled -> {
-                Toast.makeText(this, "Please enable Bluetooth for offline whiteboard", Toast.LENGTH_SHORT).show()
-                try {
-                    startActivity(ConnectivityHelper.createBluetoothEnableIntent())
-                } catch (_: Exception) {}
-            }
-            is ConnectivityCheckResult.WifiDisabled -> {
-                Toast.makeText(this, "Please enable Wi-Fi for direct P2P transfer", Toast.LENGTH_SHORT).show()
-                try {
-                    startActivity(ConnectivityHelper.createWifiSettingsIntent())
-                } catch (_: Exception) {}
-            }
-            is ConnectivityCheckResult.LocationDisabled -> {
-                Toast.makeText(this, "Please enable Location for discovery", Toast.LENGTH_SHORT).show()
-                try {
-                    startActivity(ConnectivityHelper.createLocationSettingsIntent())
-                } catch (_: Exception) {}
-            }
+        viewModel.startAdvertising(deviceName)
+
+        val result = ConnectivityHelper.checkReadiness(this)
+        if (result is ConnectivityCheckResult.MissingPermissions) {
+            permissionLauncher.launch(result.permissions.toTypedArray())
         }
     }
 
     private fun startDiscoveryWithCheck() {
-        when (val result = ConnectivityHelper.checkReadiness(this)) {
-            is ConnectivityCheckResult.Ready -> {
-                viewModel.startDiscovery()
-            }
-            is ConnectivityCheckResult.MissingPermissions -> {
-                permissionLauncher.launch(result.permissions.toTypedArray())
-            }
-            is ConnectivityCheckResult.BluetoothDisabled -> {
-                Toast.makeText(this, "Please enable Bluetooth for offline whiteboard", Toast.LENGTH_SHORT).show()
-                try {
-                    startActivity(ConnectivityHelper.createBluetoothEnableIntent())
-                } catch (_: Exception) {}
-            }
-            is ConnectivityCheckResult.WifiDisabled -> {
-                Toast.makeText(this, "Please enable Wi-Fi for direct P2P transfer", Toast.LENGTH_SHORT).show()
-                try {
-                    startActivity(ConnectivityHelper.createWifiSettingsIntent())
-                } catch (_: Exception) {}
-            }
-            is ConnectivityCheckResult.LocationDisabled -> {
-                Toast.makeText(this, "Please enable Location for discovery", Toast.LENGTH_SHORT).show()
-                try {
-                    startActivity(ConnectivityHelper.createLocationSettingsIntent())
-                } catch (_: Exception) {}
-            }
+        viewModel.startDiscovery()
+
+        val result = ConnectivityHelper.checkReadiness(this)
+        if (result is ConnectivityCheckResult.MissingPermissions) {
+            permissionLauncher.launch(result.permissions.toTypedArray())
         }
     }
 

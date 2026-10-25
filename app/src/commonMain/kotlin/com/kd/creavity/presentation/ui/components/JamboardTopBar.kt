@@ -1,6 +1,10 @@
 package com.kd.creavity.presentation.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,8 +40,11 @@ fun WhiteboardTopBar(
     onNextPage: () -> Unit,
     onAddPage: () -> Unit = {},
     onFrameCountClick: () -> Unit,
-    onCastClick: () -> Unit,
     onMoreClick: () -> Unit,
+    canUndo: Boolean = false,
+    canRedo: Boolean = false,
+    onUndo: () -> Unit = {},
+    onRedo: () -> Unit = {},
     zoom: Float = 1.0f,
     isHost: Boolean = false,
     onBirdsEyeClick: (() -> Unit)? = null,
@@ -91,22 +98,48 @@ fun WhiteboardTopBar(
             }
         }
 
-        // Right: Cast and 3-dots Menu
+        // Right: Undo, Redo, and 3-dots Menu
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // Cast to Screen / Peers
-            TooltipHint(text = "Cast to screen") {
-                IconButton(
-                    onClick = onCastClick,
-                    modifier = Modifier.size(38.dp)
-                ) {
-                    MaterialSymbol(
-                        name = "devices",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        size = 20.dp
-                    )
+            // Undo button (hidden if stack empty)
+            AnimatedVisibility(
+                visible = canUndo,
+                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + scaleOut(targetScale = 0.8f)
+            ) {
+                TooltipHint(text = "Undo") {
+                    IconButton(
+                        onClick = onUndo,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "undo",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            size = 20.dp
+                        )
+                    }
+                }
+            }
+
+            // Redo button (hidden if stack empty)
+            AnimatedVisibility(
+                visible = canRedo,
+                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + scaleOut(targetScale = 0.8f)
+            ) {
+                TooltipHint(text = "Redo") {
+                    IconButton(
+                        onClick = onRedo,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "redo",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            size = 20.dp
+                        )
+                    }
                 }
             }
 
