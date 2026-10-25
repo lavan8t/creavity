@@ -12,7 +12,7 @@ import com.kd.creavity.presentation.ui.AdaptiveWhiteboardScreen
 import com.kd.creavity.presentation.viewmodel.ThemeMode
 import com.kd.creavity.presentation.viewmodel.WhiteboardViewModel
 import com.kd.creavity.presentation.viewmodel.dispatch
-import com.kd.creavity.ui.theme.OutofTheBoxTheme
+import com.kd.creavity.ui.theme.boardTheme
 
 fun main() = application {
     val windowState = rememberWindowState(width = 1280.dp, height = 800.dp)
@@ -31,7 +31,7 @@ fun main() = application {
             ThemeMode.DARK -> true
         }
 
-        OutofTheBoxTheme(darkTheme = isDark) {
+        boardTheme(darkTheme = isDark) {
             AdaptiveWhiteboardScreen(
                 uiState = uiState,
                 onAction = { action -> viewModel.dispatch(action) }

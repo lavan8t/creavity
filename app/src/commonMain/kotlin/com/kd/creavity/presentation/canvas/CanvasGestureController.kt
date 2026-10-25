@@ -128,7 +128,7 @@ class CanvasGestureController(
         hapticsEnabled: Boolean,
         drawingHaptics: DrawingHaptics,
         isReadOnly: Boolean,
-        pathCache: MutableMap<String, Path>
+        geometryCache: StrokeGeometryCache
     ): Boolean {
         val pointerCount = event.pointerCount
 
@@ -301,7 +301,6 @@ class CanvasGestureController(
                             isEraser = activeToolUsed == DrawingTool.ERASER
                         )
                         pendingStroke = finalStroke
-                        pathCache[finalStroke.id] = PathUtils.createToolPath(activeToolUsed, finalPoints, finalStroke.strokeWidth)
                         onStrokeCompleted(finalStroke)
                     }
                 }
@@ -369,7 +368,7 @@ class CanvasGestureController(
                     }
                 }
                 if (hitStroke != null) {
-                    pathCache.keys.filter { it.startsWith(hitStroke.id) }.forEach { pathCache.remove(it) }
+                    geometryCache.removeStroke(hitStroke.id)
                     if (hapticsEnabled) drawingHaptics.performEraserHit()
                     onDeleteStroke(hitStroke.id)
                     requestInvalidate()
@@ -496,7 +495,6 @@ class CanvasGestureController(
                             val strk = movingStrokes[i]
                             val updatedPoints = strk.points.map { p -> p.copy(x = p.x + dx, y = p.y + dy) }
                             movingStrokes[i] = strk.copy(points = updatedPoints)
-                            pathCache["${strk.id}_${updatedPoints.size}"] = PathUtils.createToolPath(strk.tool, updatedPoints)
                         }
                         for (i in movingTexts.indices) {
                             val txt = movingTexts[i]

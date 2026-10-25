@@ -10,10 +10,10 @@ import com.google.android.gms.nearby.connection.ConnectionsClient
 import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo
 import com.google.android.gms.nearby.connection.DiscoveryOptions
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback
-import com.google.android.gms.nearby.connection.Payload
 import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
+import com.google.android.gms.nearby.connection.Payload
 import com.kd.creavity.data.binary.PacketSerializer
 import com.kd.creavity.data.binary.WhiteboardPacket
 import com.kd.creavity.data.mesh.InboundResult

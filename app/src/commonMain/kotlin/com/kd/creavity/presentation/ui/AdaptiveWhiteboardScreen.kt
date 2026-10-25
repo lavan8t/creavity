@@ -41,7 +41,7 @@ enum class NavDestination(val route: String, val icon: String, val label: String
 @Composable
 fun AdaptiveWhiteboardScreen(
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     PlatformSystemBarsEffect(isLandscape = false)
@@ -77,11 +77,11 @@ fun AdaptiveWhiteboardScreen(
                 if (keyEvent.isCtrlPressed) {
                     when (keyEvent.key) {
                         Key.Z -> {
-                            onAction(OotbAction.Undo)
+                            onAction(BoardAction.Undo)
                             true
                         }
                         Key.Y -> {
-                            onAction(OotbAction.Redo)
+                            onAction(BoardAction.Redo)
                             true
                         }
                         else -> false
@@ -89,27 +89,27 @@ fun AdaptiveWhiteboardScreen(
                 } else {
                     when (keyEvent.key) {
                         Key.P -> {
-                            onAction(OotbAction.SelectTool(DrawingTool.PEN))
+                            onAction(BoardAction.SelectTool(DrawingTool.PEN))
                             true
                         }
                         Key.E -> {
-                            onAction(OotbAction.SelectTool(DrawingTool.ERASER))
+                            onAction(BoardAction.SelectTool(DrawingTool.ERASER))
                             true
                         }
                         Key.H -> {
-                            onAction(OotbAction.SelectTool(DrawingTool.HIGHLIGHTER))
+                            onAction(BoardAction.SelectTool(DrawingTool.HIGHLIGHTER))
                             true
                         }
                         Key.T -> {
-                            onAction(OotbAction.SelectTool(DrawingTool.TEXT))
+                            onAction(BoardAction.SelectTool(DrawingTool.TEXT))
                             true
                         }
                         Key.R -> {
-                            onAction(OotbAction.SelectTool(DrawingTool.RECTANGLE))
+                            onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
                             true
                         }
                         Key.C -> {
-                            onAction(OotbAction.SelectTool(DrawingTool.CIRCLE))
+                            onAction(BoardAction.SelectTool(DrawingTool.CIRCLE))
                             true
                         }
                         else -> false

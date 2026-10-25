@@ -64,7 +64,7 @@ import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.presentation.canvas.CanvasColorUtils
 import com.kd.creavity.presentation.canvas.WhiteboardCanvas
 import com.kd.creavity.presentation.ui.NavDestination
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.components.BirdsEyeViewSheet
 import com.kd.creavity.presentation.ui.components.CanvasBottomToolbar
 import com.kd.creavity.presentation.ui.components.CanvasPresentationOverlay
@@ -72,9 +72,8 @@ import com.kd.creavity.presentation.ui.components.CanvasRenameBoardDialog
 import com.kd.creavity.presentation.ui.components.CanvasSelectionBar
 import com.kd.creavity.presentation.ui.components.EraserCalloutCard
 import com.kd.creavity.presentation.ui.components.GoogleSlidesDialog
-import com.kd.creavity.presentation.ui.components.JamboardFrameBar
-import com.kd.creavity.presentation.ui.components.JamboardStickyNoteDialog
-import com.kd.creavity.presentation.ui.components.JamboardTopBar
+import com.kd.creavity.presentation.ui.components.WhiteboardStickyNoteDialog
+import com.kd.creavity.presentation.ui.components.WhiteboardTopBar
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.PenCalloutCard
 import com.kd.creavity.presentation.ui.components.SelectCalloutCard
@@ -124,14 +123,14 @@ private fun calculateBestMinimapCorner(touchPoints: List<Offset>, canvasSize: In
 private fun fitAllCanvasContent(
     uiState: WhiteboardUiState,
     canvasSize: IntSize,
-    onAction: (OotbAction) -> Unit
+    onAction: (BoardAction) -> Unit
 ) {
     val strokes = uiState.strokes
     val texts = uiState.textElements
     val stickyNotes = uiState.stickyNotes
 
     if (strokes.isEmpty() && texts.isEmpty() && stickyNotes.isEmpty()) {
-        onAction(OotbAction.ResetCanvasTransform)
+        onAction(BoardAction.ResetCanvasTransform)
         return
     }
 
@@ -177,14 +176,14 @@ private fun fitAllCanvasContent(
     val targetPanX = screenW / 2f - contentCenterX * targetZoom
     val targetPanY = screenH / 2f - contentCenterY * targetZoom
 
-    onAction(OotbAction.SetCanvasTransform(targetZoom, Offset(targetPanX, targetPanY)))
+    onAction(BoardAction.SetCanvasTransform(targetZoom, Offset(targetPanX, targetPanY)))
 }
 
 @Composable
 fun CanvasViewportScreen(
     modifier: Modifier = Modifier,
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     onNavigateToDestination: (NavDestination) -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
@@ -220,15 +219,15 @@ fun CanvasViewportScreen(
 
     // Image Picker
     val launchImagePicker = rememberFilePickerLauncher(FilePickerType.IMAGE) { path ->
-        path?.let { onAction(OotbAction.AddImage(it)) }
+        path?.let { onAction(BoardAction.AddImage(it)) }
     }
 
     // Presentation Pickers & Dialogs
     val launchPresentationPicker = rememberFilePickerLauncher(FilePickerType.PDF) { path ->
-        path?.let { onAction(OotbAction.ImportPresentation(it)) }
+        path?.let { onAction(BoardAction.ImportPresentation(it)) }
     }
     var showGoogleSlidesDialog by remember { mutableStateOf(false) }
-    var googleSlidesUrlInput by remember { mutableStateOf(uiState.presentationUrl ?: "") }
+    var GoogleSlidesUrlInput by remember { mutableStateOf(uiState.presentationUrl ?: "") }
 
     val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
     val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
@@ -260,7 +259,7 @@ fun CanvasViewportScreen(
             isInfiniteCanvas = uiState.isInfiniteCanvas,
             canvasWidth = uiState.currentBoard.canvasWidth,
             canvasHeight = uiState.currentBoard.canvasHeight,
-            onTransform = { z, focal, p -> onAction(OotbAction.TransformCanvas(z, focal, p)) },
+            onTransform = { z, focal, p -> onAction(BoardAction.TransformCanvas(z, focal, p)) },
             onTransformStateChanged = { transforming, touchPoints ->
                 if (transforming) {
                     hideMinimapJob?.cancel()
@@ -276,15 +275,15 @@ fun CanvasViewportScreen(
                     }
                 }
             },
-            onStrokeCompleted = { onAction(OotbAction.StrokeCompleted(it)) },
-            onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(OotbAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
-            onStrokeBroadcastPoint = { id, pt -> onAction(OotbAction.StrokeBroadcastPoint(id, pt)) },
-            onStrokeBroadcastEnd = { onAction(OotbAction.StrokeBroadcastEnd(it)) },
-            onDeleteStroke = { onAction(OotbAction.DeleteStroke(it)) },
-            onDeleteText = { onAction(OotbAction.DeleteText(it)) },
-            onDeleteImage = { onAction(OotbAction.DeleteImage(it)) },
-            onDeleteStickyNote = { onAction(OotbAction.DeleteStickyNote(it)) },
-            onElementsMoved = { s, t, im -> onAction(OotbAction.MoveElements(s, t, im)) },
+            onStrokeCompleted = { onAction(BoardAction.StrokeCompleted(it)) },
+            onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
+            onStrokeBroadcastPoint = { id, pt -> onAction(BoardAction.StrokeBroadcastPoint(id, pt)) },
+            onStrokeBroadcastEnd = { onAction(BoardAction.StrokeBroadcastEnd(it)) },
+            onDeleteStroke = { onAction(BoardAction.DeleteStroke(it)) },
+            onDeleteText = { onAction(BoardAction.DeleteText(it)) },
+            onDeleteImage = { onAction(BoardAction.DeleteImage(it)) },
+            onDeleteStickyNote = { onAction(BoardAction.DeleteStickyNote(it)) },
+            onElementsMoved = { s, t, im -> onAction(BoardAction.MoveElements(s, t, im)) },
             onSelectionChanged = { s, t, bounds ->
                 selectedStrokes = s
                 selectedTexts = t
@@ -293,7 +292,7 @@ fun CanvasViewportScreen(
             onTapForText = { pt ->
                 if (activeInlineTextPoint != null && inlineTextContent.isNotBlank()) {
                     onAction(
-                        OotbAction.AddText(
+                        BoardAction.AddText(
                             text = inlineTextContent,
                             x = activeInlineTextPoint!!.x,
                             y = activeInlineTextPoint!!.y,
@@ -352,7 +351,7 @@ fun CanvasViewportScreen(
                             onDone = {
                                 if (inlineTextContent.isNotBlank()) {
                                     onAction(
-                                        OotbAction.AddText(
+                                        BoardAction.AddText(
                                             text = inlineTextContent,
                                             x = activeInlineTextPoint!!.x,
                                             y = activeInlineTextPoint!!.y,
@@ -375,7 +374,7 @@ fun CanvasViewportScreen(
                         onClick = {
                             if (inlineTextContent.isNotBlank()) {
                                 onAction(
-                                    OotbAction.AddText(
+                                    BoardAction.AddText(
                                         text = inlineTextContent,
                                         x = activeInlineTextPoint!!.x,
                                         y = activeInlineTextPoint!!.y,
@@ -410,7 +409,7 @@ fun CanvasViewportScreen(
             }
         }
 
-        // 2. Top Navigation Bar (Authentic Jamboard Top Bar + Expandable Frame Bar)
+        // 2. Top Navigation Bar (Authentic Whiteboard Top Bar + Expandable Frame Bar)
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -419,7 +418,7 @@ fun CanvasViewportScreen(
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    JamboardTopBar(
+                    WhiteboardTopBar(
                         title = uiState.currentBoard.title,
                         onTitleClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -434,16 +433,16 @@ fun CanvasViewportScreen(
                         },
                         onPrevPage = {
                             if (uiState.currentBoard.activePageIndex > 0) {
-                                onAction(OotbAction.SwitchPage(uiState.currentBoard.activePageIndex - 1))
+                                onAction(BoardAction.SwitchPage(uiState.currentBoard.activePageIndex - 1))
                             }
                         },
                         onNextPage = {
                             if (uiState.currentBoard.activePageIndex < uiState.currentBoard.pages.size - 1) {
-                                onAction(OotbAction.SwitchPage(uiState.currentBoard.activePageIndex + 1))
+                                onAction(BoardAction.SwitchPage(uiState.currentBoard.activePageIndex + 1))
                             }
                         },
                         onAddPage = {
-                            onAction(OotbAction.AddNewPage)
+                            onAction(BoardAction.AddNewPage)
                         },
                         onFrameCountClick = {
                             showFrameBar = !showFrameBar
@@ -491,7 +490,7 @@ fun CanvasViewportScreen(
                                 },
                                 onClick = {
                                     showOptionsMenu = false
-                                    onAction(OotbAction.SetInfiniteCanvas(!uiState.isInfiniteCanvas))
+                                    onAction(BoardAction.SetInfiniteCanvas(!uiState.isInfiniteCanvas))
                                 }
                             )
 
@@ -503,7 +502,7 @@ fun CanvasViewportScreen(
                                 },
                                 onClick = {
                                     showOptionsMenu = false
-                                    onAction(OotbAction.SetPresentationMode(true))
+                                    onAction(BoardAction.SetPresentationMode(true))
                                 }
                             )
 
@@ -541,32 +540,14 @@ fun CanvasViewportScreen(
                                 },
                                 onClick = {
                                     showOptionsMenu = false
-                                    onAction(OotbAction.ClearCanvas)
+                                    onAction(BoardAction.ClearCanvas)
                                 }
                             )
                         }
                     }
                 }
 
-                // Expandable Frame Bar
-                JamboardFrameBar(
-                    visible = showFrameBar,
-                    pages = uiState.currentBoard.pages,
-                    activePageIndex = uiState.currentBoard.activePageIndex,
-                    onSelectPage = {
-                        onAction(OotbAction.SwitchPage(it))
-                        showFrameBar = false
-                    },
-                    onAddPage = {
-                        onAction(OotbAction.AddNewPage)
-                    },
-                    onDeletePage = {
-                        if (uiState.currentBoard.pages.size > 1) {
-                            onAction(OotbAction.DeletePage(it))
-                        }
-                    },
-                    onClose = { showFrameBar = false }
-                )
+                // Frame bar removed
             }
         }
 
@@ -601,7 +582,7 @@ fun CanvasViewportScreen(
                 panOffset = uiState.panOffset,
                 canvasSize = canvasSize,
                 peerPresences = uiState.livePeerPresences,
-                onPanTo = { onAction(OotbAction.SetCanvasTransform(uiState.zoom, it)) }
+                onPanTo = { onAction(BoardAction.SetCanvasTransform(uiState.zoom, it)) }
             )
         }
 
@@ -609,14 +590,14 @@ fun CanvasViewportScreen(
         CanvasSelectionBar(
             selectedCount = selectedStrokes.size + selectedTexts.size,
             onDuplicate = {
-                onAction(OotbAction.DuplicateElements(selectedStrokes, selectedTexts))
+                onAction(BoardAction.DuplicateElements(selectedStrokes, selectedTexts))
             },
             onRecolor = {
-                onAction(OotbAction.RecolorElements(selectedStrokes, selectedTexts, effectivePenColor))
+                onAction(BoardAction.RecolorElements(selectedStrokes, selectedTexts, effectivePenColor))
             },
             onDelete = {
-                selectedStrokes.forEach { onAction(OotbAction.DeleteStroke(it)) }
-                selectedTexts.forEach { onAction(OotbAction.DeleteText(it)) }
+                selectedStrokes.forEach { onAction(BoardAction.DeleteStroke(it)) }
+                selectedTexts.forEach { onAction(BoardAction.DeleteText(it)) }
                 selectedStrokes = emptyList()
                 selectedTexts = emptyList()
             },
@@ -653,13 +634,13 @@ fun CanvasViewportScreen(
                 currentWidth = uiState.currentWidth,
                 currentColor = effectivePenColor,
                 onSelectTool = { tool ->
-                    onAction(OotbAction.SelectTool(tool))
+                    onAction(BoardAction.SelectTool(tool))
                 },
                 onChangeWidth = { width ->
-                    onAction(OotbAction.ChangeStrokeWidth(width))
+                    onAction(BoardAction.ChangeStrokeWidth(width))
                 },
                 onSelectColor = { col ->
-                    onAction(OotbAction.SelectColor(col))
+                    onAction(BoardAction.SelectColor(col))
                 },
                 onDismiss = { activeCalloutTool = null }
             )
@@ -668,11 +649,11 @@ fun CanvasViewportScreen(
                 visible = activeCalloutTool == "ERASER",
                 selectedTool = uiState.selectedTool,
                 onSelectTool = { tool ->
-                    onAction(OotbAction.SelectTool(tool))
+                    onAction(BoardAction.SelectTool(tool))
                     activeCalloutTool = null
                 },
                 onClearCanvas = {
-                    onAction(OotbAction.ClearCanvas)
+                    onAction(BoardAction.ClearCanvas)
                     activeCalloutTool = null
                 }
             )
@@ -681,7 +662,7 @@ fun CanvasViewportScreen(
                 visible = activeCalloutTool == "SELECT",
                 selectedTool = uiState.selectedTool,
                 onSelectTool = { tool ->
-                    onAction(OotbAction.SelectTool(tool))
+                    onAction(BoardAction.SelectTool(tool))
                     activeCalloutTool = null
                 }
             )
@@ -690,8 +671,8 @@ fun CanvasViewportScreen(
                 visible = activeCalloutTool == "UNDO_REDO",
                 canUndo = uiState.canUndo,
                 canRedo = uiState.canRedo,
-                onUndo = { onAction(OotbAction.Undo) },
-                onRedo = { onAction(OotbAction.Redo) }
+                onUndo = { onAction(BoardAction.Undo) },
+                onRedo = { onAction(BoardAction.Redo) }
             )
         }
 
@@ -714,7 +695,7 @@ fun CanvasViewportScreen(
         )
 
         // 8. Sticky Note Creation Dialog
-        JamboardStickyNoteDialog(
+        WhiteboardStickyNoteDialog(
             visible = showStickyNoteDialog,
             onDismiss = { showStickyNoteDialog = false },
             onSave = { text, colorVal ->
@@ -723,7 +704,7 @@ fun CanvasViewportScreen(
                     y = -uiState.panOffset.y / uiState.zoom + 200f
                 )
                 onAction(
-                    OotbAction.AddStickyNote(
+                    BoardAction.AddStickyNote(
                         StickyNote(
                             text = text,
                             x = center.x,
@@ -749,7 +730,7 @@ fun CanvasViewportScreen(
             canvasSize = canvasSize,
             onDismiss = { showBirdsEyeSheet = false },
             onJumpToPoint = { targetPan ->
-                onAction(OotbAction.SetCanvasTransform(uiState.zoom, targetPan))
+                onAction(BoardAction.SetCanvasTransform(uiState.zoom, targetPan))
                 showBirdsEyeSheet = false
             },
             onFitAllContent = {
@@ -757,7 +738,7 @@ fun CanvasViewportScreen(
                 showBirdsEyeSheet = false
             },
             onSummonAll = {
-                onAction(OotbAction.SetCanvasTransform(uiState.zoom, uiState.panOffset))
+                onAction(BoardAction.SetCanvasTransform(uiState.zoom, uiState.panOffset))
                 showBirdsEyeSheet = false
             }
         )
@@ -765,13 +746,13 @@ fun CanvasViewportScreen(
         // 10. Google Slides URL Input Dialog
         GoogleSlidesDialog(
             visible = showGoogleSlidesDialog,
-            url = googleSlidesUrlInput,
-            onUrlChange = { googleSlidesUrlInput = it },
+            url = GoogleSlidesUrlInput,
+            onUrlChange = { GoogleSlidesUrlInput = it },
             onDismiss = { showGoogleSlidesDialog = false },
             onConfirm = {
-                if (googleSlidesUrlInput.isNotBlank()) {
-                    onAction(OotbAction.SetPresentationUrl(googleSlidesUrlInput.trim()))
-                    onAction(OotbAction.SetPresentationMode(true))
+                if (GoogleSlidesUrlInput.isNotBlank()) {
+                    onAction(BoardAction.SetPresentationUrl(GoogleSlidesUrlInput.trim()))
+                    onAction(BoardAction.SetPresentationMode(true))
                 }
                 showGoogleSlidesDialog = false
             }
@@ -785,7 +766,7 @@ fun CanvasViewportScreen(
             onDismiss = { showRenameBoardDialog = false },
             onConfirm = {
                 val newTitle = renameBoardInput.ifBlank { "Untitled" }
-                onAction(OotbAction.RenameBoard(uiState.currentBoard.id, newTitle))
+                onAction(BoardAction.RenameBoard(uiState.currentBoard.id, newTitle))
                 showRenameBoardDialog = false
             }
         )

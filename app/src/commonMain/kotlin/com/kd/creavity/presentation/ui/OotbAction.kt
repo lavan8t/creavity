@@ -11,76 +11,76 @@ import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
 
 
-sealed interface OotbAction {
+sealed interface BoardAction {
     // Canvas & Inking
-    data class StrokeCompleted(val stroke: Stroke) : OotbAction
-    data class StrokeBroadcastStart(val id: String, val color: Long, val width: Float, val isEraser: Boolean, val point: Point, val tool: DrawingTool = DrawingTool.PEN) : OotbAction
-    data class StrokeBroadcastPoint(val id: String, val point: Point) : OotbAction
-    data class StrokeBroadcastEnd(val id: String) : OotbAction
-    data class TransformCanvas(val zoomChange: Float, val focal: Offset = Offset.Zero, val panChange: Offset = Offset.Zero) : OotbAction
-    data class SetCanvasTransform(val zoom: Float, val panOffset: Offset) : OotbAction
-    data object ResetCanvasTransform : OotbAction
-    data class SelectTool(val tool: DrawingTool) : OotbAction
-    data class SelectColor(val color: Color) : OotbAction
-    data class SelectBackgroundColor(val color: Color) : OotbAction
-    data class SelectBackgroundPattern(val pattern: com.kd.creavity.presentation.canvas.CanvasBackgroundPattern) : OotbAction
-    data class ChangeStrokeWidth(val width: Float) : OotbAction
-    data object ClearCanvas : OotbAction
-    data class SetInfiniteCanvas(val enabled: Boolean) : OotbAction
-    data class SetPresentationUrl(val url: String?) : OotbAction
-    data class SetPresentationMode(val enabled: Boolean) : OotbAction
-    data class ImportPresentation(val pathOrUri: String) : OotbAction
+    data class StrokeCompleted(val stroke: Stroke) : BoardAction
+    data class StrokeBroadcastStart(val id: String, val color: Long, val width: Float, val isEraser: Boolean, val point: Point, val tool: DrawingTool = DrawingTool.PEN) : BoardAction
+    data class StrokeBroadcastPoint(val id: String, val point: Point) : BoardAction
+    data class StrokeBroadcastEnd(val id: String) : BoardAction
+    data class TransformCanvas(val zoomChange: Float, val focal: Offset = Offset.Zero, val panChange: Offset = Offset.Zero) : BoardAction
+    data class SetCanvasTransform(val zoom: Float, val panOffset: Offset) : BoardAction
+    data object ResetCanvasTransform : BoardAction
+    data class SelectTool(val tool: DrawingTool) : BoardAction
+    data class SelectColor(val color: Color) : BoardAction
+    data class SelectBackgroundColor(val color: Color) : BoardAction
+    data class SelectBackgroundPattern(val pattern: com.kd.creavity.presentation.canvas.CanvasBackgroundPattern) : BoardAction
+    data class ChangeStrokeWidth(val width: Float) : BoardAction
+    data object ClearCanvas : BoardAction
+    data class SetInfiniteCanvas(val enabled: Boolean) : BoardAction
+    data class SetPresentationUrl(val url: String?) : BoardAction
+    data class SetPresentationMode(val enabled: Boolean) : BoardAction
+    data class ImportPresentation(val pathOrUri: String) : BoardAction
 
     // Canvas Elements
-    data class AddText(val text: String, val x: Float, val y: Float, val color: Color, val fontSize: Float, val fontName: String) : OotbAction
-    data class DeleteStroke(val strokeId: String) : OotbAction
-    data class DeleteText(val textId: String) : OotbAction
-    data class AddImage(val pathOrUri: String) : OotbAction
-    data class DeleteImage(val imageId: String) : OotbAction
-    data class MoveElements(val strokes: List<Stroke>, val texts: List<TextElement>, val images: List<ImageElement>) : OotbAction
-    data class DuplicateElements(val strokeIds: List<String>, val textIds: List<String>) : OotbAction
-    data class RecolorElements(val strokeIds: List<String>, val textIds: List<String>, val color: Color) : OotbAction
+    data class AddText(val text: String, val x: Float, val y: Float, val color: Color, val fontSize: Float, val fontName: String) : BoardAction
+    data class DeleteStroke(val strokeId: String) : BoardAction
+    data class DeleteText(val textId: String) : BoardAction
+    data class AddImage(val pathOrUri: String) : BoardAction
+    data class DeleteImage(val imageId: String) : BoardAction
+    data class MoveElements(val strokes: List<Stroke>, val texts: List<TextElement>, val images: List<ImageElement>) : BoardAction
+    data class DuplicateElements(val strokeIds: List<String>, val textIds: List<String>) : BoardAction
+    data class RecolorElements(val strokeIds: List<String>, val textIds: List<String>, val color: Color) : BoardAction
 
     // Undo / Redo / Snapshot
-    data object Undo : OotbAction
-    data object Redo : OotbAction
-    data class CreateVersionSnapshot(val name: String) : OotbAction
-    data class RestoreVersionSnapshot(val snapshot: BoardVersionSnapshot) : OotbAction
+    data object Undo : BoardAction
+    data object Redo : BoardAction
+    data class CreateVersionSnapshot(val name: String) : BoardAction
+    data class RestoreVersionSnapshot(val snapshot: BoardVersionSnapshot) : BoardAction
 
     // Board & Page Management
-    data object AddNewPage : OotbAction
-    data class SwitchPage(val pageIndex: Int) : OotbAction
-    data class DeletePage(val pageIndex: Int) : OotbAction
-    data class CreateNewBoard(val title: String) : OotbAction
-    data class SwitchBoard(val board: Board) : OotbAction
-    data class RenameBoard(val boardId: String, val newTitle: String) : OotbAction
-    data class DuplicateBoard(val boardId: String) : OotbAction
-    data class DeleteBoard(val boardId: String) : OotbAction
-    data class AddStickyNote(val note: com.kd.creavity.domain.model.StickyNote) : OotbAction
-    data class DeleteStickyNote(val noteId: String) : OotbAction
-    data class ToggleStarBoard(val boardId: String) : OotbAction
-    data class ToggleReadOnlyBoard(val boardId: String, val isReadOnly: Boolean) : OotbAction
-    data class MoveBoardToBin(val boardId: String) : OotbAction
-    data class RestoreBoardFromBin(val boardId: String) : OotbAction
-    data class DeleteBoardPermanently(val boardId: String) : OotbAction
-    data object EmptyBin : OotbAction
-    data class UpdateBoardMetadata(val boardId: String, val title: String, val venue: String, val group: String, val labels: List<String>) : OotbAction
-    data class CreateFolder(val folderName: String) : OotbAction
-    data class DeleteFolder(val folderName: String) : OotbAction
+    data object AddNewPage : BoardAction
+    data class SwitchPage(val pageIndex: Int) : BoardAction
+    data class DeletePage(val pageIndex: Int) : BoardAction
+    data class CreateNewBoard(val title: String) : BoardAction
+    data class SwitchBoard(val board: Board) : BoardAction
+    data class RenameBoard(val boardId: String, val newTitle: String) : BoardAction
+    data class DuplicateBoard(val boardId: String) : BoardAction
+    data class DeleteBoard(val boardId: String) : BoardAction
+    data class AddStickyNote(val note: com.kd.creavity.domain.model.StickyNote) : BoardAction
+    data class DeleteStickyNote(val noteId: String) : BoardAction
+    data class ToggleStarBoard(val boardId: String) : BoardAction
+    data class ToggleReadOnlyBoard(val boardId: String, val isReadOnly: Boolean) : BoardAction
+    data class MoveBoardToBin(val boardId: String) : BoardAction
+    data class RestoreBoardFromBin(val boardId: String) : BoardAction
+    data class DeleteBoardPermanently(val boardId: String) : BoardAction
+    data object EmptyBin : BoardAction
+    data class UpdateBoardMetadata(val boardId: String, val title: String, val venue: String, val group: String, val labels: List<String>) : BoardAction
+    data class CreateFolder(val folderName: String) : BoardAction
+    data class DeleteFolder(val folderName: String) : BoardAction
 
     // P2P Collaboration
-    data class StartAdvertising(val deviceName: String) : OotbAction
-    data object StopAdvertising : OotbAction
-    data object StartDiscovery : OotbAction
-    data object StopDiscovery : OotbAction
-    data class ConnectPeer(val endpointId: String, val localName: String) : OotbAction
-    data class DisconnectPeer(val endpointId: String) : OotbAction
-    data class SetPeerPermission(val endpointId: String, val isReadOnly: Boolean) : OotbAction
-    data class SetAllPeersPermission(val isReadOnly: Boolean) : OotbAction
-    data object LeaveRoom : OotbAction
+    data class StartAdvertising(val deviceName: String) : BoardAction
+    data object StopAdvertising : BoardAction
+    data object StartDiscovery : BoardAction
+    data object StopDiscovery : BoardAction
+    data class ConnectPeer(val endpointId: String, val localName: String) : BoardAction
+    data class DisconnectPeer(val endpointId: String) : BoardAction
+    data class SetPeerPermission(val endpointId: String, val isReadOnly: Boolean) : BoardAction
+    data class SetAllPeersPermission(val isReadOnly: Boolean) : BoardAction
+    data object LeaveRoom : BoardAction
 
     // Settings
-    data class UpdateDisplayName(val name: String) : OotbAction
-    data class ToggleHaptics(val enabled: Boolean) : OotbAction
-    data class SetThemeMode(val mode: com.kd.creavity.presentation.viewmodel.ThemeMode) : OotbAction
+    data class UpdateDisplayName(val name: String) : BoardAction
+    data class ToggleHaptics(val enabled: Boolean) : BoardAction
+    data class SetThemeMode(val mode: com.kd.creavity.presentation.viewmodel.ThemeMode) : BoardAction
 }

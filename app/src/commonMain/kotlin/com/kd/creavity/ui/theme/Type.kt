@@ -26,7 +26,7 @@ fun getAppFontFamily(): FontFamily {
     return family
 }
 
-fun getGoogleFontFamily(fontName: String): FontFamily = AppFontFamily
+fun getDocFontFamily(fontName: String): FontFamily = AppFontFamily
 
 fun createAppTypography(fontFamily: FontFamily): Typography {
     val base = Typography()

@@ -79,7 +79,7 @@ data class StickyNote(
     val y: Float = 0f,
     val width: Float = 220f,
     val height: Float = 220f,
-    val color: Long = 0xFFFFF176, // Classic Jamboard Yellow
+    val color: Long = 0xFFFFF176, // Classic Whiteboard Yellow
     val author: String = "You",
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -172,6 +172,12 @@ object PacketSerializer {
     }
 
     fun serialize(packet: WhiteboardPacket): ByteArray {
+        val bytes = serializePacket(packet)
+        PacketTrace.log(PacketTrace.Direction.SEND, packet, bytes.size)
+        return bytes
+    }
+
+    private fun serializePacket(packet: WhiteboardPacket): ByteArray {
         return when (packet) {
             is WhiteboardPacket.StrokeStart -> {
                 val idBytes = packet.strokeId.toByteArray(StandardCharsets.UTF_8)
@@ -335,6 +341,12 @@ object PacketSerializer {
     }
 
     fun deserialize(bytes: ByteArray): WhiteboardPacket? {
+        val packet = deserializePacket(bytes) ?: return null
+        PacketTrace.log(PacketTrace.Direction.RECEIVE, packet, bytes.size)
+        return packet
+    }
+
+    private fun deserializePacket(bytes: ByteArray): WhiteboardPacket? {
         if (bytes.isEmpty()) return null
         val buffer = ByteBuffer.wrap(bytes)
         return when (buffer.get()) {

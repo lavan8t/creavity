@@ -26,7 +26,7 @@ import com.kd.creavity.domain.mutation.BoardMutation
 import com.kd.creavity.domain.mutation.MutationHistory
 import com.kd.creavity.data.mesh.MeshAccessController
 import com.kd.creavity.data.mesh.MeshRole
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.util.copyImageToAppStorage
 import com.kd.creavity.util.createDefaultPeerTransport
 import com.kd.creavity.util.importPdfPages
@@ -469,7 +469,11 @@ class WhiteboardViewModel(
         } else stroke
 
         val activePage = baseBoard.pages.getOrElse(baseBoard.activePageIndex) { BoardPage() }
-        val updatedStrokes = activePage.strokes + taggedStroke
+        val updatedStrokes = if (activePage.strokes.any { it.id == taggedStroke.id }) {
+            activePage.strokes.map { if (it.id == taggedStroke.id) taggedStroke else it }
+        } else {
+            activePage.strokes + taggedStroke
+        }
         val updatedPage = activePage.copy(strokes = updatedStrokes)
         val updatedPages = baseBoard.pages.toMutableList().apply {
             if (baseBoard.activePageIndex in indices) {
@@ -916,10 +920,15 @@ class WhiteboardViewModel(
 
     fun toggleStarBoard(boardId: String) {
         val board = _uiState.value.savedBoards.find { it.id == boardId }
-            ?: if (_uiState.value.currentBoard.id == boardId) _uiState.value.currentBoard else null
             ?: return
         val updated = board.copy(isStarred = !board.isStarred, modifiedAt = System.currentTimeMillis())
-        persistBoard(updated)
+        _uiState.update { state ->
+            val updatedSaved = state.savedBoards.map { if (it.id == boardId) updated else it }
+            state.copy(savedBoards = updatedSaved)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            boardManager.saveBoard(updated)
+        }
     }
 
     fun addStickyNote(note: com.kd.creavity.domain.model.StickyNote) {

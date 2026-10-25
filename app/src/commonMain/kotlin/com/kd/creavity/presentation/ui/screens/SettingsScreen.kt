@@ -60,7 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
 import com.kd.creavity.presentation.viewmodel.ThemeMode
@@ -281,7 +281,7 @@ fun CanvasBackgroundBottomSheet(
 @Composable
 fun SettingsScreen(
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     onNavigateToCanvas: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -417,7 +417,7 @@ fun SettingsScreen(
                                 }
                                 Slider(
                                     value = uiState.currentWidth,
-                                    onValueChange = { onAction(OotbAction.ChangeStrokeWidth(it)) },
+                                    onValueChange = { onAction(BoardAction.ChangeStrokeWidth(it)) },
                                     valueRange = 1f..40f,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -434,13 +434,13 @@ fun SettingsScreen(
                                     checked = uiState.hapticsEnabled,
                                     onCheckedChange = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onAction(OotbAction.ToggleHaptics(it))
+                                        onAction(BoardAction.ToggleHaptics(it))
                                     }
                                 )
                             },
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onAction(OotbAction.ToggleHaptics(!uiState.hapticsEnabled))
+                                onAction(BoardAction.ToggleHaptics(!uiState.hapticsEnabled))
                             }
                         )
 
@@ -454,13 +454,13 @@ fun SettingsScreen(
                                     checked = uiState.isInfiniteCanvas,
                                     onCheckedChange = {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onAction(OotbAction.SetInfiniteCanvas(it))
+                                        onAction(BoardAction.SetInfiniteCanvas(it))
                                     }
                                 )
                             },
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onAction(OotbAction.SetInfiniteCanvas(!uiState.isInfiniteCanvas))
+                                onAction(BoardAction.SetInfiniteCanvas(!uiState.isInfiniteCanvas))
                             }
                         )
                     }
@@ -545,7 +545,7 @@ fun SettingsScreen(
                         onClick = {
                             val trimmed = tempDisplayName.trim()
                             if (trimmed.isNotEmpty()) {
-                                onAction(OotbAction.UpdateDisplayName(trimmed))
+                                onAction(BoardAction.UpdateDisplayName(trimmed))
                             }
                             showEditDisplayNameDialog = false
                         },
@@ -566,7 +566,7 @@ fun SettingsScreen(
         CanvasBackgroundBottomSheet(
             selectedColor = uiState.backgroundColor,
             onColorSelected = { color ->
-                onAction(OotbAction.SelectBackgroundColor(color))
+                onAction(BoardAction.SelectBackgroundColor(color))
                 showBackgroundSheet = false
             },
             onDismiss = { showBackgroundSheet = false }
@@ -610,7 +610,7 @@ fun SettingsScreen(
                                 indication = ripple(),
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onAction(OotbAction.SetThemeMode(mode))
+                                    onAction(BoardAction.SetThemeMode(mode))
                                     showThemeModeSheet = false
                                 }
                             )

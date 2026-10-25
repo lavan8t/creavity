@@ -43,6 +43,7 @@ import com.kd.creavity.domain.model.PeerPresence
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
 import com.kd.creavity.presentation.canvas.CanvasColorUtils
+import com.kd.creavity.presentation.canvas.StrokeGeometryCache
 import kotlin.math.max
 
 /**
@@ -99,9 +100,9 @@ fun WhiteboardMinimap(
     }
 
     // 2. Minimap Path Cache: reuses pre-built stroke paths without creating new Paths on every pan/zoom frame
-    val pathCache = remember { HashMap<String, Path>() }
-    if (strokes.isEmpty() && pathCache.isNotEmpty()) {
-        pathCache.clear()
+    val geometryCache = remember { StrokeGeometryCache() }
+    if (strokes.isEmpty() && geometryCache.pathCount() > 0) {
+        geometryCache.clear()
     }
 
     // Viewport in world coordinates
@@ -241,7 +242,7 @@ fun WhiteboardMinimap(
                     // 1. Render all strokes via cached vector paths
                     strokes.forEach { stroke ->
                         if (stroke.points.size >= 2) {
-                            val path = pathCache.getOrPut(stroke.id) {
+                            val path = geometryCache.pathFor(stroke, isMoving = false) {
                                 PathUtils.createToolPath(stroke.tool, stroke.points)
                             }
                             drawPath(

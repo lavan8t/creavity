@@ -77,7 +77,7 @@ import androidx.compose.ui.unit.sp
 import com.kd.creavity.util.shareBoard
 import com.kd.creavity.domain.model.Board
 import com.kd.creavity.presentation.ui.NavDestination
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.components.BoardActionsSheet
 import com.kd.creavity.presentation.ui.components.BoardEditMetadataSheet
 import com.kd.creavity.presentation.ui.components.BoardExportSheet
@@ -93,7 +93,6 @@ import com.kd.creavity.presentation.ui.components.LibraryNavDrawer
 import com.kd.creavity.presentation.ui.components.LibrarySearchBar
 import com.kd.creavity.presentation.ui.components.LibrarySelectionTopBar
 import com.kd.creavity.presentation.ui.components.LibraryViewMode
-import com.kd.creavity.presentation.ui.components.LibraryViewModeSwitcher
 import com.kd.creavity.presentation.ui.components.CreateFolderSheet
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
@@ -115,7 +114,7 @@ enum class LibrarySortOrder(val label: String) {
 fun BoardsLibraryScreen(
     modifier: Modifier = Modifier,
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     onNavigateToCanvas: () -> Unit,
     onNavigateToDestination: (NavDestination) -> Unit = {},
 ) {
@@ -123,7 +122,6 @@ fun BoardsLibraryScreen(
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    var viewMode by rememberSaveable { mutableStateOf(LibraryViewMode.FOLDERS) }
     var openedFolder by rememberSaveable { mutableStateOf<String?>(null) }
     var isFolderGridView by rememberSaveable { mutableStateOf(true) }
     var showCreateFolderSheet by remember { mutableStateOf(false) }
@@ -291,9 +289,9 @@ fun BoardsLibraryScreen(
                                 selectedBoardIds.forEach { id ->
                                     val isStarred = activeBoards.find { it.id == id }?.isStarred == true
                                     if (anyUnstarred && !isStarred) {
-                                        onAction(OotbAction.ToggleStarBoard(id))
+                                        onAction(BoardAction.ToggleStarBoard(id))
                                     } else if (!anyUnstarred && isStarred) {
-                                        onAction(OotbAction.ToggleStarBoard(id))
+                                        onAction(BoardAction.ToggleStarBoard(id))
                                     }
                                 }
                             },
@@ -326,7 +324,7 @@ fun BoardsLibraryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (viewMode != LibraryViewMode.FOLDERS) {
+                        if (LibraryViewMode.FOLDERS != LibraryViewMode.FOLDERS) {
                             // Sort Dropdown Button + Direction Toggle
                             Box {
                                 TooltipHint(text = "Sort boards") {
@@ -401,18 +399,11 @@ fun BoardsLibraryScreen(
                         }
                     }
 
-                    // Unified 3-way view mode switcher: Folders | Grid | List
-                    LibraryViewModeSwitcher(
-                        viewMode = viewMode,
-                        onViewModeChange = { mode ->
-                            viewMode = mode
-                            openedFolder = null
-                        }
-                    )
+                    // Always folders view (folder toggler removed; inside-folder grid/list kept in FolderDetailHeader)
                 }
 
                 // Group folders filter row (in Grid or List mode when groups exist)
-                if (viewMode != LibraryViewMode.FOLDERS && distinctGroups.isNotEmpty()) {
+                if (false) {
                     GroupFolderFilterRow(
                         groups = distinctGroups,
                         selectedGroup = selectedGroup,
@@ -423,7 +414,7 @@ fun BoardsLibraryScreen(
                 }
 
                 // 3. Main Content: Grid, List, or Folders Shared Element View
-                when (viewMode) {
+                when (LibraryViewMode.FOLDERS) {
                     LibraryViewMode.GRID -> {
                         // ==================== ALL BOARDS GRID VIEW ====================
                         if (filteredBoards.isEmpty()) {
@@ -476,7 +467,7 @@ fun BoardsLibraryScreen(
                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                             } else {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
                                                 onNavigateToCanvas()
                                             }
                                         },
@@ -490,7 +481,7 @@ fun BoardsLibraryScreen(
                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                             }
                                         },
-                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                        onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
                                         onOptionsClick = { selectedBoardForActions = board }
                                     )
                                 }
@@ -548,7 +539,7 @@ fun BoardsLibraryScreen(
                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                             } else {
                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
                                                 onNavigateToCanvas()
                                             }
                                         },
@@ -562,7 +553,7 @@ fun BoardsLibraryScreen(
                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                             }
                                         },
-                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                        onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
                                         onOptionsClick = { selectedBoardForActions = board }
                                     )
                                 }
@@ -709,7 +700,7 @@ fun BoardsLibraryScreen(
                                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                                             } else {
                                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                                onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
                                                                 onNavigateToCanvas()
                                                             }
                                                         },
@@ -723,7 +714,7 @@ fun BoardsLibraryScreen(
                                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                                             }
                                                         },
-                                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                                        onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
                                                         onOptionsClick = { selectedBoardForActions = board }
                                                     )
                                                 }
@@ -757,7 +748,7 @@ fun BoardsLibraryScreen(
                                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                                             } else {
                                                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                onAction(OotbAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                                                onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
                                                                 onNavigateToCanvas()
                                                             }
                                                         },
@@ -771,7 +762,7 @@ fun BoardsLibraryScreen(
                                                                 if (selectedBoardIds.isEmpty()) isSelectionMode = false
                                                             }
                                                         },
-                                                        onToggleStar = { onAction(OotbAction.ToggleStarBoard(board.id)) },
+                                                        onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
                                                         onOptionsClick = { selectedBoardForActions = board }
                                                     )
                                                 }
@@ -826,10 +817,10 @@ fun BoardsLibraryScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            val folderGroup = if (viewMode == LibraryViewMode.FOLDERS && openedFolder != null && openedFolder != "Unfiled") {
+                            val folderGroup = if (LibraryViewMode.FOLDERS == LibraryViewMode.FOLDERS && openedFolder != null && openedFolder != "Unfiled") {
                                 openedFolder ?: ""
                             } else ""
-                            onAction(OotbAction.CreateNewBoard("Untitled Board"))
+                            onAction(BoardAction.CreateNewBoard("Untitled Board"))
                             onNavigateToCanvas()
                         },
                         modifier = Modifier.weight(1f).height(56.dp),
@@ -851,7 +842,7 @@ fun BoardsLibraryScreen(
                 board = boardToEditMetadata,
                 onDismiss = { boardToEditMetadata = null },
                 onSave = { boardId, title, venue, group, labels ->
-                    onAction(OotbAction.UpdateBoardMetadata(boardId, title, venue, group, labels))
+                    onAction(BoardAction.UpdateBoardMetadata(boardId, title, venue, group, labels))
                 }
             )
 
@@ -859,9 +850,9 @@ fun BoardsLibraryScreen(
             BoardActionsSheet(
                 board = selectedBoardForActions,
                 onDismiss = { selectedBoardForActions = null },
-                onToggleStar = { board -> onAction(OotbAction.ToggleStarBoard(board.id)) },
+                onToggleStar = { board -> onAction(BoardAction.ToggleStarBoard(board.id)) },
                 onRename = { board -> boardToEditMetadata = board },
-                onDuplicate = { board -> onAction(OotbAction.DuplicateBoard(board.id)) },
+                onDuplicate = { board -> onAction(BoardAction.DuplicateBoard(board.id)) },
                 onExport = { board -> boardToExport = board },
                 onMoveToBin = { board ->
                     boardIdToDeleteWithConfirm = board.id
@@ -883,7 +874,7 @@ fun BoardsLibraryScreen(
                     confirmText = "Move to Trash",
                     onConfirm = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        selectedBoardIds.forEach { onAction(OotbAction.MoveBoardToBin(it)) }
+                        selectedBoardIds.forEach { onAction(BoardAction.MoveBoardToBin(it)) }
                         selectedBoardIds = emptySet()
                         isSelectionMode = false
                         showBatchDeleteConfirm = false
@@ -900,7 +891,7 @@ fun BoardsLibraryScreen(
                     confirmText = "Move to Trash",
                     onConfirm = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onAction(OotbAction.MoveBoardToBin(targetId))
+                        onAction(BoardAction.MoveBoardToBin(targetId))
                         boardIdToDeleteWithConfirm = null
                     },
                     onDismiss = { boardIdToDeleteWithConfirm = null }
@@ -914,7 +905,7 @@ fun BoardsLibraryScreen(
                     confirmText = "Delete Folder",
                     onConfirm = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onAction(OotbAction.DeleteFolder(targetFolder))
+                        onAction(BoardAction.DeleteFolder(targetFolder))
                         if (openedFolder == targetFolder) {
                             openedFolder = null
                         }
@@ -928,7 +919,7 @@ fun BoardsLibraryScreen(
                 show = showCreateFolderSheet,
                 onDismiss = { showCreateFolderSheet = false },
                 onCreate = { folderName ->
-                    onAction(OotbAction.CreateFolder(folderName))
+                    onAction(BoardAction.CreateFolder(folderName))
                 }
             )
         }

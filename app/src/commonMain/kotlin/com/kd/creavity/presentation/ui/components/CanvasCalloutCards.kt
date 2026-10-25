@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
 
-// Jamboard 6-Color Palette
-val JAMBOARD_PEN_COLORS = listOf(
+// Whiteboard 6-Color Palette
+val Whiteboard_PEN_COLORS = listOf(
     Color(0xFF202124), // Black / Dark
     Color(0xFF1A73E8), // Google Blue
     Color(0xFF1E8E3E), // Google Green
@@ -31,23 +31,23 @@ val JAMBOARD_PEN_COLORS = listOf(
     Color(0xFFFFFFFF)  // White
 )
 
-// Jamboard Sticky Note Colors
-val JAMBOARD_STICKY_COLORS = listOf(
-    Color(0xFFFFF176), // Classic Jamboard Yellow
-    Color(0xFFAED581), // Jamboard Green
-    Color(0xFF81D4FA), // Jamboard Blue
-    Color(0xFFF48FB1), // Jamboard Pink
-    Color(0xFFFFB74D), // Jamboard Orange
+// Whiteboard Sticky Note Colors
+val Whiteboard_STICKY_COLORS = listOf(
+    Color(0xFFFFF176), // Classic Whiteboard Yellow
+    Color(0xFFAED581), // Whiteboard Green
+    Color(0xFF81D4FA), // Whiteboard Blue
+    Color(0xFFF48FB1), // Whiteboard Pink
+    Color(0xFFFFB74D), // Whiteboard Orange
     Color(0xFFFFFFFF)  // Clean White
 )
 
 /**
- * Sticky Note Creation Dialog (Iconic Jamboard yellow, green, blue, pink, orange notes).
+ * Sticky Note Creation Dialog (Iconic Whiteboard yellow, green, blue, pink, orange notes).
  */
 @Suppress("DEPRECATION")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JamboardStickyNoteDialog(
+fun WhiteboardStickyNoteDialog(
     visible: Boolean,
     onDismiss: () -> Unit,
     onSave: (text: String, color: Long) -> Unit
@@ -55,7 +55,7 @@ fun JamboardStickyNoteDialog(
     if (!visible) return
 
     var text by remember { mutableStateOf("") }
-    var selectedColor by remember { mutableStateOf(JAMBOARD_STICKY_COLORS[0]) }
+    var selectedColor by remember { mutableStateOf(Whiteboard_STICKY_COLORS[0]) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -85,7 +85,7 @@ fun JamboardStickyNoteDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                JAMBOARD_STICKY_COLORS.forEach { col ->
+                Whiteboard_STICKY_COLORS.forEach { col ->
                     val isSelected = selectedColor == col
                     Box(
                         modifier = Modifier
@@ -271,7 +271,7 @@ fun PenCalloutCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    JAMBOARD_PEN_COLORS.forEach { col ->
+                    Whiteboard_PEN_COLORS.forEach { col ->
                         val isSelected = currentColor == col
                         Box(
                             modifier = Modifier

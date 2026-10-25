@@ -17,7 +17,7 @@ val ExpressiveShapes = androidx.compose.material3.Shapes(
 )
 
 @Composable
-fun OutofTheBoxTheme(
+fun boardTheme(
     darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit

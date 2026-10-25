@@ -77,7 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.PeerDevice
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
@@ -112,7 +112,7 @@ private fun parseEmojiAndName(raw: String): Pair<String, String> {
 @Composable
 fun PeerConnectScreen(
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     onNavigateToCanvas: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -244,8 +244,8 @@ fun PeerConnectScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (uiState.isAdvertising) onAction(OotbAction.StopAdvertising)
-                            else onAction(OotbAction.StartAdvertising(uiState.displayName))
+                            if (uiState.isAdvertising) onAction(BoardAction.StopAdvertising)
+                            else onAction(BoardAction.StartAdvertising(uiState.displayName))
                         },
                         colors = if (uiState.isAdvertising) {
                             ButtonDefaults.buttonColors(
@@ -278,8 +278,8 @@ fun PeerConnectScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (uiState.isDiscovering) onAction(OotbAction.StopDiscovery)
-                            else onAction(OotbAction.StartDiscovery)
+                            if (uiState.isDiscovering) onAction(BoardAction.StopDiscovery)
+                            else onAction(BoardAction.StartDiscovery)
                         },
                         colors = if (uiState.isDiscovering) {
                             ButtonDefaults.buttonColors(
@@ -420,7 +420,7 @@ fun PeerConnectScreen(
                                 QuickShareDeviceCard(
                                     peer = peer,
                                     onConnect = {
-                                        onAction(OotbAction.ConnectPeer(peer.endpointId, uiState.displayName))
+                                        onAction(BoardAction.ConnectPeer(peer.endpointId, uiState.displayName))
                                     }
                                 )
                             }
@@ -482,7 +482,7 @@ fun PeerConnectScreen(
                         FilledTonalButton(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onAction(OotbAction.SetAllPeersPermission(!allReadOnly))
+                                onAction(BoardAction.SetAllPeersPermission(!allReadOnly))
                             },
                             shape = RoundedCornerShape(50),
                             modifier = Modifier.height(34.dp),
@@ -561,7 +561,7 @@ fun PeerConnectScreen(
                                     IconButton(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onAction(OotbAction.SetPeerPermission(peer.endpointId, !peer.isReadOnly))
+                                            onAction(BoardAction.SetPeerPermission(peer.endpointId, !peer.isReadOnly))
                                         },
                                         modifier = Modifier.size(36.dp)
                                     ) {
@@ -577,7 +577,7 @@ fun PeerConnectScreen(
                                     IconButton(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onAction(OotbAction.DisconnectPeer(peer.endpointId))
+                                            onAction(BoardAction.DisconnectPeer(peer.endpointId))
                                         },
                                         modifier = Modifier.size(36.dp)
                                     ) {
@@ -613,7 +613,7 @@ fun PeerConnectScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilledTonalButton(
-                                        onClick = { onAction(OotbAction.CreateNewBoard()) },
+                                        onClick = { onAction(BoardAction.CreateNewBoard("Untitled Board")) },
                                         shape = RoundedCornerShape(50),
                                         modifier = Modifier.height(36.dp)
                                     ) {
@@ -632,7 +632,7 @@ fun PeerConnectScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onAction(OotbAction.LeaveRoom)
+                            onAction(BoardAction.LeaveRoom)
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -784,7 +784,7 @@ fun PeerConnectScreen(
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             val trimmedName = nameText.trim().ifEmpty { "Whiteboard User" }
                             val formattedName = "$selectedEmoji $trimmedName"
-                            onAction(OotbAction.UpdateDisplayName(formattedName))
+                            onAction(BoardAction.UpdateDisplayName(formattedName))
                             showEditSheet = false
                         },
                         modifier = Modifier.weight(1f),

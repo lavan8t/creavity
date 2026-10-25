@@ -50,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.components.DeleteConfirmDialog
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.viewmodel.WhiteboardUiState
@@ -62,7 +62,7 @@ import java.util.Locale
 @Composable
 fun BinScreen(
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     onBackPressed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -227,7 +227,7 @@ fun BinScreen(
                                     OutlinedButton(
                                         onClick = {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            onAction(OotbAction.RestoreBoardFromBin(board.id))
+                                            onAction(BoardAction.RestoreBoardFromBin(board.id))
                                         },
                                         shape = RoundedCornerShape(50)
                                     ) {
@@ -269,7 +269,7 @@ fun BinScreen(
             confirmText = "Delete",
             onConfirm = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onAction(OotbAction.EmptyBin)
+                onAction(BoardAction.EmptyBin)
                 showEmptyBinConfirmation = false
             },
             onDismiss = { showEmptyBinConfirmation = false }
@@ -284,7 +284,7 @@ fun BinScreen(
             confirmText = "Delete",
             onConfirm = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onAction(OotbAction.DeleteBoardPermanently(targetId))
+                onAction(BoardAction.DeleteBoardPermanently(targetId))
                 boardIdToDeletePermanently = null
             },
             onDismiss = { boardIdToDeletePermanently = null }

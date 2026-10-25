@@ -42,7 +42,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.domain.model.Point
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.viewmodel.WhiteboardUiState
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -101,7 +101,7 @@ private fun ToolbarIconButton(
 fun CanvasBottomToolbar(
     uiState: WhiteboardUiState,
     activeCalloutTool: String?,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     onToggleCallout: (String) -> Unit,
     onOpenStickyNote: () -> Unit,
     onOpenTextDialog: (Point) -> Unit,
@@ -170,7 +170,7 @@ fun CanvasBottomToolbar(
                         tint = if (isPen && uiState.currentColor != Color.Unspecified) uiState.currentColor else null,
                         onClick = {
                             onToggleCallout("")
-                            onAction(OotbAction.SelectTool(DrawingTool.PEN))
+                            onAction(BoardAction.SelectTool(DrawingTool.PEN))
                         },
                         onLongClick = {
                             onToggleCallout("PEN")
@@ -186,7 +186,7 @@ fun CanvasBottomToolbar(
                         isSelected = isEraser,
                         onClick = {
                             onToggleCallout("")
-                            onAction(OotbAction.SelectTool(DrawingTool.ERASER))
+                            onAction(BoardAction.SelectTool(DrawingTool.ERASER))
                         },
                         onLongClick = {
                             onToggleCallout("ERASER")
@@ -210,7 +210,7 @@ fun CanvasBottomToolbar(
                         isSelected = isSelect,
                         onClick = {
                             onToggleCallout("")
-                            onAction(OotbAction.SelectTool(DrawingTool.SELECT_MOVE))
+                            onAction(BoardAction.SelectTool(DrawingTool.SELECT_MOVE))
                         },
                         onLongClick = {
                             onToggleCallout("SELECT")
@@ -234,7 +234,7 @@ fun CanvasBottomToolbar(
                         enabled = uiState.canUndo || uiState.canRedo,
                         onClick = {
                             if (uiState.canUndo) {
-                                onAction(OotbAction.Undo)
+                                onAction(BoardAction.Undo)
                             }
                         },
                         onLongClick = {
@@ -305,7 +305,7 @@ fun CanvasBottomToolbar(
                                 label = "Circle",
                                 onClick = {
                                     fabMenuExpanded = false
-                                    onAction(OotbAction.SelectTool(DrawingTool.CIRCLE))
+                                    onAction(BoardAction.SelectTool(DrawingTool.CIRCLE))
                                 }
                             )
                             FabMenuItem(
@@ -313,7 +313,7 @@ fun CanvasBottomToolbar(
                                 label = "Rectangle",
                                 onClick = {
                                     fabMenuExpanded = false
-                                    onAction(OotbAction.SelectTool(DrawingTool.RECTANGLE))
+                                    onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
                                 }
                             )
                             FabMenuItem(
@@ -322,7 +322,7 @@ fun CanvasBottomToolbar(
                                 filled = uiState.selectedTool == DrawingTool.LASER,
                                 onClick = {
                                     fabMenuExpanded = false
-                                    onAction(OotbAction.SelectTool(DrawingTool.LASER))
+                                    onAction(BoardAction.SelectTool(DrawingTool.LASER))
                                 }
                             )
                         }

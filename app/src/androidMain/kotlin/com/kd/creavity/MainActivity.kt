@@ -13,11 +13,11 @@ import androidx.compose.runtime.getValue
 import com.kd.creavity.data.nearby.ConnectivityCheckResult
 import com.kd.creavity.data.nearby.ConnectivityHelper
 import com.kd.creavity.presentation.ui.AdaptiveWhiteboardScreen
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.viewmodel.ThemeMode
 import com.kd.creavity.presentation.viewmodel.WhiteboardViewModel
 import com.kd.creavity.presentation.viewmodel.dispatch
-import com.kd.creavity.ui.theme.OutofTheBoxTheme
+import com.kd.creavity.ui.theme.boardTheme
 
 class MainActivity : ComponentActivity() {
     private val viewModel: WhiteboardViewModel by viewModels()
@@ -46,13 +46,13 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
             }
 
-            OutofTheBoxTheme(darkTheme = isDark) {
+            boardTheme(darkTheme = isDark) {
                 AdaptiveWhiteboardScreen(
                     uiState = uiState,
                     onAction = { action ->
                         when (action) {
-                            is OotbAction.StartAdvertising -> startAdvertisingWithCheck(action.deviceName)
-                            is OotbAction.StartDiscovery -> startDiscoveryWithCheck()
+                            is BoardAction.StartAdvertising -> startAdvertisingWithCheck(action.deviceName)
+                            is BoardAction.StartDiscovery -> startDiscoveryWithCheck()
                             else -> viewModel.dispatch(action)
                         }
                     }

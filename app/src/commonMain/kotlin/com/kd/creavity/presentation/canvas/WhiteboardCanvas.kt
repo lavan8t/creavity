@@ -47,7 +47,7 @@ import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
 import com.kd.creavity.ui.theme.AppFontFamily
-import com.kd.creavity.ui.theme.getGoogleFontFamily
+import com.kd.creavity.ui.theme.getDocFontFamily
 import kotlin.math.abs
 import androidx.compose.ui.graphics.drawscope.Stroke as CanvasStrokeStyle
 
@@ -87,9 +87,8 @@ fun WhiteboardCanvas(
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
-    val pathCache = remember { HashMap<String, Path>() }
     val imageBitmapCache = remember { HashMap<String, ImageBitmap>() }
-    val strokeBoundsCache = remember { HashMap<String, Rect>() }
+    val geometryCache = remember { StrokeGeometryCache() }
     val textLayoutCache = remember { HashMap<String, TextLayoutResult>() }
     val stickyTextLayoutCache = remember { HashMap<String, TextLayoutResult>() }
 
@@ -183,7 +182,7 @@ fun WhiteboardCanvas(
                             hapticsEnabled = hapticsEnabled,
                             drawingHaptics = drawingHaptics,
                             isReadOnly = isReadOnly,
-                            pathCache = pathCache
+                            geometryCache = geometryCache
                         )
                         if (handled) {
                             event.changes.forEach { it.consume() }
@@ -192,8 +191,11 @@ fun WhiteboardCanvas(
                 }
             }
     ) {
+        // Read drawInvalidator inside DrawScope to subscribe the draw phase to gesture updates.
+        // DO NOT REMOVE: CanvasGestureController mutates drawInvalidator to trigger 60/120fps redraws
+        // without triggering recomposition. Removing this breaks live stroke drawing.
         @Suppress("UNUSED_VARIABLE")
-        val dummy = drawInvalidator.longValue
+        val drawTrigger = drawInvalidator.longValue
 
         withTransform({
             translate(panOffset.x, panOffset.y)
@@ -268,9 +270,8 @@ fun WhiteboardCanvas(
                 if (activeStroke.points.isEmpty()) return@forEach
 
                 val isMoving = movingStrokeMap.containsKey(stroke.id)
-                val strokeKey = if (isMoving) "${stroke.id}_m" else stroke.id
 
-                val bounds = strokeBoundsCache.getOrPut(strokeKey) {
+                val bounds = geometryCache.boundsFor(activeStroke, isMoving) {
                     var minX = Float.MAX_VALUE
                     var minY = Float.MAX_VALUE
                     var maxX = Float.MIN_VALUE
@@ -288,7 +289,7 @@ fun WhiteboardCanvas(
                     return@forEach
                 }
 
-                val path = pathCache.getOrPut(strokeKey) {
+                val path = geometryCache.pathFor(activeStroke, isMoving) {
                     PathUtils.createToolPath(activeStroke.tool, activeStroke.points, activeStroke.strokeWidth)
                 }
                 val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(Color(activeStroke.color.toInt()), isDark)
@@ -311,7 +312,7 @@ fun WhiteboardCanvas(
                 if (strokes.any { it.id == pending.id }) {
                     controller.pendingStroke = null
                 } else {
-                    val path = pathCache.getOrPut(pending.id) {
+                    val path = geometryCache.pathFor(pending, isMoving = true) {
                         PathUtils.createToolPath(pending.tool, pending.points, pending.strokeWidth)
                     }
                     val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(Color(pending.color.toInt()), isDark)
@@ -336,7 +337,7 @@ fun WhiteboardCanvas(
                     activeElem.y + 200f < vTop || activeElem.y > vBottom) {
                     return@forEach
                 }
-                val fontFam = getGoogleFontFamily(activeElem.fontName)
+                val fontFam = getDocFontFamily(activeElem.fontName)
                 val result = textLayoutCache.getOrPut("${activeElem.id}_${activeElem.text}_${activeElem.fontSize}_${activeElem.color}") {
                     textMeasurer.measure(
                         text = AnnotatedString(activeElem.text),
@@ -350,7 +351,7 @@ fun WhiteboardCanvas(
                 drawText(result, topLeft = Offset(activeElem.x, activeElem.y))
             }
 
-            // 4b. Draw Jamboard Sticky Notes (Culled & Layout Cached)
+            // 4b. Draw Whiteboard Sticky Notes (Culled & Layout Cached)
             stickyNotes.forEach { note ->
                 if (note.x + note.width < vLeft || note.x > vRight ||
                     note.y + note.height < vTop || note.y > vBottom) {

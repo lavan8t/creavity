@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.presentation.canvas.WhiteboardCanvas
-import com.kd.creavity.presentation.ui.OotbAction
+import com.kd.creavity.presentation.ui.BoardAction
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
 import com.kd.creavity.presentation.viewmodel.WhiteboardUiState
 import com.kd.creavity.util.PlatformWebView
@@ -38,7 +38,7 @@ import com.kd.creavity.util.PlatformWebView
 @Composable
 fun CanvasPresentationOverlay(
     uiState: WhiteboardUiState,
-    onAction: (OotbAction) -> Unit,
+    onAction: (BoardAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -91,13 +91,13 @@ fun CanvasPresentationOverlay(
                                 canvasWidth = uiState.currentBoard.canvasWidth,
                                 canvasHeight = uiState.currentBoard.canvasHeight,
                                 onTransform = { _, _, _ -> },
-                                onStrokeCompleted = { onAction(OotbAction.StrokeCompleted(it)) },
-                                onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(OotbAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
-                                onStrokeBroadcastPoint = { id, pt -> onAction(OotbAction.StrokeBroadcastPoint(id, pt)) },
-                                onStrokeBroadcastEnd = { onAction(OotbAction.StrokeBroadcastEnd(it)) },
-                                onDeleteStroke = { onAction(OotbAction.DeleteStroke(it)) },
-                                onDeleteText = { onAction(OotbAction.DeleteText(it)) },
-                                onDeleteImage = { onAction(OotbAction.DeleteImage(it)) },
+                                onStrokeCompleted = { onAction(BoardAction.StrokeCompleted(it)) },
+                                onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
+                                onStrokeBroadcastPoint = { id, pt -> onAction(BoardAction.StrokeBroadcastPoint(id, pt)) },
+                                onStrokeBroadcastEnd = { onAction(BoardAction.StrokeBroadcastEnd(it)) },
+                                onDeleteStroke = { onAction(BoardAction.DeleteStroke(it)) },
+                                onDeleteText = { onAction(BoardAction.DeleteText(it)) },
+                                onDeleteImage = { onAction(BoardAction.DeleteImage(it)) },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -122,11 +122,11 @@ fun CanvasPresentationOverlay(
                     panOffset = Offset.Zero,
                     isInfiniteCanvas = true,
                     onTransform = { _, _, _ -> },
-                    onStrokeCompleted = { onAction(OotbAction.StrokeCompleted(it)) },
-                    onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(OotbAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
-                    onStrokeBroadcastPoint = { id, pt -> onAction(OotbAction.StrokeBroadcastPoint(id, pt)) },
-                    onStrokeBroadcastEnd = { onAction(OotbAction.StrokeBroadcastEnd(it)) },
-                    onDeleteStroke = { onAction(OotbAction.DeleteStroke(it)) },
+                    onStrokeCompleted = { onAction(BoardAction.StrokeCompleted(it)) },
+                    onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
+                    onStrokeBroadcastPoint = { id, pt -> onAction(BoardAction.StrokeBroadcastPoint(id, pt)) },
+                    onStrokeBroadcastEnd = { onAction(BoardAction.StrokeBroadcastEnd(it)) },
+                    onDeleteStroke = { onAction(BoardAction.DeleteStroke(it)) },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -161,7 +161,7 @@ fun CanvasPresentationOverlay(
 
                 TooltipHint(text = "Exit presentation") {
                     IconButton(
-                        onClick = { onAction(OotbAction.SetPresentationMode(false)) },
+                        onClick = { onAction(BoardAction.SetPresentationMode(false)) },
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
@@ -192,7 +192,7 @@ fun CanvasPresentationOverlay(
                         IconButton(
                             onClick = {
                                 if (uiState.currentBoard.activePageIndex > 0) {
-                                    onAction(OotbAction.SwitchPage(uiState.currentBoard.activePageIndex - 1))
+                                    onAction(BoardAction.SwitchPage(uiState.currentBoard.activePageIndex - 1))
                                 }
                             },
                             enabled = !hasGoogleSlides && uiState.currentBoard.activePageIndex > 0,
@@ -211,7 +211,7 @@ fun CanvasPresentationOverlay(
                         IconButton(
                             onClick = {
                                 if (uiState.currentBoard.activePageIndex < uiState.currentBoard.pages.size - 1) {
-                                    onAction(OotbAction.SwitchPage(uiState.currentBoard.activePageIndex + 1))
+                                    onAction(BoardAction.SwitchPage(uiState.currentBoard.activePageIndex + 1))
                                 }
                             },
                             enabled = !hasGoogleSlides && uiState.currentBoard.activePageIndex < uiState.currentBoard.pages.size - 1,
@@ -236,7 +236,7 @@ fun CanvasPresentationOverlay(
                     TooltipHint(text = "Laser pointer") {
                         IconButton(
                             onClick = {
-                                onAction(OotbAction.SelectTool(DrawingTool.LASER))
+                                onAction(BoardAction.SelectTool(DrawingTool.LASER))
                             },
                             modifier = Modifier
                                 .size(38.dp)
@@ -255,7 +255,7 @@ fun CanvasPresentationOverlay(
                     TooltipHint(text = "Pen") {
                         IconButton(
                             onClick = {
-                                onAction(OotbAction.SelectTool(DrawingTool.PEN))
+                                onAction(BoardAction.SelectTool(DrawingTool.PEN))
                             },
                             modifier = Modifier
                                 .size(38.dp)
@@ -274,7 +274,7 @@ fun CanvasPresentationOverlay(
                     TooltipHint(text = "Highlighter") {
                         IconButton(
                             onClick = {
-                                onAction(OotbAction.SelectTool(DrawingTool.HIGHLIGHTER))
+                                onAction(BoardAction.SelectTool(DrawingTool.HIGHLIGHTER))
                             },
                             modifier = Modifier
                                 .size(38.dp)
@@ -292,7 +292,7 @@ fun CanvasPresentationOverlay(
                     // Clear Slide Annotations
                     TooltipHint(text = "Clear slide annotations") {
                         IconButton(
-                            onClick = { onAction(OotbAction.ClearCanvas) },
+                            onClick = { onAction(BoardAction.ClearCanvas) },
                             modifier = Modifier.size(38.dp)
                         ) {
                             MaterialSymbol(name = "delete_sweep", tint = MaterialTheme.colorScheme.error, size = 20.dp)
