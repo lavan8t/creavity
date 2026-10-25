@@ -26,6 +26,8 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.MulticastSocket
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
@@ -50,6 +52,7 @@ class LanDiscoveryTransport(
     companion object {
         const val DISCOVERY_PORT = 53535
         const val DEFAULT_TCP_PORT = 53536
+        const val MULTICAST_GROUP = "224.0.0.167"
         private const val BEACON_MAGIC = "CREAVITY_BEACON"
     }
 
@@ -93,50 +96,108 @@ class LanDiscoveryTransport(
     override fun startAdvertising(deviceName: String, roomCode: String) {
         stopAdvertising()
         ensureServerStarted()
+        multicastLock?.acquire()
+        _isAdvertising.value = true
 
         advertisingJob = scope.launch {
-            _isAdvertising.value = true
             var udpSocket: DatagramSocket? = null
+            var mcastSocket: MulticastSocket? = null
             try {
                 udpSocket = DatagramSocket().apply { broadcast = true }
-                val targetAddr = InetAddress.getByName("255.255.255.255")
+                mcastSocket = MulticastSocket().apply { timeToLive = 4 }
+                val mcastAddr = InetAddress.getByName(MULTICAST_GROUP)
 
                 while (isActive) {
                     val beacon = "$BEACON_MAGIC\n$localNodeId\n$deviceName\n$roomCode\n$boundTcpPort\nHOST"
                     val bytes = beacon.toByteArray(StandardCharsets.UTF_8)
-                    val packet = DatagramPacket(bytes, bytes.size, targetAddr, DISCOVERY_PORT)
-                    try {
-                        udpSocket.send(packet)
-                    } catch (_: Exception) {}
+                    sendBeacon(bytes, udpSocket, mcastSocket, mcastAddr)
                     delay(1500)
                 }
             } catch (_: Exception) {
             } finally {
                 udpSocket?.close()
+                mcastSocket?.close()
+                multicastLock?.release()
                 _isAdvertising.value = false
             }
         }
     }
 
+    private fun sendBeacon(
+        bytes: ByteArray,
+        udpSocket: DatagramSocket,
+        mcastSocket: MulticastSocket,
+        mcastAddr: InetAddress
+    ) {
+        // 1. Limited broadcast
+        try {
+            val limited = DatagramPacket(bytes, bytes.size, InetAddress.getByName("255.255.255.255"), DISCOVERY_PORT)
+            udpSocket.send(limited)
+        } catch (_: Exception) {}
+
+        // 2. Subnet directed broadcast & multicast across all active network interfaces
+        try {
+            val ifaces = NetworkInterface.getNetworkInterfaces() ?: return
+            for (iface in ifaces) {
+                if (!iface.isUp || iface.isLoopback) continue
+
+                for (addr in iface.interfaceAddresses) {
+                    val bcast = addr.broadcast
+                    if (bcast != null) {
+                        try {
+                            val packet = DatagramPacket(bytes, bytes.size, bcast, DISCOVERY_PORT)
+                            udpSocket.send(packet)
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                try {
+                    mcastSocket.networkInterface = iface
+                    val mcastPacket = DatagramPacket(bytes, bytes.size, mcastAddr, DISCOVERY_PORT)
+                    mcastSocket.send(mcastPacket)
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+    }
+
     override fun stopAdvertising() {
         advertisingJob?.cancel()
         advertisingJob = null
+        multicastLock?.release()
         _isAdvertising.value = false
     }
 
     override fun startDiscovery() {
         stopDiscovery()
         multicastLock?.acquire()
+        _isDiscovering.value = true
 
         discoveryJob = scope.launch {
-            _isDiscovering.value = true
-            var socket: DatagramSocket? = null
+            var socket: MulticastSocket? = null
+            val joinedInterfaces = mutableListOf<NetworkInterface>()
+            val mcastAddr = InetAddress.getByName(MULTICAST_GROUP)
+            val mcastGroup = InetSocketAddress(mcastAddr, DISCOVERY_PORT)
+
             try {
-                socket = DatagramSocket(null).apply {
+                socket = MulticastSocket(DISCOVERY_PORT).apply {
                     reuseAddress = true
-                    bind(InetSocketAddress(DISCOVERY_PORT))
                     broadcast = true
                 }
+
+                // Join multicast group on all active non-loopback network interfaces
+                try {
+                    val ifaces = NetworkInterface.getNetworkInterfaces()
+                    if (ifaces != null) {
+                        for (iface in ifaces) {
+                            if (!iface.isUp || iface.isLoopback) continue
+                            try {
+                                socket.joinGroup(mcastGroup, iface)
+                                joinedInterfaces.add(iface)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                } catch (_: Exception) {}
+
                 val buffer = ByteArray(2048)
 
                 // Periodic prune job
@@ -168,7 +229,8 @@ class LanDiscoveryTransport(
                         val roomCode = lines[3].trim()
                         val remotePort = lines[4].trim().toIntOrNull() ?: DEFAULT_TCP_PORT
                         val roleStr = lines[5].trim()
-                        val ip = packet.address.hostAddress ?: continue
+                        val rawIp = packet.address.hostAddress ?: continue
+                        val ip = rawIp.substringBefore('%')
                         val endpointId = "lan_${ip}_$remotePort"
 
                         val role = if (roleStr.equals("HOST", ignoreCase = true)) MeshRole.HOST else MeshRole.VIEWER
@@ -186,7 +248,12 @@ class LanDiscoveryTransport(
                 }
             } catch (_: Exception) {
             } finally {
-                socket?.close()
+                socket?.let { s ->
+                    for (iface in joinedInterfaces) {
+                        try { s.leaveGroup(mcastGroup, iface) } catch (_: Exception) {}
+                    }
+                    try { s.close() } catch (_: Exception) {}
+                }
                 multicastLock?.release()
                 _isDiscovering.value = false
             }
@@ -202,26 +269,30 @@ class LanDiscoveryTransport(
         _isDiscovering.value = false
     }
 
+    @Synchronized
     private fun ensureServerStarted() {
         if (serverSocket != null) return
 
-        serverJob = scope.launch {
-            var port = DEFAULT_TCP_PORT
-            while (port < DEFAULT_TCP_PORT + 10) {
-                try {
-                    serverSocket = ServerSocket(port)
-                    boundTcpPort = port
-                    break
-                } catch (_: Exception) {
-                    port++
-                }
+        var ss: ServerSocket? = null
+        var port = DEFAULT_TCP_PORT
+        while (port < DEFAULT_TCP_PORT + 10) {
+            try {
+                ss = ServerSocket(port)
+                boundTcpPort = port
+                break
+            } catch (_: Exception) {
+                port++
             }
+        }
+        serverSocket = ss ?: return
 
-            val ss = serverSocket ?: return@launch
+        serverJob = scope.launch {
+            val server = serverSocket ?: return@launch
             while (isActive) {
                 try {
-                    val client = ss.accept()
-                    val remoteIp = client.inetAddress.hostAddress ?: "unknown"
+                    val client = server.accept()
+                    client.tcpNoDelay = true
+                    val remoteIp = (client.inetAddress.hostAddress ?: "unknown").substringBefore('%')
                     val endpointId = "lan_${remoteIp}_${client.port}"
 
                     connectedSockets[endpointId] = client
@@ -246,7 +317,8 @@ class LanDiscoveryTransport(
         scope.launch {
             try {
                 val socket = Socket()
-                socket.connect(InetSocketAddress(peer.ip, peer.port), 3000)
+                socket.tcpNoDelay = true
+                socket.connect(InetSocketAddress(peer.ip, peer.port), 4000)
                 connectedSockets[endpointId] = socket
                 meshRoutingEngine.addNeighbor(endpointId)
                 updateConnectedPeers()
@@ -328,16 +400,19 @@ class LanDiscoveryTransport(
     }
 
     private fun sendDirectPacket(socket: Socket, packet: WhiteboardPacket) {
-        val bytes = PacketSerializer.serialize(packet)
-        sendDirectBytes(socket, bytes)
+        val payload = PacketSerializer.serialize(packet)
+        val (envelope, _) = meshRoutingEngine.createOutbound(payload, false)
+        sendDirectBytes(socket, envelope.toByteArray())
     }
 
     private fun sendDirectBytes(socket: Socket, bytes: ByteArray) {
         try {
-            val dos = DataOutputStream(socket.getOutputStream())
-            dos.writeInt(bytes.size)
-            dos.write(bytes)
-            dos.flush()
+            synchronized(socket) {
+                val dos = DataOutputStream(socket.getOutputStream())
+                dos.writeInt(bytes.size)
+                dos.write(bytes)
+                dos.flush()
+            }
         } catch (_: Exception) {}
     }
 
@@ -383,7 +458,12 @@ class LanDiscoveryTransport(
 
     private fun updateConnectedPeers() {
         _connectedPeers.value = connectedSockets.keys.map { endpointId ->
-            val name = discoveredPeersMap[endpointId]?.name ?: "Peer $endpointId"
+            val directPeer = discoveredPeersMap[endpointId]
+            val peerByIp = if (directPeer == null) {
+                val ip = endpointId.removePrefix("lan_").substringBefore('_')
+                discoveredPeersMap.values.find { it.ip == ip }
+            } else null
+            val name = directPeer?.name ?: peerByIp?.name ?: "Peer ${endpointId.substringAfter("lan_")}"
             PeerDevice(endpointId = endpointId, name = name, isConnected = true)
         }
     }

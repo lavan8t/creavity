@@ -5,6 +5,7 @@ import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 
 enum class CanvasPointerAction {
@@ -49,10 +50,12 @@ data class CanvasInputEvent(
 }
 
 fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
-    val isAnyPressed = changes.any { it.pressed }
+    val hasMouse = changes.any { it.type == PointerType.Mouse }
+    val isPrimaryDown = if (hasMouse) buttons.isPrimaryPressed else changes.any { it.pressed }
+
     val action = when (type) {
-        PointerEventType.Press -> CanvasPointerAction.DOWN
-        PointerEventType.Move -> if (isAnyPressed) CanvasPointerAction.MOVE else CanvasPointerAction.CANCEL
+        PointerEventType.Press -> if (isPrimaryDown) CanvasPointerAction.DOWN else CanvasPointerAction.CANCEL
+        PointerEventType.Move -> if (isPrimaryDown) CanvasPointerAction.MOVE else CanvasPointerAction.CANCEL
         PointerEventType.Release -> CanvasPointerAction.UP
         PointerEventType.Scroll -> CanvasPointerAction.SCROLL
         else -> CanvasPointerAction.CANCEL
@@ -68,13 +71,14 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
             PointerType.Mouse -> CanvasPointerType.MOUSE
             else -> CanvasPointerType.TOUCH
         }
+        val isPrimary = if (change.type == PointerType.Mouse) buttons.isPrimaryPressed else !isSecondary
         CanvasPointer(
             id = change.id.value,
             x = change.position.x,
             y = change.position.y,
             pressure = change.pressure,
             type = pointerType,
-            isPrimaryButton = !isSecondary,
+            isPrimaryButton = isPrimary,
             isSecondaryButton = isSecondary
         )
     }

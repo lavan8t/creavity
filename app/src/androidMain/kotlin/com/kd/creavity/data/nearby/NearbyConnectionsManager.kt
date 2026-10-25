@@ -1,6 +1,7 @@
 package com.kd.creavity.data.nearby
 
 import android.content.Context
+import android.net.wifi.WifiManager
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -42,9 +43,32 @@ class NearbyConnectionsManager(context: Context) : PeerTransport {
     private val SERVICE_ID = "com.kd.creavity.SERVICE_ID"
     private val STRATEGY = Strategy.P2P_CLUSTER
 
+    private val multicastLockHelper = object : MulticastLockHelper {
+        private val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        private val lock: WifiManager.MulticastLock? = wifiManager?.createMulticastLock("creavity_multicast_lock")?.apply {
+            setReferenceCounted(true)
+        }
+
+        override fun acquire() {
+            runCatching {
+                if (lock?.isHeld != true) {
+                    lock?.acquire()
+                }
+            }
+        }
+
+        override fun release() {
+            runCatching {
+                if (lock?.isHeld == true) {
+                    lock?.release()
+                }
+            }
+        }
+    }
+
     override val localNodeId: String = UUID.randomUUID().toString()
     override val meshRoutingEngine: MeshRoutingEngine = MeshRoutingEngine(nodeId = localNodeId, maxDegree = 6)
-    val lanTransport = LanDiscoveryTransport(localNodeId, meshRoutingEngine)
+    val lanTransport = LanDiscoveryTransport(localNodeId, meshRoutingEngine, multicastLock = multicastLockHelper)
 
     private val _discoveredNearbyEndpoints = MutableStateFlow<List<PeerDevice>>(emptyList())
     private val _discoveredEndpoints = MutableStateFlow<List<PeerDevice>>(emptyList())
