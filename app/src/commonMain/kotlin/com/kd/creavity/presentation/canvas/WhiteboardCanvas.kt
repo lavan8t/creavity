@@ -524,72 +524,68 @@ fun WhiteboardCanvas(
 
             // 8. Render Real-Time Peer Presence Cursors
             peerPresences.values.forEach { peer ->
-                peer.currentPoint?.let { point ->
-                    val colorIndex = abs(peer.name.hashCode()) % peerColorPalette.size
-                    val cursorColor = if (peer.color != 0L) Color(peer.color) else peerColorPalette[colorIndex]
+                runCatching {
+                    peer.currentPoint?.let { point ->
+                        if (!point.x.isFinite() || !point.y.isFinite()) return@let
 
-                    drawCircle(
-                        color = cursorColor.copy(alpha = 0.25f),
-                        radius = 16f / zoom,
-                        center = Offset(point.x, point.y)
-                    )
-                    drawCircle(
-                        color = cursorColor,
-                        radius = 10f / zoom,
-                        center = Offset(point.x, point.y)
-                    )
-                    drawCircle(
-                        color = m3Surface,
-                        radius = 3f / zoom,
-                        center = Offset(point.x, point.y)
-                    )
+                        val colorIndex = abs(peer.name.hashCode()) % peerColorPalette.size
+                        val cursorColor = if (peer.color != 0L) Color(peer.color) else peerColorPalette[colorIndex]
 
-                    val iconName = when (abs(peer.name.hashCode()) % 4) { 0 -> "edit"; 1 -> "touch_app"; 2 -> "pan_tool"; else -> "mouse" }
-                    drawCircle(
-                        color = m3Surface,
-                        radius = 7f / zoom,
-                        center = Offset(point.x, point.y)
-                    )
-
-                    val statusText = if (peer.isDrawing) "${peer.name.take(6)} • drawing" else peer.name.take(8)
-                    val measuredText = textMeasurer.measure(
-                        text = AnnotatedString(statusText),
-                        style = TextStyle(
-                            fontFamily = AppFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            color = m3OnSurface,
-                            fontSize = (11 / zoom).sp
+                        drawCircle(
+                            color = cursorColor.copy(alpha = 0.25f),
+                            radius = 16f / zoom,
+                            center = Offset(point.x, point.y)
                         )
-                    )
-                    val tagPadding = 6f / zoom
-                    val tagWidth = measuredText.size.width + tagPadding * 2
-                    val tagHeight = measuredText.size.height + tagPadding * 1.4f
-                    val tagTopLeft = Offset(point.x + 12f / zoom, point.y - tagHeight - 6f / zoom)
-
-                    drawRoundRect(
-                        color = m3SurfaceContainerHighest.copy(alpha = 0.95f),
-                        topLeft = tagTopLeft,
-                        size = Size(tagWidth, tagHeight),
-                        cornerRadius = CornerRadius(6f / zoom, 6f / zoom)
-                    )
-                    drawRoundRect(
-                        color = cursorColor.copy(alpha = 0.85f),
-                        topLeft = tagTopLeft,
-                        size = Size(tagWidth, tagHeight),
-                        cornerRadius = CornerRadius(6f / zoom, 6f / zoom),
-                        style = CanvasStrokeStyle(width = 1.2f / zoom)
-                    )
-                    drawText(
-                        textMeasurer = textMeasurer,
-                        text = statusText,
-                        topLeft = Offset(tagTopLeft.x + tagPadding, tagTopLeft.y + tagPadding * 0.7f),
-                        style = TextStyle(
-                            fontFamily = AppFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            color = m3OnSurface,
-                            fontSize = (11 / zoom).sp
+                        drawCircle(
+                            color = cursorColor,
+                            radius = 10f / zoom,
+                            center = Offset(point.x, point.y)
                         )
-                    )
+                        drawCircle(
+                            color = m3Surface,
+                            radius = 3f / zoom,
+                            center = Offset(point.x, point.y)
+                        )
+
+                        drawCircle(
+                            color = m3Surface,
+                            radius = 7f / zoom,
+                            center = Offset(point.x, point.y)
+                        )
+
+                        val statusText = if (peer.isDrawing) "${peer.name.take(6)} • drawing" else peer.name.take(8)
+                        val measuredText = textMeasurer.measure(
+                            text = AnnotatedString(statusText),
+                            style = TextStyle(
+                                fontFamily = AppFontFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                color = m3OnSurface,
+                                fontSize = (11 / zoom).sp
+                            )
+                        )
+                        val tagPadding = 6f / zoom
+                        val tagWidth = measuredText.size.width + tagPadding * 2
+                        val tagHeight = measuredText.size.height + tagPadding * 1.4f
+                        val tagTopLeft = Offset(point.x + 12f / zoom, point.y - tagHeight - 6f / zoom)
+
+                        drawRoundRect(
+                            color = m3SurfaceContainerHighest.copy(alpha = 0.95f),
+                            topLeft = tagTopLeft,
+                            size = Size(tagWidth, tagHeight),
+                            cornerRadius = CornerRadius(6f / zoom, 6f / zoom)
+                        )
+                        drawRoundRect(
+                            color = cursorColor.copy(alpha = 0.85f),
+                            topLeft = tagTopLeft,
+                            size = Size(tagWidth, tagHeight),
+                            cornerRadius = CornerRadius(6f / zoom, 6f / zoom),
+                            style = CanvasStrokeStyle(width = 1.2f / zoom)
+                        )
+                        drawText(
+                            textLayoutResult = measuredText,
+                            topLeft = Offset(tagTopLeft.x + tagPadding, tagTopLeft.y + tagPadding * 0.7f)
+                        )
+                    }
                 }
             }
         }
