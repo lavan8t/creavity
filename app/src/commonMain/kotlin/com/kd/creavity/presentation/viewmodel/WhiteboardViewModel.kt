@@ -175,6 +175,8 @@ class WhiteboardViewModel(
         _uiState.update { it.copy(selectedThemePreset = preset) }
     }
 
+    private val boardViewportMap = mutableMapOf<String, Pair<Float, Offset>>()
+
     fun onTransform(zoomChange: Float, focal: Offset = Offset.Zero, panChange: Offset = Offset.Zero) {
         _uiState.update { state ->
             val oldZoom = state.zoom
@@ -188,15 +190,25 @@ class WhiteboardViewModel(
                     y = focal.y - (focal.y - state.panOffset.y) * actualScale + panChange.y
                 )
             }
+            if (state.currentBoard.id.isNotBlank()) {
+                boardViewportMap[state.currentBoard.id] = Pair(newZoom, newPan)
+            }
             state.copy(zoom = newZoom, panOffset = newPan)
         }
     }
 
     fun setCanvasTransform(zoom: Float, panOffset: Offset) {
-        _uiState.update { it.copy(zoom = zoom.coerceIn(0.2f, 5.0f), panOffset = panOffset) }
+        val clampedZoom = zoom.coerceIn(0.2f, 5.0f)
+        if (_uiState.value.currentBoard.id.isNotBlank()) {
+            boardViewportMap[_uiState.value.currentBoard.id] = Pair(clampedZoom, panOffset)
+        }
+        _uiState.update { it.copy(zoom = clampedZoom, panOffset = panOffset) }
     }
 
     fun resetCanvasTransform() {
+        if (_uiState.value.currentBoard.id.isNotBlank()) {
+            boardViewportMap[_uiState.value.currentBoard.id] = Pair(1.0f, Offset.Zero)
+        }
         _uiState.update { it.copy(zoom = 1.0f, panOffset = Offset.Zero) }
     }
 
@@ -204,6 +216,7 @@ class WhiteboardViewModel(
         if (_uiState.value.isBoardSwitchingLocked) return
         val current = _uiState.value.currentBoard
         if (current.id.isNotBlank()) {
+            boardViewportMap[current.id] = Pair(_uiState.value.zoom, _uiState.value.panOffset)
             viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(current) }
         }
 
@@ -215,6 +228,7 @@ class WhiteboardViewModel(
             lastAccessedAt = System.currentTimeMillis()
         )
         persistBoard(newBoard)
+        boardViewportMap[newBoard.id] = Pair(1.0f, Offset.Zero)
         _uiState.update {
             it.copy(
                 backgroundColor = Color(newBoard.backgroundColor),
@@ -230,14 +244,19 @@ class WhiteboardViewModel(
         val current = _uiState.value.currentBoard
         val updatedTarget = board.copy(lastAccessedAt = System.currentTimeMillis())
 
+        if (current.id.isNotBlank()) {
+            boardViewportMap[current.id] = Pair(_uiState.value.zoom, _uiState.value.panOffset)
+        }
+        val (restoredZoom, restoredPan) = boardViewportMap[updatedTarget.id] ?: Pair(1.0f, Offset.Zero)
+
         _uiState.update { state ->
             val updatedSaved = state.savedBoards.map { if (it.id == updatedTarget.id) updatedTarget else it }
             state.copy(
                 currentBoard = updatedTarget,
                 savedBoards = updatedSaved,
                 backgroundColor = Color(updatedTarget.backgroundColor),
-                zoom = 1.0f,
-                panOffset = Offset.Zero
+                zoom = restoredZoom,
+                panOffset = restoredPan
             )
         }
 
@@ -957,10 +976,13 @@ class WhiteboardViewModel(
     }
 
     fun startAdvertising(deviceName: String) {
+        if (_uiState.value.isDiscovering) {
+            stopDiscovery()
+        }
         val roomCode = generateRoomCode()
         hostOwnedBoardId = _uiState.value.currentBoard.id
         (peerTransport as? com.kd.creavity.data.nearby.LanDiscoveryTransport)?.activeBoardId = hostOwnedBoardId ?: ""
-        _uiState.update { it.copy(roomCode = roomCode) }
+        _uiState.update { it.copy(roomCode = roomCode, isAdvertising = true, isDiscovering = false) }
         val nameToUse = deviceName.ifBlank { _uiState.value.displayName }
         peerTransport.startAdvertising(nameToUse, roomCode)
     }
@@ -968,12 +990,21 @@ class WhiteboardViewModel(
     fun stopAdvertising() {
         peerTransport.stopAdvertising()
         _uiState.update { state ->
-            state.copy(roomCode = if (state.connectedPeers.isNotEmpty()) state.roomCode else null)
+            state.copy(isAdvertising = false, roomCode = if (state.connectedPeers.isNotEmpty()) state.roomCode else null)
         }
     }
 
-    fun startDiscovery() = peerTransport.startDiscovery()
-    fun stopDiscovery() = peerTransport.stopDiscovery()
+    fun startDiscovery() {
+        if (_uiState.value.isAdvertising) {
+            stopAdvertising()
+        }
+        _uiState.update { it.copy(isDiscovering = true, isAdvertising = false) }
+        peerTransport.startDiscovery()
+    }
+    fun stopDiscovery() {
+        peerTransport.stopDiscovery()
+        _uiState.update { it.copy(isDiscovering = false) }
+    }
 
     fun connectToPeer(endpointId: String, localName: String) {
         val peer = _uiState.value.discoveredPeers.find { it.endpointId == endpointId }

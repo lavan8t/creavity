@@ -243,35 +243,59 @@ fun PeerConnectScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    var optimisticMode by remember(uiState.isAdvertising, uiState.isDiscovering) {
+                        mutableStateOf<String?>(
+                            when {
+                                uiState.isAdvertising -> "host"
+                                uiState.isDiscovering -> "join"
+                                else -> null
+                            }
+                        )
+                    }
+                    val isHostActive = optimisticMode == "host" || uiState.isAdvertising
+                    val isJoinActive = optimisticMode == "join" || uiState.isDiscovering
+
                     // Left: Host Button toggles uiState.isAdvertising
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (uiState.isAdvertising) onAction(BoardAction.StopAdvertising)
-                            else onAction(BoardAction.StartAdvertising(uiState.displayName))
+                            if (isHostActive) {
+                                optimisticMode = null
+                                onAction(BoardAction.StopAdvertising)
+                            } else {
+                                optimisticMode = "host"
+                                onAction(BoardAction.StartAdvertising(uiState.displayName))
+                            }
                         },
-                        colors = if (uiState.isAdvertising) {
+                        enabled = !isJoinActive,
+                        colors = if (isHostActive) {
                             ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
                             )
                         } else {
                             ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.38f),
+                                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(50)
                     ) {
                         MaterialSymbol(
-                            name = if (uiState.isAdvertising) "sensors" else "cell_tower",
+                            name = if (isHostActive) "close" else "cell_tower",
                             size = 18.dp,
-                            tint = if (uiState.isAdvertising) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+                            tint = when {
+                                isHostActive -> MaterialTheme.colorScheme.onError
+                                isJoinActive -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                else -> MaterialTheme.colorScheme.onPrimaryContainer
+                            }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (uiState.isAdvertising) "Broadcasting" else "Host",
+                            text = if (isHostActive) "Cancel" else "Host",
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
@@ -281,31 +305,43 @@ fun PeerConnectScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (uiState.isDiscovering) onAction(BoardAction.StopDiscovery)
-                            else onAction(BoardAction.StartDiscovery)
+                            if (isJoinActive) {
+                                optimisticMode = null
+                                onAction(BoardAction.StopDiscovery)
+                            } else {
+                                optimisticMode = "join"
+                                onAction(BoardAction.StartDiscovery)
+                            }
                         },
-                        colors = if (uiState.isDiscovering) {
+                        enabled = !isHostActive,
+                        colors = if (isJoinActive) {
                             ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary,
-                                contentColor = MaterialTheme.colorScheme.onTertiary
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
                             )
                         } else {
                             ButtonDefaults.filledTonalButtonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.38f),
+                                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         },
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(50)
                     ) {
                         MaterialSymbol(
-                            name = if (uiState.isDiscovering) "radar" else "hub",
+                            name = if (isJoinActive) "close" else "hub",
                             size = 18.dp,
-                            tint = if (uiState.isDiscovering) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onTertiaryContainer
+                            tint = when {
+                                isJoinActive -> MaterialTheme.colorScheme.onError
+                                isHostActive -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                else -> MaterialTheme.colorScheme.onTertiaryContainer
+                            }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (uiState.isDiscovering) "Scanning..." else "Join",
+                            text = if (isJoinActive) "Cancel" else "Join",
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )

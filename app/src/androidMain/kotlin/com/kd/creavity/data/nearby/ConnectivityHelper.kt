@@ -77,6 +77,9 @@ object ConnectivityHelper {
         if (!isBluetoothEnabled(context)) {
             return ConnectivityCheckResult.BluetoothDisabled
         }
+        if (!isWifiEnabled(context)) {
+            return ConnectivityCheckResult.WifiDisabled
+        }
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2 && !isLocationEnabled(context)) {
             return ConnectivityCheckResult.LocationDisabled
         }

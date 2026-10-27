@@ -15,3 +15,7 @@ local.properties
 bin/
 obj/
 *.user
+
+# Saved boards test/runtime output
+saved_boards/
+*/saved_boards/

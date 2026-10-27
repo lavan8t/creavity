@@ -7,6 +7,7 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
+import com.kd.creavity.domain.model.Point
 
 enum class CanvasPointerAction {
     DOWN,
@@ -30,7 +31,8 @@ data class CanvasPointer(
     val pressure: Float = 1.0f,
     val type: CanvasPointerType = CanvasPointerType.TOUCH,
     val isPrimaryButton: Boolean = true,
-    val isSecondaryButton: Boolean = false
+    val isSecondaryButton: Boolean = false,
+    val historicalPoints: List<Point> = emptyList()
 )
 
 data class CanvasInputEvent(
@@ -72,6 +74,14 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
             else -> CanvasPointerType.TOUCH
         }
         val isPrimary = if (change.type == PointerType.Mouse) buttons.isPrimaryPressed else !isSecondary
+        val historicalPoints = change.historical.map { h ->
+            Point(
+                x = h.position.x,
+                y = h.position.y,
+                pressure = change.pressure,
+                timestampMs = h.uptimeMillis
+            )
+        }
         CanvasPointer(
             id = change.id.value,
             x = change.position.x,
@@ -79,7 +89,8 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
             pressure = change.pressure,
             type = pointerType,
             isPrimaryButton = isPrimary,
-            isSecondaryButton = isSecondary
+            isSecondaryButton = isSecondary,
+            historicalPoints = historicalPoints
         )
     }
 

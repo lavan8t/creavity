@@ -62,21 +62,49 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startAdvertisingWithCheck(deviceName: String) {
-        viewModel.startAdvertising(deviceName)
-
         val result = ConnectivityHelper.checkReadiness(this)
-        if (result is ConnectivityCheckResult.MissingPermissions) {
-            permissionLauncher.launch(result.permissions.toTypedArray())
+        when (result) {
+            is ConnectivityCheckResult.MissingPermissions -> {
+                permissionLauncher.launch(result.permissions.toTypedArray())
+            }
+            is ConnectivityCheckResult.BluetoothDisabled -> {
+                Toast.makeText(this, "Please turn on Bluetooth to host whiteboard", Toast.LENGTH_LONG).show()
+                try {
+                    startActivity(ConnectivityHelper.createBluetoothEnableIntent())
+                } catch (_: Exception) {}
+            }
+            is ConnectivityCheckResult.WifiDisabled -> {
+                Toast.makeText(this, "Please turn on Wi-Fi for offline discovery", Toast.LENGTH_LONG).show()
+                try {
+                    startActivity(ConnectivityHelper.createWifiSettingsIntent())
+                } catch (_: Exception) {}
+            }
+            else -> {}
         }
+        viewModel.startAdvertising(deviceName)
     }
 
     private fun startDiscoveryWithCheck() {
-        viewModel.startDiscovery()
-
         val result = ConnectivityHelper.checkReadiness(this)
-        if (result is ConnectivityCheckResult.MissingPermissions) {
-            permissionLauncher.launch(result.permissions.toTypedArray())
+        when (result) {
+            is ConnectivityCheckResult.MissingPermissions -> {
+                permissionLauncher.launch(result.permissions.toTypedArray())
+            }
+            is ConnectivityCheckResult.BluetoothDisabled -> {
+                Toast.makeText(this, "Please turn on Bluetooth to discover whiteboards", Toast.LENGTH_LONG).show()
+                try {
+                    startActivity(ConnectivityHelper.createBluetoothEnableIntent())
+                } catch (_: Exception) {}
+            }
+            is ConnectivityCheckResult.WifiDisabled -> {
+                Toast.makeText(this, "Please turn on Wi-Fi for offline discovery", Toast.LENGTH_LONG).show()
+                try {
+                    startActivity(ConnectivityHelper.createWifiSettingsIntent())
+                } catch (_: Exception) {}
+            }
+            else -> {}
         }
+        viewModel.startDiscovery()
     }
 
     private fun requestRequiredPermissions() {

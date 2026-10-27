@@ -202,6 +202,17 @@ class CanvasGestureController(
             }
         }
 
+        // Palm rejection: if a stylus was active within the last 600ms, ignore accidental single-finger palm touches
+        if (!hasStylusPointer && (now - lastStylusTimestampMs < 600L) && pointerCount == 1) {
+            if (event.action == CanvasPointerAction.DOWN) {
+                return true
+            }
+            if (event.action == CanvasPointerAction.MOVE && !activeStrokeIsStylus) {
+                discardActiveStroke()
+                return true
+            }
+        }
+
         // 3. Multi-touch Pinch to Zoom & Pan (Finger mode only, when no stylus is touching)
         if (!hasStylusPointer && pointerCount >= 2) {
             discardActiveStroke()
@@ -659,6 +670,21 @@ class CanvasGestureController(
 
                 if (activePoints.isEmpty()) {
                     return false
+                }
+
+                // Ingest sub-frame micro-points from high-refresh hardware digitizer (120Hz-480Hz)
+                val historicalPoints = StylusInputHandler.extractHistoricalPoints(event, panOffset, zoom, targetIndex)
+                for (histPt in historicalPoints) {
+                    if (isCurved) {
+                        val lastPt = activePoints.last()
+                        val midX = (lastPt.x + histPt.x) / 2f
+                        val midY = (lastPt.y + histPt.y) / 2f
+                        activePath.quadraticTo(lastPt.x, lastPt.y, midX, midY)
+                    }
+                    activePoints.add(histPt)
+                    if (activeToolUsed != DrawingTool.LASER) {
+                        onStrokeBroadcastPoint(activeStrokeId, histPt)
+                    }
                 }
 
                 if (isCurved) {
