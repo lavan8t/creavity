@@ -817,7 +817,7 @@ fun BoardsLibraryScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            val folderGroup = if (LibraryViewMode.FOLDERS == LibraryViewMode.FOLDERS && openedFolder != null && openedFolder != "Unfiled") {
+                            val folderGroup = if (openedFolder != null && openedFolder != "Unfiled") {
                                 openedFolder ?: ""
                             } else ""
                             onAction(BoardAction.CreateNewBoard("Untitled Board"))

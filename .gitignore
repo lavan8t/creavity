@@ -19,3 +19,7 @@ obj/
 # Saved boards test/runtime output
 saved_boards/
 */saved_boards/
+
+# Release APK artifacts
+*.apk
+app/build/outputs/apk/
