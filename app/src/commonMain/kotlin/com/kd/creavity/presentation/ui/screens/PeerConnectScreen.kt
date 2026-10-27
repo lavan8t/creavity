@@ -48,7 +48,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.kd.creavity.presentation.ui.components.ExpressiveLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
@@ -122,8 +122,6 @@ fun PeerConnectScreen(
     val clipboardManager = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current
     var showEditSheet by remember { mutableStateOf(false) }
-    var directIpInput by remember { mutableStateOf("") }
-    val localIp = remember { LanDiscoveryTransport.getLocalIpAddress() }
 
     PlatformBackHandler(enabled = showEditSheet) { showEditSheet = false }
 
@@ -161,7 +159,7 @@ fun PeerConnectScreen(
                         }
                     }
                     Text(
-                        text = "Collaborate",
+                        text = "Collab",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -311,73 +309,6 @@ fun PeerConnectScreen(
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
-                    }
-                }
-            }
-
-            // Same-Network Direct IP Connect Card
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Same-Network Connect",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Surface(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = "My IP: $localIp",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = directIpInput,
-                                onValueChange = { directIpInput = it.filter { ch -> ch.isDigit() || ch == '.' || ch == ':' } },
-                                placeholder = { Text("e.g. $localIp", fontSize = 13.sp) },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            Button(
-                                onClick = {
-                                    val target = directIpInput.trim()
-                                    if (target.isNotBlank()) {
-                                        val port = if (target.contains(":")) target.substringAfter(":") else "53536"
-                                        val ip = if (target.contains(":")) target.substringBefore(":") else target
-                                        onAction(BoardAction.ConnectPeer("lan_${ip}_${port}", uiState.displayName))
-                                    }
-                                },
-                                enabled = directIpInput.isNotBlank(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Connect", fontWeight = FontWeight.Bold)
-                            }
-                        }
                     }
                 }
             }
@@ -917,17 +848,12 @@ private fun QuickShareRadarPulse(
             }
 
             Box(
-                modifier = Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.size(64.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(46.dp),
+                ExpressiveLoadingIndicator(
+                    modifier = Modifier.size(56.dp),
                     color = MaterialTheme.colorScheme.primary
-                )
-                MaterialSymbol(
-                    name = if (isAdvertising) "sensors" else "radar",
-                    size = 20.dp,
-                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

@@ -76,13 +76,6 @@ class AppSettingsManager(
             save()
         }
 
-    var autoConnectSameBoard: Boolean
-        get() = json.optBoolean("auto_connect_same_board", true)
-        set(value) {
-            json.put("auto_connect_same_board", value)
-            save()
-        }
-
     fun addKnownPeer(peerName: String) {
         if (peerName.isBlank()) return
         val list = getKnownPeers().toMutableSet()

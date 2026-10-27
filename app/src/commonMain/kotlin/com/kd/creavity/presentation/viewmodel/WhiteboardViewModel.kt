@@ -79,18 +79,33 @@ class WhiteboardViewModel(
 
         peerTransport.connectedPeers.onEach { peers ->
             val distinct = peers.distinctBy { it.endpointId }
+            val state = _uiState.value
             if (distinct.isNotEmpty()) {
                 distinct.forEach { appSettings.addKnownPeer(it.name) }
-                if (hostOwnedBoardId == null) {
-                    hostOwnedBoardId = _uiState.value.currentBoard.id
+                val isHost = hostOwnedBoardId == null || hostOwnedBoardId == state.currentBoard.id
+                if (isHost) {
+                    val currentB = state.currentBoard
+                    hostOwnedBoardId = currentB.id
+                    (peerTransport as? com.kd.creavity.data.nearby.LanDiscoveryTransport)?.activeBoardId = currentB.id
+                    val activeP = currentB.pages.getOrElse(currentB.activePageIndex) { BoardPage() }
+                    peerTransport.sendPacketToAll(
+                        WhiteboardPacket.BoardSync(
+                            boardId = currentB.id,
+                            title = currentB.title,
+                            backgroundColor = currentB.backgroundColor,
+                            isReadOnly = currentB.isReadOnly,
+                            strokes = activeP.strokes,
+                            textElements = activeP.textElements
+                        )
+                    )
                 }
             } else if (!_uiState.value.isAdvertising) {
                 hostOwnedBoardId = null
             }
-            _uiState.update { state ->
+            _uiState.update { s ->
                 val connectedIds = distinct.map { it.endpointId }.toSet()
-                val code = if (distinct.isNotEmpty()) state.roomCode ?: generateRoomCode() else if (state.isAdvertising) state.roomCode else null
-                state.copy(connectedPeers = distinct, discoveredPeers = state.discoveredPeers.filter { it.endpointId !in connectedIds }, roomCode = code)
+                val code = if (distinct.isNotEmpty()) s.roomCode ?: generateRoomCode() else if (s.isAdvertising) s.roomCode else null
+                s.copy(connectedPeers = distinct, discoveredPeers = s.discoveredPeers.filter { it.endpointId !in connectedIds }, roomCode = code)
             }
         }.launchIn(viewModelScope)
 
@@ -99,19 +114,6 @@ class WhiteboardViewModel(
             val connectedIds = state.connectedPeers.map { it.endpointId }.toSet()
             _uiState.update { s ->
                 s.copy(discoveredPeers = peers.filter { it.endpointId !in connectedIds }.distinctBy { it.endpointId })
-            }
-
-            if (appSettings.autoConnectSameBoard && state.connectedPeers.isEmpty() && !state.isAdvertising) {
-                val currentBoardId = state.currentBoard.id
-                val match = peers.find { peer ->
-                    peer.endpointId !in connectedIds &&
-                            peer.boardId.isNotBlank() &&
-                            peer.boardId == currentBoardId &&
-                            appSettings.isKnownPeer(peer.name)
-                }
-                if (match != null) {
-                    connectToPeer(match.endpointId, state.displayName)
-                }
             }
         }.launchIn(viewModelScope)
 
@@ -199,6 +201,7 @@ class WhiteboardViewModel(
     }
 
     fun createNewBoard(title: String = "Untitled Board") {
+        if (_uiState.value.isBoardSwitchingLocked) return
         val current = _uiState.value.currentBoard
         if (current.id.isNotBlank()) {
             viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(current) }
@@ -222,6 +225,7 @@ class WhiteboardViewModel(
     }
 
     fun switchBoard(board: Board) {
+        if (_uiState.value.isBoardSwitchingLocked) return
         if (board.id.isBlank()) return
         val current = _uiState.value.currentBoard
         val updatedTarget = board.copy(lastAccessedAt = System.currentTimeMillis())
@@ -283,6 +287,7 @@ class WhiteboardViewModel(
     fun setAllPeersPermission(isReadOnly: Boolean) = _uiState.value.connectedPeers.forEach { setPeerPermission(it.endpointId, isReadOnly) }
 
     fun renameBoard(boardId: String, newTitle: String) {
+        if (_uiState.value.isBoardSwitchingLocked) return
         if (newTitle.isBlank()) return
         val current = _uiState.value.currentBoard
         val target = if (current.id == boardId) current else _uiState.value.savedBoards.find { it.id == boardId } ?: return
@@ -298,6 +303,7 @@ class WhiteboardViewModel(
     }
 
     fun duplicateBoard(boardId: String) {
+        if (_uiState.value.isBoardSwitchingLocked) return
         val target = _uiState.value.savedBoards.find { it.id == boardId }
             ?: if (_uiState.value.currentBoard.id == boardId) _uiState.value.currentBoard else null
             ?: return
@@ -312,6 +318,7 @@ class WhiteboardViewModel(
     }
 
     fun moveBoardToBin(boardId: String) {
+        if (_uiState.value.isBoardSwitchingLocked) return
         val target = _uiState.value.savedBoards.find { it.id == boardId }
             ?: if (_uiState.value.currentBoard.id == boardId) _uiState.value.currentBoard else null
             ?: return

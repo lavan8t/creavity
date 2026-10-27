@@ -25,19 +25,9 @@ object BrevityMotion {
         stiffness = Spring.StiffnessMediumLow
     )
 
-    fun <T> springSnappy(): FiniteAnimationSpec<T> = spring(
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
-    )
-
     fun <T> springEffects(): FiniteAnimationSpec<T> = spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow
-    )
-
-    fun <T> springGentle(): FiniteAnimationSpec<T> = spring(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow
     )
 
     // Standard in & out animation pairs for dialogs, flyouts, and floating bars
@@ -68,31 +58,6 @@ object BrevityMotion {
     fun exitSlideUp(): ExitTransition =
         fadeOut(animationSpec = springEffects()) + slideOutVertically(
             targetOffsetY = { -it / 2 },
-            animationSpec = springSpatial()
-        )
-
-    // Horizontal in & out transitions
-    fun enterSlideLeft(): EnterTransition =
-        fadeIn(animationSpec = springEffects()) + slideInHorizontally(
-            initialOffsetX = { it },
-            animationSpec = springSpatial()
-        )
-
-    fun exitSlideRight(): ExitTransition =
-        fadeOut(animationSpec = springEffects()) + slideOutHorizontally(
-            targetOffsetX = { it },
-            animationSpec = springSpatial()
-        )
-
-    fun enterSlideRight(): EnterTransition =
-        fadeIn(animationSpec = springEffects()) + slideInHorizontally(
-            initialOffsetX = { -it },
-            animationSpec = springSpatial()
-        )
-
-    fun exitSlideLeft(): ExitTransition =
-        fadeOut(animationSpec = springEffects()) + slideOutHorizontally(
-            targetOffsetX = { -it },
             animationSpec = springSpatial()
         )
 }

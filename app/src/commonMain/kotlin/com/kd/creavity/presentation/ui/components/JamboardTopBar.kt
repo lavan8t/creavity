@@ -47,6 +47,7 @@ fun WhiteboardTopBar(
     onRedo: () -> Unit = {},
     zoom: Float = 1.0f,
     isHost: Boolean = false,
+    isBoardSwitchingLocked: Boolean = false,
     onBirdsEyeClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -64,26 +65,27 @@ fun WhiteboardTopBar(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.weight(1f, fill = false)
         ) {
-            TooltipHint(text = "Back to boards") {
+            TooltipHint(text = if (isBoardSwitchingLocked) "Locked to shared host session" else "Back to boards") {
                 IconButton(
-                    onClick = onBack,
+                    onClick = { if (!isBoardSwitchingLocked) onBack() },
+                    enabled = !isBoardSwitchingLocked,
                     modifier = Modifier.size(38.dp)
                 ) {
                     MaterialSymbol(
-                        name = "arrow_back",
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        name = if (isBoardSwitchingLocked) "lock" else "arrow_back",
+                        tint = if (isBoardSwitchingLocked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface,
                         size = 22.dp
                     )
                 }
             }
 
-            TooltipHint(text = "Rename board") {
+            TooltipHint(text = if (isBoardSwitchingLocked) "Board locked by host" else "Rename board") {
                 Surface(
                     color = Color.Transparent,
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onTitleClick)
+                        .clickable(enabled = !isBoardSwitchingLocked, onClick = onTitleClick)
                         .padding(horizontal = 6.dp, vertical = 4.dp)
                 ) {
                     Text(

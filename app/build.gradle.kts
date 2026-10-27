@@ -30,10 +30,10 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
-            implementation("androidx.fragment:fragment-ktx:1.8.5")
             implementation(libs.play.services.nearby)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.kotlinx.coroutines.play.services)
+            implementation("androidx.compose.material3:material3:1.4.0-alpha14")
         }
         val desktopMain by getting {
             dependencies {

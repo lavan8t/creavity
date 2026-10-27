@@ -186,4 +186,79 @@ class RemoteStrokeReceiveTest {
         )
         assertEquals("only the latest geometry may be retained", 1, cache.pathCount())
     }
+
+    @Test
+    fun `incoming BoardSync switches peer board and locks board switching`() {
+        val replay = Replay(tmp)
+        replay.transport.connectedPeers.value = listOf(
+            PeerDevice("host-1", "Host User", role = com.kd.creavity.data.mesh.MeshRole.HOST)
+        )
+        replay.deliver(
+            WhiteboardPacket.BoardSync(
+                boardId = "host-board-99",
+                title = "Host Master Board",
+                backgroundColor = 0xFFFFFFFFL,
+                isReadOnly = false,
+                strokes = emptyList(),
+                textElements = emptyList()
+            )
+        )
+
+        assertEquals("host-board-99", replay.vm.uiState.value.currentBoard.id)
+        assertEquals("Host Master Board", replay.vm.uiState.value.currentBoard.title)
+        assertTrue("Board switching must be locked for peer in active session", replay.vm.uiState.value.isBoardSwitchingLocked)
+
+        // Attempting to switch board as non-host must be ignored
+        val rogueBoard = com.kd.creavity.domain.model.Board(id = "rogue-board-1", title = "Rogue Board")
+        replay.vm.switchBoard(rogueBoard)
+        assertEquals("host-board-99", replay.vm.uiState.value.currentBoard.id)
+    }
+
+    @Test
+    fun `stroke packet for mismatched board is discarded`() {
+        val replay = Replay(tmp)
+        replay.transport.connectedPeers.value = listOf(
+            PeerDevice("host-1", "Host User", role = com.kd.creavity.data.mesh.MeshRole.HOST)
+        )
+        // Receive board sync for host board
+        replay.deliver(
+            WhiteboardPacket.BoardSync(
+                boardId = "host-board-100",
+                title = "Host Board",
+                backgroundColor = 0xFFFFFFFFL,
+                isReadOnly = false,
+                strokes = emptyList(),
+                textElements = emptyList()
+            )
+        )
+        // Set local board to something else to simulate race / mismatched board
+        replay.vm.hostOwnedBoardId = "host-board-100"
+
+        // Send a stroke when current board ID doesn't match hostOwnedBoardId
+        val wrongBoardState = replay.vm.uiState.value.currentBoard.copy(id = "wrong-board")
+        replay.vm.onStrokeCompleted(com.kd.creavity.domain.model.Stroke(id = "local-1"))
+        // Check that packets for wrong board are ignored in handleIncomingPacket
+        replay.deliver(
+            WhiteboardPacket.StrokeStart(
+                strokeId = "peer-stroke-mismatch",
+                color = 0xFF000000L,
+                strokeWidth = 5f,
+                isEraser = false,
+                point = Point(50f, 50f, 1f, 1000L)
+            )
+        )
+        // Because hostOwnedBoardId is host-board-100 and current board is host-board-100,
+        // it was accepted. If we force hostOwnedBoardId mismatch:
+        replay.vm.hostOwnedBoardId = "some-other-board"
+        replay.deliver(
+            WhiteboardPacket.StrokeStart(
+                strokeId = "rejected-stroke",
+                color = 0xFF000000L,
+                strokeWidth = 5f,
+                isEraser = false,
+                point = Point(100f, 100f, 1f, 2000L)
+            )
+        )
+        assertTrue(replay.vm.uiState.value.strokes.none { it.id == "rejected-stroke" })
+    }
 }

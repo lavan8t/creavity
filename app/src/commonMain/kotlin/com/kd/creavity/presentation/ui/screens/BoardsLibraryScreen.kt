@@ -628,7 +628,7 @@ fun BoardsLibraryScreen(
                                                     ),
                                                     previewItemModifier = { board ->
                                                         Modifier.sharedElement(
-                                                            state = rememberSharedContentState(key = "board_thumb_${board.id}"),
+                                                            rememberSharedContentState(key = "board_thumb_${board.id}"),
                                                             animatedVisibilityScope = this@AnimatedContent,
                                                             boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
                                                         )
@@ -689,7 +689,7 @@ fun BoardsLibraryScreen(
                                                         isSelected = isSelected,
                                                         isSelectionMode = isSelectionMode,
                                                         thumbnailModifier = Modifier.sharedElement(
-                                                            state = rememberSharedContentState(key = "board_thumb_${board.id}"),
+                                                            rememberSharedContentState(key = "board_thumb_${board.id}"),
                                                             animatedVisibilityScope = this@AnimatedContent,
                                                             boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
                                                         ),
@@ -736,7 +736,7 @@ fun BoardsLibraryScreen(
                                                         isSelected = isSelected,
                                                         isSelectionMode = isSelectionMode,
                                                         thumbnailModifier = Modifier.sharedElement(
-                                                            state = rememberSharedContentState(key = "board_thumb_${board.id}"),
+                                                            rememberSharedContentState(key = "board_thumb_${board.id}"),
                                                             animatedVisibilityScope = this@AnimatedContent,
                                                             boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
                                                         ),
@@ -811,7 +811,7 @@ fun BoardsLibraryScreen(
                     ) {
                         MaterialSymbol(name = "hub", filled = true, size = 22.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Collaborate", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = "Collab", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     }
 
                     Button(
@@ -832,7 +832,7 @@ fun BoardsLibraryScreen(
                     ) {
                         MaterialSymbol(name = "add", filled = true, size = 22.dp, tint = MaterialTheme.colorScheme.onPrimary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "New Board", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = "Board", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

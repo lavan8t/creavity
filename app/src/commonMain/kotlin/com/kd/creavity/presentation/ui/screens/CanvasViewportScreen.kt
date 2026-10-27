@@ -463,7 +463,8 @@ fun CanvasViewportScreen(
                         onMoreClick = {
                             showOptionsMenu = true
                         },
-                        zoom = uiState.zoom
+                        zoom = uiState.zoom,
+                        isBoardSwitchingLocked = uiState.isBoardSwitchingLocked
                     )
 
                     // 3-dot overflow menu

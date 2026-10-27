@@ -153,6 +153,12 @@ fun AdaptiveWhiteboardScreen(
             stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
         )
 
+        androidx.compose.runtime.LaunchedEffect(latestUiState.isBoardSwitchingLocked) {
+            if (latestUiState.isBoardSwitchingLocked && currentRoute == NavDestination.BOARDS) {
+                navigateTo(NavDestination.CANVAS)
+            }
+        }
+
         NavHost(
             navController = navController,
             startDestination = NavDestination.BOARDS.name,
@@ -185,7 +191,9 @@ fun AdaptiveWhiteboardScreen(
                     onAction = onAction,
                     onNavigateToDestination = { dest ->
                         if (dest == NavDestination.BOARDS) {
-                            navigateBack()
+                            if (!latestUiState.isBoardSwitchingLocked) {
+                                navigateBack()
+                            }
                         } else {
                             navigateTo(dest)
                         }

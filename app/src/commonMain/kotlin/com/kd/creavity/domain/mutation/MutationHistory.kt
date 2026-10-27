@@ -3,8 +3,8 @@ package com.kd.creavity.domain.mutation
 import com.kd.creavity.domain.model.BoardPage
 
 class MutationHistory(private val maxStackSize: Int = 100) {
-    private val undoStack = mutableListOf<BoardMutation>()
-    private val redoStack = mutableListOf<BoardMutation>()
+    private val undoStack = ArrayDeque<BoardMutation>()
+    private val redoStack = ArrayDeque<BoardMutation>()
 
     val canUndo: Boolean
         get() = undoStack.isNotEmpty()
@@ -14,24 +14,24 @@ class MutationHistory(private val maxStackSize: Int = 100) {
 
     fun record(mutation: BoardMutation) {
         if (undoStack.size >= maxStackSize) {
-            undoStack.removeAt(0)
+            undoStack.removeFirst()
         }
-        undoStack.add(mutation)
+        undoStack.addLast(mutation)
         redoStack.clear()
     }
 
     fun undo(currentPage: BoardPage): Pair<BoardPage, BoardMutation?> {
         if (undoStack.isEmpty()) return Pair(currentPage, null)
-        val mutation = undoStack.removeAt(undoStack.lastIndex)
-        redoStack.add(mutation)
+        val mutation = undoStack.removeLast()
+        redoStack.addLast(mutation)
         val revertedPage = mutation.revert(currentPage)
         return Pair(revertedPage, mutation)
     }
 
     fun redo(currentPage: BoardPage): Pair<BoardPage, BoardMutation?> {
         if (redoStack.isEmpty()) return Pair(currentPage, null)
-        val mutation = redoStack.removeAt(redoStack.lastIndex)
-        undoStack.add(mutation)
+        val mutation = redoStack.removeLast()
+        undoStack.addLast(mutation)
         val appliedPage = mutation.apply(currentPage)
         return Pair(appliedPage, mutation)
     }

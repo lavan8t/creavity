@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -295,6 +297,29 @@ fun WhiteboardCanvas(
                 val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(Color(activeStroke.color.toInt()), isDark)
                 val drawColor = if (activeStroke.isEraser) effectiveBg else baseColor
 
+                // Luminous radiant glow for active in-flight peer strokes based on their chosen color
+                val isPeerInFlight = peerPresences[activeStroke.id]?.isDrawing == true
+                if (isPeerInFlight && !activeStroke.isEraser && activeStroke.points.size > 1) {
+                    drawPath(
+                        path = path,
+                        color = drawColor.copy(alpha = 0.22f),
+                        style = CanvasStrokeStyle(
+                            width = (activeStroke.strokeWidth * 3.8f).coerceAtLeast(12f),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                    drawPath(
+                        path = path,
+                        color = drawColor.copy(alpha = 0.48f),
+                        style = CanvasStrokeStyle(
+                            width = (activeStroke.strokeWidth * 2.0f).coerceAtLeast(6f),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
+
                 with(StrokeDrawer) {
                     drawStyledStroke(
                         points = activeStroke.points,
@@ -522,64 +547,128 @@ fun WhiteboardCanvas(
                 }
             }
 
-            // 8. Render Real-Time Peer Presence Cursors
+            // 8. Render Real-Time Peer Presence Cursors with Material Shapes & Random Color Badges
+            val vibrantBadgePalette = listOf(
+                Color(0xFFE53935), // Vivid Red
+                Color(0xFFD81B60), // Vivid Pink
+                Color(0xFF8E24AA), // Vivid Purple
+                Color(0xFF3949AB), // Indigo
+                Color(0xFF1E88E5), // Blue
+                Color(0xFF00ACC1), // Cyan
+                Color(0xFF00897B), // Teal
+                Color(0xFF43A047), // Green
+                Color(0xFFFB8C00), // Amber
+                Color(0xFF6D4C41), // Brown
+                Color(0xFF5E35B1)  // Deep Violet
+            )
+
             peerPresences.values.forEach { peer ->
                 runCatching {
                     peer.currentPoint?.let { point ->
                         if (!point.x.isFinite() || !point.y.isFinite()) return@let
 
-                        val colorIndex = abs(peer.name.hashCode()) % peerColorPalette.size
-                        val cursorColor = if (peer.color != 0L) Color(peer.color) else peerColorPalette[colorIndex]
+                        val peerSeed = abs((peer.peerId.ifBlank { peer.name }).hashCode())
+                        val badgeColor = vibrantBadgePalette[peerSeed % vibrantBadgePalette.size]
+                        val cursorColor = if (peer.color != 0L) Color(peer.color) else badgeColor
+                        val center = Offset(point.x, point.y)
+                        val r = 11f / zoom
+                        val shapeType = peerSeed % 5 // 0: Circle, 1: Rounded Square, 2: Diamond, 3: Triangle, 4: 8-Point Star
 
+                        // Subtle outer radiant halo
                         drawCircle(
-                            color = cursorColor.copy(alpha = 0.25f),
-                            radius = 16f / zoom,
-                            center = Offset(point.x, point.y)
-                        )
-                        drawCircle(
-                            color = cursorColor,
-                            radius = 10f / zoom,
-                            center = Offset(point.x, point.y)
-                        )
-                        drawCircle(
-                            color = m3Surface,
-                            radius = 3f / zoom,
-                            center = Offset(point.x, point.y)
+                            color = cursorColor.copy(alpha = 0.22f),
+                            radius = r * 1.8f,
+                            center = center
                         )
 
-                        drawCircle(
-                            color = m3Surface,
-                            radius = 7f / zoom,
-                            center = Offset(point.x, point.y)
-                        )
+                        // Render distinct Material expressive shape cursor
+                        when (shapeType) {
+                            0 -> { // Circle
+                                drawCircle(color = cursorColor, radius = r, center = center)
+                                drawCircle(color = Color.White, radius = r * 0.4f, center = center)
+                            }
+                            1 -> { // Rounded Square (Squircle)
+                                drawRoundRect(
+                                    color = cursorColor,
+                                    topLeft = Offset(center.x - r, center.y - r),
+                                    size = Size(r * 2f, r * 2f),
+                                    cornerRadius = CornerRadius(r * 0.45f, r * 0.45f)
+                                )
+                                drawRoundRect(
+                                    color = Color.White,
+                                    topLeft = Offset(center.x - r * 0.45f, center.y - r * 0.45f),
+                                    size = Size(r * 0.9f, r * 0.9f),
+                                    cornerRadius = CornerRadius(r * 0.2f, r * 0.2f)
+                                )
+                            }
+                            2 -> { // Diamond (rotated polygon)
+                                val diamond = Path().apply {
+                                    moveTo(center.x, center.y - r * 1.25f)
+                                    lineTo(center.x + r * 1.25f, center.y)
+                                    lineTo(center.x, center.y + r * 1.25f)
+                                    lineTo(center.x - r * 1.25f, center.y)
+                                    close()
+                                }
+                                drawPath(diamond, cursorColor)
+                                drawCircle(color = Color.White, radius = r * 0.38f, center = center)
+                            }
+                            3 -> { // Triangle
+                                val tri = Path().apply {
+                                    moveTo(center.x, center.y - r * 1.3f)
+                                    lineTo(center.x + r * 1.2f, center.y + r * 0.9f)
+                                    lineTo(center.x - r * 1.2f, center.y + r * 0.9f)
+                                    close()
+                                }
+                                drawPath(tri, cursorColor)
+                                drawCircle(color = Color.White, radius = r * 0.35f, center = Offset(center.x, center.y + r * 0.2f))
+                            }
+                            else -> { // 8-point expressive Star
+                                val star = Path()
+                                val outR = r * 1.35f
+                                val inR = r * 0.65f
+                                for (i in 0 until 8) {
+                                    val angle = (i * Math.PI / 4.0) - (Math.PI / 2.0)
+                                    val rad = if (i % 2 == 0) outR else inR
+                                    val px = center.x + (rad * kotlin.math.cos(angle)).toFloat()
+                                    val py = center.y + (rad * kotlin.math.sin(angle)).toFloat()
+                                    if (i == 0) star.moveTo(px, py) else star.lineTo(px, py)
+                                }
+                                star.close()
+                                drawPath(star, cursorColor)
+                                drawCircle(color = Color.White, radius = r * 0.35f, center = center)
+                            }
+                        }
 
+                        // Peer name & state badge with random vibrant badgeColor
                         val statusText = if (peer.isDrawing) "${peer.name.take(6)} • drawing" else peer.name.take(8)
                         val measuredText = textMeasurer.measure(
                             text = AnnotatedString(statusText),
                             style = TextStyle(
                                 fontFamily = AppFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                color = m3OnSurface,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
                                 fontSize = (11 / zoom).sp
                             )
                         )
-                        val tagPadding = 6f / zoom
+                        val tagPadding = 7f / zoom
                         val tagWidth = measuredText.size.width + tagPadding * 2
                         val tagHeight = measuredText.size.height + tagPadding * 1.4f
-                        val tagTopLeft = Offset(point.x + 12f / zoom, point.y - tagHeight - 6f / zoom)
+                        val tagTopLeft = Offset(point.x + 14f / zoom, point.y - tagHeight - 6f / zoom)
 
+                        // Badge background in peer's vibrant badgeColor
                         drawRoundRect(
-                            color = m3SurfaceContainerHighest.copy(alpha = 0.95f),
+                            color = badgeColor.copy(alpha = 0.95f),
                             topLeft = tagTopLeft,
                             size = Size(tagWidth, tagHeight),
                             cornerRadius = CornerRadius(6f / zoom, 6f / zoom)
                         )
+                        // Thin crisp border
                         drawRoundRect(
-                            color = cursorColor.copy(alpha = 0.85f),
+                            color = Color.White.copy(alpha = 0.6f),
                             topLeft = tagTopLeft,
                             size = Size(tagWidth, tagHeight),
                             cornerRadius = CornerRadius(6f / zoom, 6f / zoom),
-                            style = CanvasStrokeStyle(width = 1.2f / zoom)
+                            style = CanvasStrokeStyle(width = 1.0f / zoom)
                         )
                         drawText(
                             textLayoutResult = measuredText,

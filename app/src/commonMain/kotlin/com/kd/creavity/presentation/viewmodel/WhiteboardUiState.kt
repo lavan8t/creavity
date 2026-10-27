@@ -51,6 +51,9 @@ data class WhiteboardUiState(
     val isHost: Boolean
         get() = isAdvertising || (!isDiscovering && connectedPeers.none { it.role == com.kd.creavity.data.mesh.MeshRole.HOST })
 
+    val isBoardSwitchingLocked: Boolean
+        get() = !isHost && connectedPeers.isNotEmpty()
+
     val isCanvasReadOnly: Boolean
         get() = currentBoard.isReadOnly || myAccessReadOnly
 
