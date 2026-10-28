@@ -30,7 +30,7 @@ object StrokeDrawer {
         width: Float,
         tool: DrawingTool,
         cachedPath: Path? = null,
-        roughness: RoughnessStyle = RoughnessStyle.SKETCHY,
+        roughness: RoughnessStyle = RoughnessStyle.CLEAN,
         fillStyle: FillStyle = FillStyle.TRANSPARENT,
         strokeId: String = ""
     ) {

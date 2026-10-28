@@ -46,6 +46,7 @@ import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.domain.model.ImageElement
 import com.kd.creavity.domain.model.PeerPresence
 import com.kd.creavity.domain.model.Point
+import com.kd.creavity.domain.model.RoughnessStyle
 import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
@@ -334,7 +335,10 @@ fun WhiteboardCanvas(
                         color = drawColor,
                         width = activeStroke.strokeWidth,
                         tool = activeStroke.tool,
-                        cachedPath = path
+                        cachedPath = path,
+                        roughness = activeStroke.roughness,
+                        fillStyle = activeStroke.fillStyle,
+                        strokeId = activeStroke.id
                     )
                 }
             }
@@ -473,7 +477,8 @@ fun WhiteboardCanvas(
                         color = drawColor,
                         width = currentWidth / zoom,
                         tool = controller.activeToolUsed,
-                        cachedPath = if (controller.activeToolUsed == DrawingTool.CALLIGRAPHY || controller.activeToolUsed == DrawingTool.PENCIL) null else controller.activePath
+                        cachedPath = if (controller.activeToolUsed == DrawingTool.CALLIGRAPHY || controller.activeToolUsed == DrawingTool.PENCIL) null else controller.activePath,
+                        roughness = RoughnessStyle.CLEAN
                     )
                 }
             }

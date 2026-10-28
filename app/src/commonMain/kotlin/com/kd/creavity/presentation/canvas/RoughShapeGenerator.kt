@@ -154,14 +154,21 @@ object RoughShapeGenerator {
         val br = Offset(right, bottom)
         val bl = Offset(left, bottom)
 
-        val overshoot = if (roughness > 0.05f) min(strokeWidth * 1.5f + 2f, 8f) else 0f
+        val overshoot = min(strokeWidth * 1.5f + 2f, 8f)
         val strokePaths = mutableListOf<Path>()
 
-        // 4 wobbly sides with subtle Excalidraw corner overshoots
-        strokePaths.addAll(createRoughLine(tl, tr, roughness, random, overshoot))
-        strokePaths.addAll(createRoughLine(tr, br, roughness, random, overshoot))
-        strokePaths.addAll(createRoughLine(br, bl, roughness, random, overshoot))
-        strokePaths.addAll(createRoughLine(bl, tl, roughness, random, overshoot))
+        if (roughness <= 0.05f) {
+            val path = Path().apply {
+                addRect(Rect(left, top, right, bottom))
+            }
+            strokePaths.add(path)
+        } else {
+            // 4 wobbly sides with subtle Excalidraw corner overshoots
+            strokePaths.addAll(createRoughLine(tl, tr, roughness, random, overshoot))
+            strokePaths.addAll(createRoughLine(tr, br, roughness, random, overshoot))
+            strokePaths.addAll(createRoughLine(br, bl, roughness, random, overshoot))
+            strokePaths.addAll(createRoughLine(bl, tl, roughness, random, overshoot))
+        }
 
         val fillPath = Path().apply {
             moveTo(left, top)
@@ -204,28 +211,55 @@ object RoughShapeGenerator {
             }
             strokePaths.add(path)
         } else {
-            // 2-pass hand-drawn wobbly ellipse
-            val stepCount = 12
+            // 2-pass hand-drawn organic ellipse using smooth cubic Bezier arcs (never decagon/polygon)
+            val k = 0.55228475f
             for (pass in 0 until 2) {
                 val path = Path()
-                var firstPt: Offset? = null
+                val j = roughness * 1.5f
 
-                for (i in 0..stepCount) {
-                    val theta = (i % stepCount) * (2 * Math.PI / stepCount)
-                    val jitterX = (random.nextFloat() - 0.5f) * roughness * 2.0f
-                    val jitterY = (random.nextFloat() - 0.5f) * roughness * 2.0f
-                    val x = (cx + rx * cos(theta) + jitterX).toFloat()
-                    val y = (cy + ry * sin(theta) + jitterY).toFloat()
+                // Jittered quadrant endpoints: East, South, West, North
+                val eX = cx + rx + (random.nextFloat() - 0.5f) * j
+                val eY = cy + (random.nextFloat() - 0.5f) * j
 
-                    if (i == 0) {
-                        path.moveTo(x, y)
-                        firstPt = Offset(x, y)
-                    } else if (i == stepCount) {
-                        firstPt?.let { path.lineTo(it.x, it.y) }
-                    } else {
-                        path.lineTo(x, y)
-                    }
-                }
+                val sX = cx + (random.nextFloat() - 0.5f) * j
+                val sY = cy + ry + (random.nextFloat() - 0.5f) * j
+
+                val wX = cx - rx + (random.nextFloat() - 0.5f) * j
+                val wY = cy + (random.nextFloat() - 0.5f) * j
+
+                val nX = cx + (random.nextFloat() - 0.5f) * j
+                val nY = cy - ry + (random.nextFloat() - 0.5f) * j
+
+                path.moveTo(eX, eY)
+
+                // Arc 1: East -> South
+                val c1X = eX + (random.nextFloat() - 0.5f) * j
+                val c1Y = cy + ry * k + (random.nextFloat() - 0.5f) * j
+                val c2X = cx + rx * k + (random.nextFloat() - 0.5f) * j
+                val c2Y = sY + (random.nextFloat() - 0.5f) * j
+                path.cubicTo(c1X, c1Y, c2X, c2Y, sX, sY)
+
+                // Arc 2: South -> West
+                val c3X = cx - rx * k + (random.nextFloat() - 0.5f) * j
+                val c3Y = sY + (random.nextFloat() - 0.5f) * j
+                val c4X = wX + (random.nextFloat() - 0.5f) * j
+                val c4Y = cy + ry * k + (random.nextFloat() - 0.5f) * j
+                path.cubicTo(c3X, c3Y, c4X, c4Y, wX, wY)
+
+                // Arc 3: West -> North
+                val c5X = wX + (random.nextFloat() - 0.5f) * j
+                val c5Y = cy - ry * k + (random.nextFloat() - 0.5f) * j
+                val c6X = cx - rx * k + (random.nextFloat() - 0.5f) * j
+                val c6Y = nY + (random.nextFloat() - 0.5f) * j
+                path.cubicTo(c5X, c5Y, c6X, c6Y, nX, nY)
+
+                // Arc 4: North -> East
+                val c7X = cx + rx * k + (random.nextFloat() - 0.5f) * j
+                val c7Y = nY + (random.nextFloat() - 0.5f) * j
+                val c8X = eX + (random.nextFloat() - 0.5f) * j
+                val c8Y = cy - ry * k + (random.nextFloat() - 0.5f) * j
+                path.cubicTo(c7X, c7Y, c8X, c8Y, eX, eY)
+
                 path.close()
                 strokePaths.add(path)
             }
@@ -250,28 +284,38 @@ object RoughShapeGenerator {
         fillStyle: FillStyle,
         random: Random
     ): RoughShapePaths {
-        val p1 = Offset(start.x, end.y)
-        val p2 = Offset((start.x + end.x) / 2f, start.y)
-        val p3 = Offset(end.x, end.y)
-
-        val overshoot = if (roughness > 0.05f) min(strokeWidth * 1.5f + 2f, 8f) else 0f
-        val strokePaths = mutableListOf<Path>()
-
-        strokePaths.addAll(createRoughLine(p1, p2, roughness, random, overshoot))
-        strokePaths.addAll(createRoughLine(p2, p3, roughness, random, overshoot))
-        strokePaths.addAll(createRoughLine(p3, p1, roughness, random, overshoot))
-
-        val fillPath = Path().apply {
-            moveTo(p1.x, p1.y)
-            lineTo(p2.x, p2.y)
-            lineTo(p3.x, p3.y)
-            close()
-        }
-
         val left = min(start.x, end.x)
         val top = min(start.y, end.y)
         val right = max(start.x, end.x)
         val bottom = max(start.y, end.y)
+
+        val p1 = Offset(left, bottom)
+        val p2 = Offset((left + right) / 2f, top)
+        val p3 = Offset(right, bottom)
+
+        val strokePaths = mutableListOf<Path>()
+
+        if (roughness <= 0.05f) {
+            val path = Path().apply {
+                moveTo(p2.x, p2.y)
+                lineTo(p3.x, p3.y)
+                lineTo(p1.x, p1.y)
+                close()
+            }
+            strokePaths.add(path)
+        } else {
+            val overshoot = min(strokeWidth * 1.5f + 2f, 8f)
+            strokePaths.addAll(createRoughLine(p1, p2, roughness, random, overshoot))
+            strokePaths.addAll(createRoughLine(p2, p3, roughness, random, overshoot))
+            strokePaths.addAll(createRoughLine(p3, p1, roughness, random, overshoot))
+        }
+
+        val fillPath = Path().apply {
+            moveTo(p2.x, p2.y)
+            lineTo(p3.x, p3.y)
+            lineTo(p1.x, p1.y)
+            close()
+        }
 
         val hachurePaths = if (fillStyle == FillStyle.HACHURE) {
             createHachureLines(left, top, right, bottom, strokeWidth, roughness, random)

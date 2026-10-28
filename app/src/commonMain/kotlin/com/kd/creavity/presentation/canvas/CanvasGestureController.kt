@@ -12,6 +12,7 @@ import com.kd.creavity.domain.math.PathUtils
 import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.domain.model.ImageElement
 import com.kd.creavity.domain.model.Point
+import com.kd.creavity.domain.model.RoughnessStyle
 import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
@@ -419,6 +420,7 @@ class CanvasGestureController(
                             color = currentColor.toArgb().toLong(),
                             strokeWidth = currentWidth / zoom,
                             tool = activeToolUsed,
+                            roughness = RoughnessStyle.CLEAN,
                             isEraser = activeToolUsed == DrawingTool.ERASER,
                             connectedStartAnchor = startAnchorId,
                             connectedEndAnchor = endAnchorId

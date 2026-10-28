@@ -143,9 +143,14 @@ object PathUtils {
                 path.addOval(Rect(left, top, right, bottom))
             }
             DrawingTool.TRIANGLE -> {
-                path.moveTo(start.x, end.y)
-                path.lineTo((start.x + end.x) / 2f, start.y)
-                path.lineTo(end.x, end.y)
+                val left = minOf(start.x, end.x)
+                val top = minOf(start.y, end.y)
+                val right = maxOf(start.x, end.x)
+                val bottom = maxOf(start.y, end.y)
+                val midX = (left + right) / 2f
+                path.moveTo(midX, top)
+                path.lineTo(right, bottom)
+                path.lineTo(left, bottom)
                 path.close()
             }
             DrawingTool.DIAMOND -> {
