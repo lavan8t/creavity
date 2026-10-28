@@ -6,6 +6,7 @@ import com.kd.creavity.domain.model.AppThemePreset
 import com.kd.creavity.domain.model.Board
 import com.kd.creavity.domain.model.BoardPage
 import com.kd.creavity.domain.model.BoardVersionSnapshot
+import com.kd.creavity.domain.model.ChatMessage
 import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.domain.model.ImageElement
 import com.kd.creavity.domain.model.PeerDevice
@@ -58,7 +59,10 @@ data class WhiteboardUiState(
     val activeQuiz: ActiveQuiz? = null,
     val quizSubmissions: List<QuizSubmission> = emptyList(),
     val userQuizAnswer: Int? = null,
-    val quizTimeRemainingSeconds: Int = 0
+    val quizTimeRemainingSeconds: Int = 0,
+    val chatMessages: List<ChatMessage> = emptyList(),
+    val unreadChatCount: Int = 0,
+    val isChatOpen: Boolean = false
 ) {
     val isHost: Boolean
         get() = isAdvertising || (!isDiscovering && connectedPeers.none { it.role == com.kd.creavity.data.mesh.MeshRole.HOST })

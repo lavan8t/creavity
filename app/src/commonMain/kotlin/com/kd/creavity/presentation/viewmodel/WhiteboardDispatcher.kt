@@ -83,6 +83,46 @@ fun WhiteboardViewModel.dispatch(action: BoardAction) {
         is BoardAction.AnswerQuiz -> answerQuiz(action.quizId, action.selectedOptionIndex)
         is BoardAction.EndQuiz -> endQuiz(action.quizId, action.correctOptionIndex)
         is BoardAction.DismissQuiz -> dismissQuiz()
+        is BoardAction.SendChatMessage -> sendChatMessage(action.text)
+        is BoardAction.ToggleChat -> toggleChat(action.isOpen)
+    }
+}
+
+fun WhiteboardViewModel.sendChatMessage(text: String) {
+    if (text.isBlank()) return
+    val messageId = java.util.UUID.randomUUID().toString()
+    val myNodeId = uiState.value.roomCode ?: "local-host"
+    val myName = uiState.value.displayName
+    val timestamp = System.currentTimeMillis()
+    val chatMessage = com.kd.creavity.domain.model.ChatMessage(
+        id = messageId,
+        senderId = myNodeId,
+        senderName = myName,
+        text = text.trim(),
+        timestampMs = timestamp
+    )
+    _uiState.update { current ->
+        current.copy(
+            chatMessages = current.chatMessages + chatMessage
+        )
+    }
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.ChatMessage(
+        messageId = messageId,
+        senderId = myNodeId,
+        senderName = myName,
+        text = text.trim(),
+        timestampMs = timestamp
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = true)
+}
+
+fun WhiteboardViewModel.toggleChat(isOpen: Boolean? = null) {
+    _uiState.update { current ->
+        val nextOpen = isOpen ?: !current.isChatOpen
+        current.copy(
+            isChatOpen = nextOpen,
+            unreadChatCount = if (nextOpen) 0 else current.unreadChatCount
+        )
     }
 }
 

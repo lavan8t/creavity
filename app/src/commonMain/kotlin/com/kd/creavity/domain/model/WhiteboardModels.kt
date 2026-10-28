@@ -106,6 +106,14 @@ data class StickyNote(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val senderId: String,
+    val senderName: String,
+    val text: String,
+    val timestampMs: Long = System.currentTimeMillis()
+)
+
 data class ViewportBounds(
     val left: Float = 0f,
     val top: Float = 0f,

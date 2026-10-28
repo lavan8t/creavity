@@ -125,57 +125,64 @@ fun BoardGridCard(
                     }
                 }
 
-                // Card Footer: Title + Favourite + 3-dots
-                Row(
+                // Card Footer: Title + Favourite + 3-dots on top row, metadata badges below
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
                             text = board.title.ifBlank { "Untitled Board" },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
-                        BoardMetadataBadges(board = board)
-                    }
 
-                    // Favourite Star Button
-                    TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
-                        IconButton(
-                            onClick = onToggleStar,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = if (board.isStarred) "star" else "star_outline",
-                                filled = board.isStarred,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 18.dp
-                            )
+                        // Favourite Star Button
+                        TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
+                            IconButton(
+                                onClick = onToggleStar,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                MaterialSymbol(
+                                    name = if (board.isStarred) "star" else "star_outline",
+                                    filled = board.isStarred,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 18.dp
+                                )
+                            }
+                        }
+
+                        // 3-dots overflow to open action sheet or desktop menu
+                        TooltipHint(text = "Board options") {
+                            IconButton(
+                                onClick = {
+                                    if (isDesktopPlatform()) {
+                                        contextMenuOffset = Offset.Zero
+                                        showContextMenu = true
+                                    } else {
+                                        onOptionsClick()
+                                    }
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                MaterialSymbol(name = "more_vert", size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
 
-                    // 3-dots overflow to open action sheet or desktop menu
-                    TooltipHint(text = "Board options") {
-                        IconButton(
-                            onClick = {
-                                if (isDesktopPlatform()) {
-                                    contextMenuOffset = Offset.Zero
-                                    showContextMenu = true
-                                } else {
-                                    onOptionsClick()
-                                }
-                            },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            MaterialSymbol(name = "more_vert", size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
+                    BoardMetadataBadges(
+                        board = board,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
         }

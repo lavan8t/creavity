@@ -167,6 +167,14 @@ sealed class WhiteboardPacket {
         val ipAddress: String,
         val port: Int
     ) : WhiteboardPacket()
+
+    data class ChatMessage(
+        val messageId: String = java.util.UUID.randomUUID().toString(),
+        val senderId: String,
+        val senderName: String,
+        val text: String,
+        val timestampMs: Long = System.currentTimeMillis()
+    ) : WhiteboardPacket()
 }
 
 object PacketSerializer {
@@ -195,6 +203,7 @@ object PacketSerializer {
     private const val TYPE_QUIZ_END: Byte = 37
     private const val TYPE_ENGAGEMENT_HEARTBEAT: Byte = 38
     private const val TYPE_RELAY_BRIDGE_ANNOUNCE: Byte = 39
+    private const val TYPE_CHAT_MESSAGE: Byte = 40
 
     fun serializeSingleStroke(stroke: Stroke): ByteArray {
         return serializeStrokes(listOf(stroke)).first()
@@ -633,6 +642,24 @@ object PacketSerializer {
                 buffer.putInt(packet.port)
                 buffer.array()
             }
+            is WhiteboardPacket.ChatMessage -> {
+                val idBytes = packet.messageId.toByteArray(StandardCharsets.UTF_8)
+                val senderIdBytes = packet.senderId.toByteArray(StandardCharsets.UTF_8)
+                val senderNameBytes = packet.senderName.toByteArray(StandardCharsets.UTF_8)
+                val textBytes = packet.text.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size + 2 + senderIdBytes.size + 2 + senderNameBytes.size + 4 + textBytes.size + 8)
+                buffer.put(TYPE_CHAT_MESSAGE)
+                buffer.putShort(idBytes.size.toShort())
+                buffer.put(idBytes)
+                buffer.putShort(senderIdBytes.size.toShort())
+                buffer.put(senderIdBytes)
+                buffer.putShort(senderNameBytes.size.toShort())
+                buffer.put(senderNameBytes)
+                buffer.putInt(textBytes.size)
+                buffer.put(textBytes)
+                buffer.putLong(packet.timestampMs)
+                buffer.array()
+            }
         }
     }
 
@@ -1008,6 +1035,30 @@ object PacketSerializer {
                 val port = buffer.int
 
                 WhiteboardPacket.RelayBridgeAnnounce(relayNodeId, ssid, passphrase, ipAddress, port)
+            }
+            TYPE_CHAT_MESSAGE -> {
+                val idLen = buffer.short.toInt()
+                val idBytes = ByteArray(idLen)
+                buffer.get(idBytes)
+                val messageId = String(idBytes, StandardCharsets.UTF_8)
+
+                val senderIdLen = buffer.short.toInt()
+                val senderIdBytes = ByteArray(senderIdLen)
+                buffer.get(senderIdBytes)
+                val senderId = String(senderIdBytes, StandardCharsets.UTF_8)
+
+                val senderNameLen = buffer.short.toInt()
+                val senderNameBytes = ByteArray(senderNameLen)
+                buffer.get(senderNameBytes)
+                val senderName = String(senderNameBytes, StandardCharsets.UTF_8)
+
+                val textLen = buffer.int
+                val textBytes = ByteArray(textLen)
+                buffer.get(textBytes)
+                val text = String(textBytes, StandardCharsets.UTF_8)
+
+                val timestampMs = buffer.long
+                WhiteboardPacket.ChatMessage(messageId, senderId, senderName, text, timestampMs)
             }
             else -> null
         }

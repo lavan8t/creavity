@@ -65,7 +65,7 @@ private fun createMaterialToolCursor(tool: DrawingTool): PointerIcon {
                 CursorSpec(title, Point(12, 4), Color.White, Color(0xFF0F172A))
             DrawingTool.SELECT,
             DrawingTool.SELECT_MOVE ->
-                CursorSpec(pan_tool_alt, Point(8, 2), Color.White, Color(0xFF0F172A))
+                CursorSpec(arrow_selector_tool, Point(5, 3), Color.White, Color(0xFF0F172A))
             DrawingTool.RECT_SELECT ->
                 CursorSpec(crop_free, Point(12, 12), Color(0xFF38BDF8), Color(0xFF0F172A))
             DrawingTool.LASSO_SELECT ->

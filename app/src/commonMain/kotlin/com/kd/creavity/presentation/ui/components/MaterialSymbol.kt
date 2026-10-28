@@ -48,7 +48,9 @@ fun MaterialSymbol(
         "cleaning_services" -> cleaning_services
         "select_erase", "highlight_off" -> highlight_off
         "rect_select", "crop_free", "box_select", "fit_screen", "filter_center_focus" -> crop_free
-        "select_move", "move", "select", "pan_tool_alt" -> pan_tool_alt
+        "cursor", "arrow_selector_tool", "select", "select_move" -> arrow_selector_tool
+        "pan_tool_alt", "move", "hand", "pan" -> pan_tool_alt
+        "chat", "forum", "message" -> chat
         "lasso", "lasso_select", "gesture", "freeform", "all_inclusive" -> gesture
         "select_all" -> select_all
         "deselect" -> deselect

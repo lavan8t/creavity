@@ -168,9 +168,14 @@ fun DesktopDraggableToolbar(
 
             // 5. Select / Transform Tool
             DesktopToolButton(
-                icon = "select",
+                icon = "cursor",
                 label = "Select",
-                isSelected = uiState.selectedTool == DrawingTool.SELECT,
+                isSelected = uiState.selectedTool in listOf(
+                    DrawingTool.SELECT,
+                    DrawingTool.SELECT_MOVE,
+                    DrawingTool.RECT_SELECT,
+                    DrawingTool.LASSO_SELECT
+                ),
                 onClick = {
                     if (uiState.selectedTool == DrawingTool.SELECT) {
                         onToggleCallout("SELECT")

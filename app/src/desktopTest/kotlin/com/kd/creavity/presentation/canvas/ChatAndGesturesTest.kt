@@ -1,0 +1,195 @@
+package com.kd.creavity.presentation.canvas
+
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import com.kd.creavity.data.binary.PacketSerializer
+import com.kd.creavity.data.binary.WhiteboardPacket
+import com.kd.creavity.domain.model.DrawingTool
+import com.kd.creavity.domain.model.Point
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ChatAndGesturesTest {
+
+    private fun createTestController(onTransform: (Float, Offset, Offset) -> Unit): CanvasGestureController {
+        return CanvasGestureController(
+            onTransform = onTransform,
+            onTransformStateChanged = { _, _ -> },
+            onStrokeCompleted = {},
+            onStrokeBroadcastStart = { _, _, _, _, _, _ -> },
+            onStrokeBroadcastPoint = { _, _ -> },
+            onStrokeBroadcastEnd = {},
+            onDeleteStroke = {},
+            onDeleteText = {},
+            onDeleteImage = {},
+            onDeleteStickyNote = {},
+            onElementsMoved = { _, _, _ -> },
+            onSelectionChanged = { _, _, _ -> },
+            onTapForText = {},
+            requestInvalidate = {}
+        )
+    }
+
+    @Test
+    fun testChatMessagePacketSerializationRoundtrip() {
+        val originalPacket = WhiteboardPacket.ChatMessage(
+            messageId = "chat-msg-12345",
+            senderId = "peer-node-abc",
+            senderName = "Prof. Turing",
+            text = "Welcome to the collaborative session! Let's solve equation 4.",
+            timestampMs = 1700000000000L
+        )
+
+        val bytes = PacketSerializer.serialize(originalPacket)
+        assertNotNull("Serialized bytes should not be null", bytes)
+        assertTrue("Serialized packet must not be empty", bytes.isNotEmpty())
+
+        val deserialized = PacketSerializer.deserialize(bytes)
+        assertNotNull("Deserialized packet should not be null", deserialized)
+        assertTrue("Deserialized packet must be ChatMessage", deserialized is WhiteboardPacket.ChatMessage)
+
+        val chat = deserialized as WhiteboardPacket.ChatMessage
+        assertEquals(originalPacket.messageId, chat.messageId)
+        assertEquals(originalPacket.senderId, chat.senderId)
+        assertEquals(originalPacket.senderName, chat.senderName)
+        assertEquals(originalPacket.text, chat.text)
+        assertEquals(originalPacket.timestampMs, chat.timestampMs)
+    }
+
+    @Test
+    fun testCanvasGestureScrollHorizontalPanWithShift() {
+        var transformedZoom = 1.0f
+        var transformedPan = Offset.Zero
+        val controller = createTestController { zoom, _, pan ->
+            transformedZoom *= zoom
+            transformedPan += pan
+        }
+
+        val scrollWithShift = CanvasInputEvent(
+            action = CanvasPointerAction.SCROLL,
+            pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 300f, type = CanvasPointerType.MOUSE)),
+            scrollDeltaX = 0f,
+            scrollDeltaY = 2f,
+            isShiftPressed = true
+        )
+
+        val handled = controller.handleInputEvent(
+            event = scrollWithShift,
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertTrue("Scroll event must be handled", handled)
+        assertEquals("Zoom must not change when scrolling with Shift", 1.0f, transformedZoom, 0.001f)
+        assertEquals("Horizontal pan must be -2 * 48 = -96", -96f, transformedPan.x, 0.001f)
+        assertEquals("Vertical pan must be 0", 0f, transformedPan.y, 0.001f)
+    }
+
+    @Test
+    fun testCanvasGestureScrollZoomWithCtrl() {
+        var transformedZoom = 1.0f
+        var focalPoint = Offset.Zero
+        val controller = createTestController { zoom, focal, _ ->
+            transformedZoom *= zoom
+            focalPoint = focal
+        }
+
+        val zoomInEvent = CanvasInputEvent(
+            action = CanvasPointerAction.SCROLL,
+            pointers = listOf(CanvasPointer(id = 1L, x = 400f, y = 300f, type = CanvasPointerType.MOUSE)),
+            scrollDeltaX = 0f,
+            scrollDeltaY = -1f,
+            isCtrlPressed = true
+        )
+
+        val handled = controller.handleInputEvent(
+            event = zoomInEvent,
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertTrue(handled)
+        assertTrue("Zoom should increase when scrolling up (-1f) with Ctrl", transformedZoom > 1.0f)
+        assertEquals(400f, focalPoint.x, 0.001f)
+        assertEquals(300f, focalPoint.y, 0.001f)
+    }
+
+    @Test
+    fun testMiddleMouseButtonPan() {
+        var totalPan = Offset.Zero
+        val controller = createTestController { _, _, pan ->
+            totalPan += pan
+        }
+
+        // Middle mouse press at (100, 100)
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.DOWN,
+                pointers = listOf(CanvasPointer(id = 1L, x = 100f, y = 100f, isPrimaryButton = false, isTertiaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        // Middle mouse drag to (140, 170) -> dx = +40, dy = +70
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.MOVE,
+                pointers = listOf(CanvasPointer(id = 1L, x = 140f, y = 170f, isPrimaryButton = false, isTertiaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertEquals("Middle-click pan dx must be 40", 40f, totalPan.x, 0.001f)
+        assertEquals("Middle-click pan dy must be 70", 70f, totalPan.y, 0.001f)
+    }
+
+    @Test
+    fun testSelectToolUsesCursorPointerIcon() {
+        val icon = getToolPointerIcon(DrawingTool.SELECT)
+        assertNotNull("Select tool pointer icon must not be null", icon)
+    }
+}

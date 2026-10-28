@@ -5,9 +5,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.isAltPressed
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.isTertiaryPressed
 import com.kd.creavity.domain.model.Point
 
 enum class CanvasPointerAction {
@@ -33,6 +37,7 @@ data class CanvasPointer(
     val type: CanvasPointerType = CanvasPointerType.TOUCH,
     val isPrimaryButton: Boolean = true,
     val isSecondaryButton: Boolean = false,
+    val isTertiaryButton: Boolean = false,
     val historicalPoints: List<Point> = emptyList()
 )
 
@@ -43,6 +48,9 @@ data class CanvasInputEvent(
     val scrollDeltaX: Float = 0f,
     val scrollDeltaY: Float = 0f,
     val isCtrlPressed: Boolean = false,
+    val isShiftPressed: Boolean = false,
+    val isAltPressed: Boolean = false,
+    val isMetaPressed: Boolean = false,
     val eventTime: Long = System.currentTimeMillis()
 ) {
     val pointerCount: Int get() = pointers.size
@@ -55,18 +63,23 @@ data class CanvasInputEvent(
 @OptIn(ExperimentalComposeUiApi::class)
 fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
     val hasMouse = changes.any { it.type == PointerType.Mouse }
-    val isPrimaryDown = if (hasMouse) buttons.isPrimaryPressed else changes.any { it.pressed }
+    val isAnyMouseDown = buttons.isPrimaryPressed || buttons.isSecondaryPressed || buttons.isTertiaryPressed
+    val isDown = if (hasMouse) isAnyMouseDown else changes.any { it.pressed }
 
     val action = when (type) {
-        PointerEventType.Press -> if (isPrimaryDown) CanvasPointerAction.DOWN else CanvasPointerAction.CANCEL
-        PointerEventType.Move -> if (isPrimaryDown) CanvasPointerAction.MOVE else CanvasPointerAction.CANCEL
+        PointerEventType.Press -> if (isDown) CanvasPointerAction.DOWN else CanvasPointerAction.CANCEL
+        PointerEventType.Move -> if (isDown) CanvasPointerAction.MOVE else CanvasPointerAction.CANCEL
         PointerEventType.Release -> CanvasPointerAction.UP
         PointerEventType.Scroll -> CanvasPointerAction.SCROLL
         else -> CanvasPointerAction.CANCEL
     }
     val scrollDelta = changes.firstOrNull()?.scrollDelta ?: Offset.Zero
     val isCtrl = keyboardModifiers.isCtrlPressed
+    val isShift = keyboardModifiers.isShiftPressed
+    val isAlt = keyboardModifiers.isAltPressed
+    val isMeta = keyboardModifiers.isMetaPressed
     val isSecondary = buttons.isSecondaryPressed
+    val isTertiary = buttons.isTertiaryPressed
 
     val pointers = changes.map { change ->
         val pointerType = when (change.type) {
@@ -75,7 +88,7 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
             PointerType.Mouse -> CanvasPointerType.MOUSE
             else -> CanvasPointerType.TOUCH
         }
-        val isPrimary = if (change.type == PointerType.Mouse) buttons.isPrimaryPressed else !isSecondary
+        val isPrimary = if (change.type == PointerType.Mouse) buttons.isPrimaryPressed else (!isSecondary && !isTertiary)
         val historicalPoints = change.historical.map { h ->
             Point(
                 x = h.position.x,
@@ -92,6 +105,7 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
             type = pointerType,
             isPrimaryButton = isPrimary,
             isSecondaryButton = isSecondary,
+            isTertiaryButton = isTertiary,
             historicalPoints = historicalPoints
         )
     }
@@ -103,6 +117,9 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
         scrollDeltaX = scrollDelta.x,
         scrollDeltaY = scrollDelta.y,
         isCtrlPressed = isCtrl,
+        isShiftPressed = isShift,
+        isAltPressed = isAlt,
+        isMetaPressed = isMeta,
         eventTime = System.currentTimeMillis()
     )
 }

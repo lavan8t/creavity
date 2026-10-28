@@ -44,6 +44,7 @@ fun FloatingSelectionDock(
     onAction: (BoardAction) -> Unit,
     onOpenEmbeddedTextEditor: (strokeId: String, currentText: String?) -> Unit,
     onOpenTextEditor: (textId: String) -> Unit = {},
+    onDismiss: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (selectedStrokeIds.isEmpty() && selectedTextIds.isEmpty()) return
@@ -163,6 +164,18 @@ fun FloatingSelectionDock(
                         name = "delete",
                         size = 18.dp,
                         tint = MaterialTheme.colorScheme.error
+                    )
+                }
+
+                // Done / Dismiss floating selection dock
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    MaterialSymbol(
+                        name = "check",
+                        size = 18.dp,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }

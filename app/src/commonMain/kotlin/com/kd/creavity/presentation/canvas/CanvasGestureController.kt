@@ -157,15 +157,45 @@ class CanvasGestureController(
         if (event.action == CanvasPointerAction.SCROLL) {
             val vScroll = event.scrollDeltaY
             val hScroll = event.scrollDeltaX
-            val isCtrl = event.isCtrlPressed
+            val isZoomModifier = event.isCtrlPressed || event.isMetaPressed || event.isAltPressed
+            val isShift = event.isShiftPressed
             val focal = Offset(event.x, event.y)
-            if (isCtrl) {
-                val zoomFactor = if (vScroll > 0) 0.92f else if (vScroll < 0) 1.08f else 1.0f
+            if (isZoomModifier) {
+                val zoomFactor = if (vScroll > 0) 0.90f else if (vScroll < 0) 1.10f else 1.0f
                 onTransform(zoomFactor, focal, Offset.Zero)
+            } else if (isShift) {
+                // Shift + Scroll: Pan horizontally left / right
+                onTransform(1.0f, Offset.Zero, Offset(-vScroll * 48f, 0f))
             } else {
-                onTransform(1.0f, Offset.Zero, Offset(-hScroll * 48f, -vScroll * 48f))
+                // Normal scroll: pan horizontally & vertically (touchpad, tilt wheel or standard wheel)
+                val panX = -hScroll * 48f
+                val panY = -vScroll * 48f
+                onTransform(1.0f, Offset.Zero, Offset(panX, panY))
             }
             onTransformStateChanged(true, listOf(focal))
+            return true
+        }
+
+        // 1.4. Middle-Click drag handling (Canvas Pan in all directions)
+        if (event.activePointer.isTertiaryButton) {
+            discardActiveStroke()
+            when (event.action) {
+                CanvasPointerAction.DOWN -> {
+                    lastMidX = event.x
+                    lastMidY = event.y
+                }
+                CanvasPointerAction.MOVE -> {
+                    val dx = event.x - lastMidX
+                    val dy = event.y - lastMidY
+                    onTransform(1.0f, Offset.Zero, Offset(dx, dy))
+                    lastMidX = event.x
+                    lastMidY = event.y
+                }
+                CanvasPointerAction.UP -> {
+                    // Pan finished
+                }
+                else -> {}
+            }
             return true
         }
 

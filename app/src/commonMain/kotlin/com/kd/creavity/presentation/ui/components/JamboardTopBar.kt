@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -46,6 +47,12 @@ fun WhiteboardTopBar(
     onUndo: () -> Unit = {},
     onRedo: () -> Unit = {},
     zoom: Float = 1.0f,
+    onZoomIn: (() -> Unit)? = null,
+    onZoomOut: (() -> Unit)? = null,
+    onResetZoom: (() -> Unit)? = null,
+    onToggleChat: (() -> Unit)? = null,
+    unreadChatCount: Int = 0,
+    isChatOpen: Boolean = false,
     isHost: Boolean = false,
     connectedPeersCount: Int = 0,
     isBoardSwitchingLocked: Boolean = false,
@@ -146,6 +153,85 @@ fun WhiteboardTopBar(
                             tint = MaterialTheme.colorScheme.onSurface,
                             size = 20.dp
                         )
+                    }
+                }
+            }
+
+            // Zoom indicator & controls pill
+            if (onZoomIn != null && onZoomOut != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.height(32.dp).padding(horizontal = 4.dp)
+                    ) {
+                        TooltipHint(text = "Zoom out (Ctrl + -)") {
+                            IconButton(
+                                onClick = onZoomOut,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+
+                        TooltipHint(text = "Reset zoom to 100% (Ctrl + 0)") {
+                            Text(
+                                text = "${kotlin.math.round(zoom * 100).toInt()}%",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { onResetZoom?.invoke() }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+
+                        TooltipHint(text = "Zoom in (Ctrl + +)") {
+                            IconButton(
+                                onClick = onZoomIn,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Collaborative Chat Toggle Button
+            if (onToggleChat != null) {
+                TooltipHint(text = if (isChatOpen) "Close Chat" else "Open Classroom Chat") {
+                    Box {
+                        IconButton(
+                            onClick = onToggleChat,
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = "chat",
+                                tint = if (isChatOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 20.dp
+                            )
+                        }
+                        if (unreadChatCount > 0 && !isChatOpen) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 4.dp, end = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (unreadChatCount > 9) "9+" else unreadChatCount.toString(),
+                                    color = MaterialTheme.colorScheme.onError,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

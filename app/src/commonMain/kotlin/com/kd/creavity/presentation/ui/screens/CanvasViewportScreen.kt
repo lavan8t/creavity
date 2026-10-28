@@ -8,6 +8,7 @@ import com.kd.creavity.util.FilePickerType
 import com.kd.creavity.util.rememberFilePickerLauncher
 import com.kd.creavity.util.shareBoard
 import com.kd.creavity.presentation.ui.components.CanvasExportDialog
+import com.kd.creavity.presentation.ui.components.CollaborativeChatPanel
 import com.kd.creavity.presentation.ui.components.FloatingSelectionDock
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -269,6 +270,21 @@ fun CanvasViewportScreen(
     var activeEditingStrokeId by remember { mutableStateOf<String?>(null) }
     var contextMenuData by remember { mutableStateOf<CanvasContextMenuData?>(null) }
     var desktopToolbarOffset by remember { mutableStateOf(Offset(24f, 100f)) }
+
+    // Auto-dismiss selection floating dock when switching away from select tools
+    val isSelectionTool = uiState.selectedTool in listOf(
+        DrawingTool.SELECT,
+        DrawingTool.SELECT_MOVE,
+        DrawingTool.RECT_SELECT,
+        DrawingTool.LASSO_SELECT
+    )
+    LaunchedEffect(isSelectionTool) {
+        if (!isSelectionTool) {
+            selectedStrokes = emptyList()
+            selectedTexts = emptyList()
+            selectionBounds = null
+        }
+    }
 
     // Image Picker
     val launchImagePicker = rememberFilePickerLauncher(FilePickerType.IMAGE) { path ->
@@ -716,6 +732,12 @@ fun CanvasViewportScreen(
                             showOptionsMenu = true
                         },
                         zoom = uiState.zoom,
+                        onZoomIn = { onAction(BoardAction.TransformCanvas(1.15f, Offset.Zero, Offset.Zero)) },
+                        onZoomOut = { onAction(BoardAction.TransformCanvas(0.85f, Offset.Zero, Offset.Zero)) },
+                        onResetZoom = { onAction(BoardAction.ResetCanvasTransform) },
+                        onToggleChat = { onAction(BoardAction.ToggleChat()) },
+                        unreadChatCount = uiState.unreadChatCount,
+                        isChatOpen = uiState.isChatOpen,
                         isHost = uiState.isHost,
                         connectedPeersCount = uiState.connectedPeers.size,
                         isBoardSwitchingLocked = uiState.isBoardSwitchingLocked,
@@ -1091,6 +1113,11 @@ fun CanvasViewportScreen(
                 selectedTextIds = selectedTexts,
                 strokes = uiState.strokes,
                 onAction = onAction,
+                onDismiss = {
+                    selectedStrokes = emptyList()
+                    selectedTexts = emptyList()
+                    selectionBounds = null
+                },
                 onOpenEmbeddedTextEditor = { strokeId, currentText ->
                     val stroke = uiState.strokes.firstOrNull { it.id == strokeId }
                     if (stroke != null && stroke.points.isNotEmpty()) {
@@ -1436,6 +1463,19 @@ fun CanvasViewportScreen(
             onRestoreSnapshot = { snapshot ->
                 onAction(BoardAction.RestoreVersionSnapshot(snapshot))
             }
+        )
+
+        // 19. Collaborative Classroom Chat Panel
+        CollaborativeChatPanel(
+            isOpen = uiState.isChatOpen,
+            chatMessages = uiState.chatMessages,
+            currentDisplayName = uiState.displayName,
+            connectedPeersCount = uiState.connectedPeers.size,
+            onSendMessage = { text -> onAction(BoardAction.SendChatMessage(text)) },
+            onClose = { onAction(BoardAction.ToggleChat(false)) },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(top = 56.dp, bottom = 16.dp, end = 12.dp)
         )
     }
 

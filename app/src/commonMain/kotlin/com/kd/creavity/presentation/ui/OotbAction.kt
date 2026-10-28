@@ -115,4 +115,8 @@ sealed interface BoardAction {
     data class AnswerQuiz(val quizId: String, val selectedOptionIndex: Int) : BoardAction
     data class EndQuiz(val quizId: String, val correctOptionIndex: Int = -1) : BoardAction
     data object DismissQuiz : BoardAction
+
+    // Classroom: Collaborative Chat
+    data class SendChatMessage(val text: String) : BoardAction
+    data class ToggleChat(val isOpen: Boolean? = null) : BoardAction
 }

@@ -227,8 +227,9 @@ fun CanvasBottomToolbar(
                         }
                     )
 
-                    // 4. Select / Move button
+                    // 4. Select / Cursor button
                     val isSelect = uiState.selectedTool in listOf(
+                        DrawingTool.SELECT,
                         DrawingTool.SELECT_MOVE,
                         DrawingTool.RECT_SELECT,
                         DrawingTool.LASSO_SELECT
@@ -236,7 +237,7 @@ fun CanvasBottomToolbar(
                     val selectIcon = when (uiState.selectedTool) {
                         DrawingTool.RECT_SELECT -> "crop_free"
                         DrawingTool.LASSO_SELECT -> "gesture"
-                        else -> "pan_tool_alt"
+                        else -> "cursor"
                     }
                     ToolbarIconButton(
                         icon = selectIcon,

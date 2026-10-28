@@ -254,7 +254,8 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
         is WhiteboardPacket.QuizAnswer,
         is WhiteboardPacket.QuizEnd,
         is WhiteboardPacket.EngagementHeartbeat,
-        is WhiteboardPacket.RelayBridgeAnnounce -> {
+        is WhiteboardPacket.RelayBridgeAnnounce,
+        is WhiteboardPacket.ChatMessage -> {
             handleClassroomSyncPacket(packet)
         }
     }
@@ -406,6 +407,25 @@ internal fun WhiteboardViewModel.handleClassroomSyncPacket(packet: WhiteboardPac
                 } else {
                     current
                 }
+            }
+        }
+        is WhiteboardPacket.ChatMessage -> {
+            val domainMsg = com.kd.creavity.domain.model.ChatMessage(
+                id = packet.messageId,
+                senderId = packet.senderId,
+                senderName = packet.senderName,
+                text = packet.text,
+                timestampMs = packet.timestampMs
+            )
+            _uiState.update { current ->
+                if (current.chatMessages.any { it.id == packet.messageId }) current
+                else current.copy(
+                    chatMessages = current.chatMessages + domainMsg,
+                    unreadChatCount = if (current.isChatOpen) 0 else current.unreadChatCount + 1
+                )
+            }
+            if (_uiState.value.isHost) {
+                peerTransport.sendPacketToAll(packet, isMutation = true)
             }
         }
         else -> {}
