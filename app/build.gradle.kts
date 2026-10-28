@@ -56,7 +56,7 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
             )
             packageName = "CreaVITy"
-            packageVersion = "1.0.0"
+            packageVersion = "1.2.0"
             description = "CreaVITy Infinite Collaborative Whiteboard"
             copyright = "© 2026 CreaVITy"
             vendor = "CreaVITy"

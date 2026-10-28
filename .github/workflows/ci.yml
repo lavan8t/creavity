@@ -3,14 +3,20 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   check:
+    name: Test & Verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,8 +25,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-
-      - uses: android-actions/setup-android@v3
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -36,3 +40,65 @@ jobs:
         with:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
+
+  release-desktop:
+    name: Build & Release Windows EXE
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Add WiX to PATH
+        shell: pwsh
+        run: |
+          if (Test-Path "C:\Program Files (x86)\WiX Toolset v3.11\bin") {
+            "C:\Program Files (x86)\WiX Toolset v3.11\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } elseif (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            choco install wixtoolset --version=3.11.2 -y
+          }
+
+      - name: Package Release EXE
+        shell: pwsh
+        run: .\gradlew.bat :app:packageReleaseExe --console=plain
+
+      - name: Upload Desktop Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreaVITy-windows-exe
+          path: app/build/compose/binaries/**/exe/*.exe
+
+      - name: Upload EXE to GitHub Release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $targetTag = ""
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $targetTag = $env:GITHUB_REF_NAME
+          } else {
+            $targetTag = gh release view -R ${{ github.repository }} --json tagName -q .tagName
+          }
+
+          if (-not $targetTag) {
+            Write-Error "Could not determine target release tag in ${{ github.repository }}."
+            exit 1
+          }
+
+          Write-Host "Target GitHub release tag: $targetTag"
+          $exeFiles = Get-ChildItem -Path app/build/compose/binaries -Filter "*.exe" -Recurse | Where-Object { $_.DirectoryName -split '[\\/]' -contains 'exe' }
+          if (-not $exeFiles) {
+            Write-Error "No .exe found in app/build/compose/binaries/**/exe/"
+            exit 1
+          }
+          foreach ($file in $exeFiles) {
+            Write-Host "Uploading $($file.FullName) to release $targetTag"
+            gh release upload -R ${{ github.repository }} $targetTag $file.FullName --clobber
+          }

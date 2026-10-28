@@ -1,5 +1,6 @@
 package com.kd.creavity.presentation.canvas
 
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -51,6 +52,7 @@ data class CanvasInputEvent(
     val y: Float get() = activePointer.y
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
     val hasMouse = changes.any { it.type == PointerType.Mouse }
     val isPrimaryDown = if (hasMouse) buttons.isPrimaryPressed else changes.any { it.pressed }
