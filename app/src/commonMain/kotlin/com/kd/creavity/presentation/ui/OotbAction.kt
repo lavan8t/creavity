@@ -104,4 +104,5 @@ sealed interface BoardAction {
     data class StartQuiz(val quiz: com.kd.creavity.domain.model.ActiveQuiz) : BoardAction
     data class AnswerQuiz(val quizId: String, val selectedOptionIndex: Int) : BoardAction
     data class EndQuiz(val quizId: String, val correctOptionIndex: Int = -1) : BoardAction
+    data object DismissQuiz : BoardAction
 }

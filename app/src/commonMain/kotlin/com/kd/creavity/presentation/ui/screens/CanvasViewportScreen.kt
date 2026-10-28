@@ -652,6 +652,7 @@ fun CanvasViewportScreen(
                         },
                         zoom = uiState.zoom,
                         isHost = uiState.isHost,
+                        connectedPeersCount = uiState.connectedPeers.size,
                         isBoardSwitchingLocked = uiState.isBoardSwitchingLocked,
                         onBirdsEyeClick = { showBirdsEyeSheet = true },
                         onOmniviewClick = { showOmniviewSheet = true },
@@ -847,8 +848,8 @@ fun CanvasViewportScreen(
                                 )
                             }
 
-                            // Classroom Omniview Matrix & Quiz Deck (Host only)
-                            if (uiState.isHost) {
+                            // Classroom Omniview Matrix & Quiz Deck (Host only when peers are connected)
+                            if (uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
                                 DropdownMenuItem(
                                     text = { Text("Omniview Matrix (Student Sheets)") },
                                     leadingIcon = {
@@ -1289,7 +1290,7 @@ fun CanvasViewportScreen(
                 submissions = uiState.quizSubmissions,
                 timeRemainingSeconds = uiState.quizTimeRemainingSeconds,
                 onAnswer = { qId, opt -> onAction(BoardAction.AnswerQuiz(qId, opt)) },
-                onDismiss = { onAction(BoardAction.EndQuiz(uiState.activeQuiz?.quizId ?: "", -1)) },
+                onDismiss = { onAction(BoardAction.DismissQuiz) },
                 modifier = Modifier.align(Alignment.Center)
             )
         }
@@ -1353,8 +1354,8 @@ fun CanvasViewportScreen(
         )
     }
 
-    // Desktop Command Center Side-Deck (Expanded screens >= 840dp)
-    if (isExpandedScreen && showDesktopCommandCenter && uiState.isHost) {
+    // Desktop Command Center Side-Deck (Expanded screens >= 840dp, only when collab is active)
+    if (isExpandedScreen && showDesktopCommandCenter && uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
         DesktopCommandCenter(
             uiState = uiState,
             onAction = onAction,

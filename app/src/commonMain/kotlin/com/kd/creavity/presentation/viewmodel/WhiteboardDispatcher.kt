@@ -81,6 +81,7 @@ fun WhiteboardViewModel.dispatch(action: BoardAction) {
         is BoardAction.StartQuiz -> startQuiz(action.quiz)
         is BoardAction.AnswerQuiz -> answerQuiz(action.quizId, action.selectedOptionIndex)
         is BoardAction.EndQuiz -> endQuiz(action.quizId, action.correctOptionIndex)
+        is BoardAction.DismissQuiz -> dismissQuiz()
     }
 }
 
@@ -208,12 +209,30 @@ fun WhiteboardViewModel.endQuiz(quizId: String, correctOptionIndex: Int = -1) {
     val active = _uiState.value.activeQuiz ?: return
     if (active.quizId != quizId) return
     val updatedQuiz = active.copy(isEnded = true, correctOptionIndex = correctOptionIndex)
-    _uiState.update { it.copy(activeQuiz = updatedQuiz) }
+    val updatedSubmissions = _uiState.value.quizSubmissions.map { sub ->
+        if (correctOptionIndex >= 0) {
+            sub.copy(isCorrect = sub.selectedOptionIndex == correctOptionIndex)
+        } else sub
+    }
+    _uiState.update { it.copy(activeQuiz = updatedQuiz, quizSubmissions = updatedSubmissions) }
     val packet = com.kd.creavity.data.binary.WhiteboardPacket.QuizEnd(
         quizId = quizId,
         correctOptionIndex = correctOptionIndex
     )
     peerTransport.sendPacketToAll(packet, isMutation = true)
+}
+
+fun WhiteboardViewModel.dismissQuiz() {
+    quizTimerJob?.cancel()
+    quizTimerJob = null
+    _uiState.update {
+        it.copy(
+            activeQuiz = null,
+            userQuizAnswer = null,
+            quizSubmissions = emptyList(),
+            quizTimeRemainingSeconds = 0
+        )
+    }
 }
 
 fun WhiteboardViewModel.createFolder(name: String) {

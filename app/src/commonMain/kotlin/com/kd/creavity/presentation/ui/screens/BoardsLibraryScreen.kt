@@ -332,7 +332,6 @@ fun BoardsLibraryScreen(
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    MaterialSymbol(name = "arrow_drop_down", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
                                 }
                             }
 

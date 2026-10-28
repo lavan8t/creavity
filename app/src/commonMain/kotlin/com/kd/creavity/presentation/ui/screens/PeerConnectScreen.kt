@@ -488,40 +488,6 @@ fun PeerConnectScreen(
 
             // Connected Collaborators Section
             if (uiState.connectedPeers.isNotEmpty()) {
-                // Mesh Network Topology Banner
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier.size(42.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                MaterialSymbol(name = "hub", tint = MaterialTheme.colorScheme.primary, size = 24.dp)
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Mesh Relay Network Active",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Packets dynamically relay across participants for ultra-low latency whiteboard sync",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-
                 // Collaborators Header & Batch Permissions Toggle
                 item {
                     Row(

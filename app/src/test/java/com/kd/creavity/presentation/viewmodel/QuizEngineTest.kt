@@ -221,4 +221,100 @@ class QuizEngineTest {
         assertEquals("quiz_404", endPacket?.quizId)
         assertEquals(0, endPacket?.correctOptionIndex)
     }
+
+    @Test
+    fun `student receives QuizEnd packet and updates isCorrect on submissions`() {
+        val studentTransport = TestTransport("student_node_1")
+        val studentVm = WhiteboardViewModel(
+            peerTransport = studentTransport,
+            boardManager = BoardManager(tmp.newFolder()),
+            appSettings = AppSettingsManager(tmp.newFile())
+        )
+
+        // 1. Student receives start packet (no correctOptionIndex revealed yet)
+        val startPacket = WhiteboardPacket.QuizStart(
+            quizId = "quiz_505",
+            quizType = 1,
+            question = "2 + 2?",
+            options = listOf("3", "4", "5"),
+            durationSeconds = 30,
+            startTimestampMs = 1000L
+        )
+        studentVm.handleIncomingPacket(startPacket)
+
+        // 2. Student and peer submit answers
+        studentVm.handleIncomingPacket(
+            WhiteboardPacket.QuizAnswer(
+                quizId = "quiz_505",
+                studentId = "student_node_1",
+                selectedOptionIndex = 1, // "4"
+                answerTimestampMs = 2000L
+            )
+        )
+        studentVm.handleIncomingPacket(
+            WhiteboardPacket.QuizAnswer(
+                quizId = "quiz_505",
+                studentId = "student_node_2",
+                selectedOptionIndex = 0, // "3"
+                answerTimestampMs = 2500L
+            )
+        )
+
+        // Before quiz ends, submissions are not yet marked as correct
+        val beforeEnd = studentVm.uiState.value.quizSubmissions
+        assertEquals(2, beforeEnd.size)
+        assertFalse(beforeEnd.first { it.studentId == "student_node_1" }.isCorrect)
+
+        // 3. Host broadcasts QuizEnd with correctOptionIndex = 1
+        studentVm.handleIncomingPacket(
+            WhiteboardPacket.QuizEnd(
+                quizId = "quiz_505",
+                correctOptionIndex = 1
+            )
+        )
+
+        // Submissions now accurately reflect correctness
+        val afterEnd = studentVm.uiState.value.quizSubmissions
+        assertTrue(studentVm.uiState.value.activeQuiz!!.isEnded)
+        assertEquals(1, studentVm.uiState.value.activeQuiz!!.correctOptionIndex)
+        assertTrue(afterEnd.first { it.studentId == "student_node_1" }.isCorrect)
+        assertFalse(afterEnd.first { it.studentId == "student_node_2" }.isCorrect)
+    }
+
+    @Test
+    fun `student dismissing ended quiz clears activeQuiz and answer state`() {
+        val studentTransport = TestTransport("student_node_1")
+        val studentVm = WhiteboardViewModel(
+            peerTransport = studentTransport,
+            boardManager = BoardManager(tmp.newFolder()),
+            appSettings = AppSettingsManager(tmp.newFile())
+        )
+
+        studentVm.handleIncomingPacket(
+            WhiteboardPacket.QuizStart(
+                quizId = "quiz_606",
+                quizType = 0,
+                question = "Rate this session",
+                options = listOf("Good", "Great"),
+                durationSeconds = 0,
+                startTimestampMs = 1000L
+            )
+        )
+        studentVm.dispatch(BoardAction.AnswerQuiz(quizId = "quiz_606", selectedOptionIndex = 1))
+        assertEquals(1, studentVm.uiState.value.userQuizAnswer)
+
+        studentVm.handleIncomingPacket(
+            WhiteboardPacket.QuizEnd(
+                quizId = "quiz_606",
+                correctOptionIndex = -1
+            )
+        )
+        assertTrue(studentVm.uiState.value.activeQuiz!!.isEnded)
+
+        // Student dismisses overlay
+        studentVm.dispatch(BoardAction.DismissQuiz)
+        org.junit.Assert.assertNull(studentVm.uiState.value.activeQuiz)
+        org.junit.Assert.assertNull(studentVm.uiState.value.userQuizAnswer)
+        assertTrue(studentVm.uiState.value.quizSubmissions.isEmpty())
+    }
 }

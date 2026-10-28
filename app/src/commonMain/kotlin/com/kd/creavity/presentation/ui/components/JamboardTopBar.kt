@@ -47,6 +47,7 @@ fun WhiteboardTopBar(
     onRedo: () -> Unit = {},
     zoom: Float = 1.0f,
     isHost: Boolean = false,
+    connectedPeersCount: Int = 0,
     isBoardSwitchingLocked: Boolean = false,
     onBirdsEyeClick: (() -> Unit)? = null,
     onOmniviewClick: (() -> Unit)? = null,
@@ -149,8 +150,8 @@ fun WhiteboardTopBar(
                 }
             }
 
-            // Host Quick Actions
-            if (isHost) {
+            // Host Quick Actions (only visible when a collab is active with online participants)
+            if (isHost && connectedPeersCount > 0) {
                 if (onToggleCommandCenter != null) {
                     TooltipHint(text = if (isCommandCenterOpen) "Hide Classroom Cockpit" else "Show Classroom Cockpit") {
                         IconButton(

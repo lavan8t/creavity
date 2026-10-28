@@ -394,8 +394,14 @@ internal fun WhiteboardViewModel.handleClassroomSyncPacket(packet: WhiteboardPac
             _uiState.update { current ->
                 val quiz = current.activeQuiz
                 if (quiz != null && quiz.quizId == packet.quizId) {
+                    val updatedSubmissions = current.quizSubmissions.map { sub ->
+                        if (packet.correctOptionIndex >= 0) {
+                            sub.copy(isCorrect = sub.selectedOptionIndex == packet.correctOptionIndex)
+                        } else sub
+                    }
                     current.copy(
-                        activeQuiz = quiz.copy(isEnded = true, correctOptionIndex = packet.correctOptionIndex)
+                        activeQuiz = quiz.copy(isEnded = true, correctOptionIndex = packet.correctOptionIndex),
+                        quizSubmissions = updatedSubmissions
                     )
                 } else {
                     current

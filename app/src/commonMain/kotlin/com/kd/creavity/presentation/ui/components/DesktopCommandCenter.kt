@@ -165,12 +165,6 @@ fun DesktopCommandCenter(
                     text = { Text("Quiz Deck", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     icon = { MaterialSymbol(name = "checklist", tint = if (selectedTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, size = 18.dp) }
                 )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = { Text("Relay Mesh", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    icon = { MaterialSymbol(name = "cell_tower", tint = if (selectedTab == 2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, size = 18.dp) }
-                )
             }
 
             // Tab Content
@@ -189,14 +183,6 @@ fun DesktopCommandCenter(
                         connectedPeers = uiState.connectedPeers,
                         onLaunchQuiz = { onAction(BoardAction.StartQuiz(it)) },
                         onEndQuiz = { qId, key -> onAction(BoardAction.EndQuiz(qId, key)) }
-                    )
-                    2 -> RelayMeshTabContent(
-                        connectedPeers = uiState.connectedPeers,
-                        roomCode = uiState.roomCode,
-                        isHost = uiState.isHost,
-                        onTogglePermission = { peerId, readOnly ->
-                            onAction(BoardAction.SetPeerPermission(peerId, readOnly))
-                        }
                     )
                 }
             }
@@ -687,113 +673,4 @@ private fun QuizDeckTabContent(
     }
 }
 
-@Composable
-private fun RelayMeshTabContent(
-    connectedPeers: List<PeerDevice>,
-    roomCode: String?,
-    isHost: Boolean,
-    onTogglePermission: (String, Boolean) -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Offline Relay Diagnostics",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                        )
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("Capacity: 100") },
-                            border = null
-                        )
-                    }
-                    Text(
-                        text = "Operating via Local-Only Hotspot + Nearby Connections mesh. Room code: ${roomCode ?: "Local"}",
-                        style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    )
-                }
-            }
-        }
 
-        items(connectedPeers, key = { it.endpointId }) { peer ->
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    when (peer.engagementState) {
-                                        EngagementState.WATCHING -> Color(0xFF2E7D32)
-                                        EngagementState.NOT_WATCHING -> Color(0xFFEF6C00)
-                                        EngagementState.OFFLINE -> Color(0xFFC62828)
-                                    }
-                                )
-                        )
-                        Column {
-                            Text(
-                                text = peer.name.ifBlank { "Participant" },
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                            )
-                            Text(
-                                text = "${when (peer.engagementState) {
-                                    EngagementState.WATCHING -> "Watching screen"
-                                    EngagementState.NOT_WATCHING -> "Away / Backgrounded"
-                                    EngagementState.OFFLINE -> "Disconnected"
-                                }} • ${if (peer.isReadOnly) "Viewer" else "Editor"}",
-                                style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            )
-                        }
-                    }
-
-                    if (isHost && peer.role != MeshRole.HOST) {
-                        TextButton(
-                            onClick = { onTogglePermission(peer.endpointId, !peer.isReadOnly) }
-                        ) {
-                            Text(
-                                text = if (peer.isReadOnly) "Allow Draw" else "Make Read-Only",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
