@@ -6,16 +6,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.imePadding
@@ -82,7 +85,8 @@ private val BACKGROUND_COLOR_OPTIONS = listOf(
 @Composable
 private fun SettingsTopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    onBackPressed: () -> Unit
+    onBackPressed: () -> Unit,
+    isWideScreen: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -92,29 +96,31 @@ private fun SettingsTopBar(
                 text = "Settings",
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp)
+                modifier = Modifier.padding(start = if (isWideScreen) 32.dp else 16.dp)
             )
         },
         navigationIcon = {
-            TooltipHint(text = "Back") {
-                FilledIconButton(
-                    modifier = Modifier
-                        .padding(start = 12.dp)
-                        .size(40.dp)
-                        .clip(CircleShape),
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onBackPressed()
-                    },
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                    )
-                ) {
-                    MaterialSymbol(
-                        name = "arrow_back",
-                        tint = MaterialTheme.colorScheme.primary,
-                        size = 20.dp
-                    )
+            if (!isWideScreen) {
+                TooltipHint(text = "Back") {
+                    FilledIconButton(
+                        modifier = Modifier
+                            .padding(start = 12.dp)
+                            .size(40.dp)
+                            .clip(CircleShape),
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onBackPressed()
+                        },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        )
+                    ) {
+                        MaterialSymbol(
+                            name = "arrow_back",
+                            tint = MaterialTheme.colorScheme.primary,
+                            size = 20.dp
+                        )
+                    }
                 }
             }
         },
@@ -301,26 +307,37 @@ fun SettingsScreen(
         BACKGROUND_COLOR_OPTIONS.find { it.second == uiState.backgroundColor }?.first ?: "Custom"
     }
 
-    Scaffold(
-        modifier = modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .fillMaxSize(),
-        topBar = {
-            SettingsTopBar(
-                scrollBehavior = scrollBehavior,
-                onBackPressed = onNavigateToCanvas
-            )
-        },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) { innerPadding ->
-        LazyColumn(
-            state = lazyListState,
-            contentPadding = innerPadding,
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isWideScreen = maxWidth >= 720.dp
+
+        Scaffold(
             modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface)
-        ) {
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .fillMaxSize(),
+            topBar = {
+                SettingsTopBar(
+                    scrollBehavior = scrollBehavior,
+                    onBackPressed = onNavigateToCanvas,
+                    isWideScreen = isWideScreen
+                )
+            },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 840.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = if (isWideScreen) 24.dp else 0.dp)
+                ) {
             // APPEARANCE
             item {
                 SettingsSection(title = "Appearance") {
@@ -615,6 +632,7 @@ fun SettingsScreen(
             item { Spacer(modifier = Modifier.height(72.dp)) }
         }
     }
+}
 
     if (showEditDisplayNameDialog) {
         val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -760,5 +778,6 @@ fun SettingsScreen(
             }
         }
     }
+}
 }
 

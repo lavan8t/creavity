@@ -3,6 +3,7 @@ package com.kd.creavity.presentation.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -74,70 +75,78 @@ fun BinScreen(
     var showEmptyBinConfirmation by remember { mutableStateOf(false) }
     var boardIdToDeletePermanently by remember { mutableStateOf<String?>(null) }
 
-    Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Trash",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onBackPressed()
-                        },
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                        ),
-                        modifier = Modifier
-                            .padding(start = 12.dp)
-                            .clip(CircleShape)
-                    ) {
-                        MaterialSymbol(
-                            name = "arrow_back",
-                            tint = MaterialTheme.colorScheme.primary,
-                            size = 20.dp
-                        )
-                    }
-                },
-                actions = {
-                    if (binnedBoards.isNotEmpty()) {
-                        TextButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                showEmptyBinConfirmation = true
-                            },
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Text(
-                                text = "Empty Trash",
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
-                ),
-                modifier = Modifier.statusBarsPadding()
-            )
-        }
-    ) { innerPadding ->
-        Box(
+    BoxWithConstraints(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        val isWideScreen = maxWidth >= 720.dp
+
+        Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+                .background(MaterialTheme.colorScheme.surface),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Trash",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = if (isWideScreen) 24.dp else 0.dp)
+                        )
+                    },
+                    navigationIcon = {
+                        if (!isWideScreen) {
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onBackPressed()
+                                },
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                ),
+                                modifier = Modifier
+                                    .padding(start = 12.dp)
+                                    .clip(CircleShape)
+                            ) {
+                                MaterialSymbol(
+                                    name = "arrow_back",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    size = 20.dp
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        if (binnedBoards.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    showEmptyBinConfirmation = true
+                                },
+                                modifier = Modifier.padding(end = if (isWideScreen) 24.dp else 8.dp)
+                            ) {
+                                Text(
+                                    text = "Empty Trash",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(horizontal = if (isWideScreen) 16.dp else 0.dp)
+                )
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
             if (binnedBoards.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -174,9 +183,12 @@ fun BinScreen(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 300.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        horizontal = if (isWideScreen) 36.dp else 16.dp,
+                        vertical = if (isWideScreen) 20.dp else 12.dp
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 12.dp),
                     modifier = Modifier
                         .fillMaxSize()
                         .navigationBarsPadding()
@@ -290,4 +302,5 @@ fun BinScreen(
             onDismiss = { boardIdToDeletePermanently = null }
         )
     }
+}
 }

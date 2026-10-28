@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -233,12 +234,14 @@ fun BoardsLibraryScreen(
             .onDesktopRightClick { offset -> backgroundContextMenuOffset = offset }
     ) {
             val isWideScreen = maxWidth >= 720.dp
+            val horizontalPadding = if (isWideScreen) 36.dp else 14.dp
+            val verticalPadding = if (isWideScreen) 20.dp else 8.dp
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+                verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 14.dp else 10.dp)
             ) {
                 // 1. Top Bar: [ Contextual Selection Bar OR Search Bar ] with Spring Transition
                 AnimatedContent(
@@ -487,10 +490,10 @@ fun BoardsLibraryScreen(
                             }
                         } else {
                             LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 170.dp),
+                                columns = GridCells.Adaptive(minSize = if (isWideScreen) 240.dp else 170.dp),
                                 state = gridState,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 12.dp),
                                 contentPadding = PaddingValues(bottom = 96.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -639,9 +642,11 @@ fun BoardsLibraryScreen(
             ) {
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .then(
+                            if (isWideScreen) Modifier.widthIn(max = 380.dp).padding(bottom = 24.dp)
+                            else Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)
+                        )
+                        .navigationBarsPadding(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

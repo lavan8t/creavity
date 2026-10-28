@@ -264,7 +264,7 @@ fun BoardListRow(
                     onClick = onRowClick,
                     onLongClick = onRowLongClick
                 )
-                .padding(vertical = 6.dp, horizontal = 4.dp)
+                .padding(vertical = 6.dp, horizontal = if (isDesktopPlatform()) 12.dp else 4.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
