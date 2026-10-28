@@ -12,6 +12,15 @@ class ToolPointerIconTest {
         for (tool in DrawingTool.entries) {
             val icon = getToolPointerIcon(tool)
             assertNotNull("ToolPointerIcon for $tool should not be null", icon)
+            applyToolCursor(tool)
+        }
+    }
+
+    @Test
+    fun testAwtCursorCreationForAllTools() {
+        for (tool in DrawingTool.entries) {
+            val cursor = getAwtToolCursor(tool)
+            assertNotNull("AWT Cursor for $tool should not be null", cursor)
         }
     }
 }

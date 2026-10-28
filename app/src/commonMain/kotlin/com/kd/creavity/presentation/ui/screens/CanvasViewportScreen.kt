@@ -18,7 +18,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import com.kd.creavity.presentation.canvas.applyToolCursor
 import com.kd.creavity.presentation.canvas.getToolPointerIcon
+import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -308,6 +310,10 @@ fun CanvasViewportScreen(
         isDarkCanvas
     )
 
+    LaunchedEffect(uiState.selectedTool) {
+        applyToolCursor(uiState.selectedTool)
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isExpandedScreen = maxWidth >= 840.dp
 
@@ -316,7 +322,6 @@ fun CanvasViewportScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .pointerHoverIcon(getToolPointerIcon(uiState.selectedTool), overrideDescendants = true)
                     .background(effectiveCanvasBg)
                     .onSizeChanged { canvasSize = it }
             ) {
@@ -444,6 +449,15 @@ fun CanvasViewportScreen(
             isReadOnly = uiState.isCanvasReadOnly,
             modifier = Modifier.fillMaxSize()
         )
+
+        // Dedicated cursor hover sync keyed by selected tool to overcome Compose Desktop's AwtCursor.equals bug
+        key(uiState.selectedTool) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerHoverIcon(getToolPointerIcon(uiState.selectedTool), overrideDescendants = true)
+            )
+        }
 
         // Desktop Material 3 Expressive Context Menu
         if (contextMenuData != null) {

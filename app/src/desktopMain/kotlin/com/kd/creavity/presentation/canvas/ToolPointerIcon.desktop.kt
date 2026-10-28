@@ -14,18 +14,49 @@ import androidx.compose.ui.graphics.vector.VectorPath
 import androidx.compose.ui.input.pointer.PointerIcon
 import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.presentation.ui.symbols.generated.*
+import java.awt.GraphicsEnvironment
 import java.awt.Point
 import java.awt.Toolkit
 
+private val awtCursorCache = mutableMapOf<DrawingTool, java.awt.Cursor>()
 private val cursorCache = mutableMapOf<DrawingTool, PointerIcon>()
 
-actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon {
-    return cursorCache.getOrPut(tool) {
-        createMaterialToolCursor(tool)
+fun getAwtToolCursor(tool: DrawingTool): java.awt.Cursor? {
+    return awtCursorCache.getOrPut(tool) {
+        createMaterialAwtCursor(tool) ?: return null
     }
 }
 
-private fun createMaterialToolCursor(tool: DrawingTool): PointerIcon {
+actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon {
+    return cursorCache.getOrPut(tool) {
+        val awtCursor = getAwtToolCursor(tool)
+        if (awtCursor != null) PointerIcon(awtCursor) else PointerIcon.Default
+    }
+}
+
+actual fun applyToolCursor(tool: DrawingTool) {
+    if (GraphicsEnvironment.isHeadless()) return
+    runCatching {
+        val cursor = getAwtToolCursor(tool) ?: return
+        for (w in java.awt.Window.getWindows()) {
+            if (w.isShowing) {
+                applyCursorRecursively(w, cursor)
+            }
+        }
+    }
+}
+
+private fun applyCursorRecursively(comp: java.awt.Component, cursor: java.awt.Cursor) {
+    comp.cursor = cursor
+    if (comp is java.awt.Container) {
+        val count = comp.componentCount
+        for (i in 0 until count) {
+            applyCursorRecursively(comp.getComponent(i), cursor)
+        }
+    }
+}
+
+private fun createMaterialAwtCursor(tool: DrawingTool): java.awt.Cursor? {
     return runCatching {
         val toolkit = Toolkit.getDefaultToolkit()
         val spec = when (tool) {
@@ -91,8 +122,8 @@ private fun createMaterialToolCursor(tool: DrawingTool): PointerIcon {
         canvas.drawPath(path, fillPaint)
 
         val awtImg = bitmap.toAwtImage()
-        PointerIcon(toolkit.createCustomCursor(awtImg, spec.hotspot, "${tool.name}MaterialCursor"))
-    }.getOrDefault(PointerIcon.Default)
+        toolkit.createCustomCursor(awtImg, spec.hotspot, "${tool.name}MaterialCursor")
+    }.getOrNull()
 }
 
 private data class CursorSpec(

@@ -166,14 +166,9 @@ fun WhiteboardCanvas(
         MaterialTheme.colorScheme.tertiaryContainer
     )
 
-    val canvasHoverIcon = remember(selectedTool) {
-        getToolPointerIcon(selectedTool)
-    }
-
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerHoverIcon(canvasHoverIcon, overrideDescendants = true)
             .graphicsLayer {
                 // Hardware acceleration GPU backing
                 clip = true

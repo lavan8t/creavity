@@ -33,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -131,7 +133,8 @@ fun DesktopDraggableToolbar(
     Surface(
         modifier = modifier
             .offset { IntOffset(clampedX.roundToInt(), clampedY.roundToInt()) }
-            .width(56.dp),
+            .width(56.dp)
+            .pointerHoverIcon(PointerIcon.Default),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         tonalElevation = 6.dp,

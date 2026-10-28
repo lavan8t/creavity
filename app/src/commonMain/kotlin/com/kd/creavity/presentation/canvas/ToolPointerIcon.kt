@@ -8,3 +8,8 @@ import com.kd.creavity.domain.model.DrawingTool
  * Highlighter, Shapes, Text, Sticky Note, Laser, Select).
  */
 expect fun getToolPointerIcon(tool: DrawingTool): PointerIcon
+
+/**
+ * Platform-specific mechanism to dynamically enforce the active tool cursor at the OS / window level.
+ */
+expect fun applyToolCursor(tool: DrawingTool)
