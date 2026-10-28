@@ -160,12 +160,18 @@ class CanvasGestureController(
             val isZoomModifier = event.isCtrlPressed || event.isMetaPressed || event.isAltPressed
             val isShift = event.isShiftPressed
             val focal = Offset(event.x, event.y)
+            val scrollDelta = if (vScroll != 0f) vScroll else hScroll
             if (isZoomModifier) {
-                val zoomFactor = if (vScroll > 0) 0.90f else if (vScroll < 0) 1.10f else 1.0f
+                val zoomFactor = if (kotlin.math.abs(scrollDelta) < 0.5f) {
+                    (1.0f - scrollDelta * 0.15f).coerceIn(0.7f, 1.3f)
+                } else {
+                    if (scrollDelta < 0) 1.12f else if (scrollDelta > 0) 0.88f else 1.0f
+                }
                 onTransform(zoomFactor, focal, Offset.Zero)
             } else if (isShift) {
-                // Shift + Scroll: Pan horizontally left / right
-                onTransform(1.0f, Offset.Zero, Offset(-vScroll * 48f, 0f))
+                // Shift + Scroll: Pan horizontally left / right (Compose Desktop maps Shift wheel to hScroll)
+                val delta = if (hScroll != 0f) hScroll else vScroll
+                onTransform(1.0f, Offset.Zero, Offset(-delta * 48f, 0f))
             } else {
                 // Normal scroll: pan horizontally & vertically (touchpad, tilt wheel or standard wheel)
                 val panX = -hScroll * 48f
@@ -173,16 +179,20 @@ class CanvasGestureController(
                 onTransform(1.0f, Offset.Zero, Offset(panX, panY))
             }
             onTransformStateChanged(true, listOf(focal))
+            onTransformStateChanged(false, emptyList())
             return true
         }
 
-        // 1.4. Middle-Click drag handling (Canvas Pan in all directions)
-        if (event.activePointer.isTertiaryButton) {
+        // 1.4. Middle-Click or Alt+Left-Click drag handling (Canvas Pan in all directions)
+        val isAltPan = event.isAltPressed && event.activePointer.isPrimaryButton
+        val isMiddlePan = event.activePointer.isTertiaryButton
+        if (isMiddlePan || isAltPan) {
             discardActiveStroke()
             when (event.action) {
                 CanvasPointerAction.DOWN -> {
                     lastMidX = event.x
                     lastMidY = event.y
+                    onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
                 }
                 CanvasPointerAction.MOVE -> {
                     val dx = event.x - lastMidX
@@ -190,9 +200,10 @@ class CanvasGestureController(
                     onTransform(1.0f, Offset.Zero, Offset(dx, dy))
                     lastMidX = event.x
                     lastMidY = event.y
+                    onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
                 }
-                CanvasPointerAction.UP -> {
-                    // Pan finished
+                CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
+                    onTransformStateChanged(false, emptyList())
                 }
                 else -> {}
             }
@@ -217,11 +228,13 @@ class CanvasGestureController(
                     secondaryDragDist += stepDist
                     if (secondaryDragDist > 8f) {
                         onTransform(1.0f, Offset.Zero, Offset(dx, dy))
+                        onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
                     }
                     lastMidX = event.x
                     lastMidY = event.y
                 }
                 CanvasPointerAction.UP -> {
+                    onTransformStateChanged(false, emptyList())
                     if (secondaryDragDist <= 8f) {
                         val clickScreen = Offset(event.x, event.y)
                         val clickWorld = Point((event.x - panOffset.x) / zoom, (event.y - panOffset.y) / zoom)

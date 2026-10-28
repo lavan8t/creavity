@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -166,9 +167,22 @@ fun WhiteboardCanvas(
         MaterialTheme.colorScheme.tertiaryContainer
     )
 
+    val currentPanOffset by rememberUpdatedState(panOffset)
+    val currentZoom by rememberUpdatedState(zoom)
+    val currentSelectedTool by rememberUpdatedState(selectedTool)
+    val currentEffectiveColor by rememberUpdatedState(effectiveColor)
+    val currentWidthState by rememberUpdatedState(currentWidth)
+    val currentStrokes by rememberUpdatedState(strokes)
+    val currentTextElements by rememberUpdatedState(textElements)
+    val currentImageElements by rememberUpdatedState(imageElements)
+    val currentStickyNotes by rememberUpdatedState(stickyNotes)
+    val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
+    val currentIsReadOnly by rememberUpdatedState(isReadOnly)
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
+            .pointerHoverIcon(getToolPointerIcon(selectedTool))
             .graphicsLayer {
                 // Hardware acceleration GPU backing
                 clip = true
@@ -178,24 +192,24 @@ fun WhiteboardCanvas(
                 controller.viewHeight = size.height.toFloat()
             }
             .background(if (isInfiniteCanvas) effectiveBg else MaterialTheme.colorScheme.surfaceContainerLowest)
-            .pointerInput(panOffset, zoom, selectedTool, effectiveColor, currentWidth, strokes, textElements, imageElements, stickyNotes, hapticsEnabled, isReadOnly) {
+            .pointerInput(controller) {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
                         val handled = controller.handleInputEvent(
                             event = event.toCanvasInputEvent(),
-                            panOffset = panOffset,
-                            zoom = zoom,
-                            selectedTool = selectedTool,
-                            currentColor = effectiveColor,
-                            currentWidth = currentWidth,
-                            strokes = strokes,
-                            textElements = textElements,
-                            imageElements = imageElements,
-                            stickyNotes = stickyNotes,
-                            hapticsEnabled = hapticsEnabled,
+                            panOffset = currentPanOffset,
+                            zoom = currentZoom,
+                            selectedTool = currentSelectedTool,
+                            currentColor = currentEffectiveColor,
+                            currentWidth = currentWidthState,
+                            strokes = currentStrokes,
+                            textElements = currentTextElements,
+                            imageElements = currentImageElements,
+                            stickyNotes = currentStickyNotes,
+                            hapticsEnabled = currentHapticsEnabled,
                             drawingHaptics = drawingHaptics,
-                            isReadOnly = isReadOnly,
+                            isReadOnly = currentIsReadOnly,
                             geometryCache = geometryCache
                         )
                         if (handled) {

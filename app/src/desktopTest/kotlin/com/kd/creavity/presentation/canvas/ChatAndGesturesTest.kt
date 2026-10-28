@@ -192,4 +192,97 @@ class ChatAndGesturesTest {
         val icon = getToolPointerIcon(DrawingTool.SELECT)
         assertNotNull("Select tool pointer icon must not be null", icon)
     }
+
+    @Test
+    fun testCanvasGestureScrollHorizontalPanWithShiftOnDesktopHScroll() {
+        var transformedZoom = 1.0f
+        var transformedPan = Offset.Zero
+        val controller = createTestController { zoom, _, pan ->
+            transformedZoom *= zoom
+            transformedPan += pan
+        }
+
+        // Compose Desktop maps Shift + Mouse Wheel to scrollDeltaX with scrollDeltaY = 0
+        val desktopShiftScroll = CanvasInputEvent(
+            action = CanvasPointerAction.SCROLL,
+            pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 300f, type = CanvasPointerType.MOUSE)),
+            scrollDeltaX = 3f,
+            scrollDeltaY = 0f,
+            isShiftPressed = true
+        )
+
+        val handled = controller.handleInputEvent(
+            event = desktopShiftScroll,
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertTrue("Scroll event must be handled", handled)
+        assertEquals("Zoom must not change", 1.0f, transformedZoom, 0.001f)
+        assertEquals("Horizontal pan must be -3 * 48 = -144", -144f, transformedPan.x, 0.001f)
+        assertEquals("Vertical pan must be 0", 0f, transformedPan.y, 0.001f)
+    }
+
+    @Test
+    fun testAltKeyLeftClickDragPan() {
+        var totalPan = Offset.Zero
+        val controller = createTestController { _, _, pan ->
+            totalPan += pan
+        }
+
+        // Alt + Left click down at (200, 200)
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.DOWN,
+                pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 200f, isPrimaryButton = true, type = CanvasPointerType.MOUSE)),
+                isAltPressed = true
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        // Drag to (250, 180) -> dx = +50, dy = -20
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.MOVE,
+                pointers = listOf(CanvasPointer(id = 1L, x = 250f, y = 180f, isPrimaryButton = true, type = CanvasPointerType.MOUSE)),
+                isAltPressed = true
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertEquals("Alt+Left click pan dx must be 50", 50f, totalPan.x, 0.001f)
+        assertEquals("Alt+Left click pan dy must be -20", -20f, totalPan.y, 0.001f)
+    }
 }

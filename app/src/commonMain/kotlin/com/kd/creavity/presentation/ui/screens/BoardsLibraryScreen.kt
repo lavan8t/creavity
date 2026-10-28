@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.util.shareBoard
+import com.kd.creavity.util.getDeviceName
 import com.kd.creavity.domain.model.Board
 import com.kd.creavity.presentation.ui.NavDestination
 import com.kd.creavity.presentation.ui.BoardAction
@@ -182,20 +183,22 @@ fun BoardsLibraryScreen(
         var base = activeBoards
 
         // 1. Ownership scope filter
+        val myDevice = getDeviceName()
+        val systemUser = runCatching { System.getProperty("user.name") }.getOrNull() ?: ""
+        val isOwnedByMe: (com.kd.creavity.domain.model.Board) -> Boolean = { b ->
+            b.createdBy.isBlank() ||
+            b.createdBy.equals("You", ignoreCase = true) ||
+            b.ownerName.isBlank() ||
+            b.ownerName.equals("You", ignoreCase = true) ||
+            b.createdBy.equals(uiState.displayName, ignoreCase = true) ||
+            b.ownerName.equals(uiState.displayName, ignoreCase = true) ||
+            (myDevice.isNotBlank() && (b.createdBy.equals(myDevice, ignoreCase = true) || b.ownerName.equals(myDevice, ignoreCase = true))) ||
+            (systemUser.isNotBlank() && (b.createdBy.equals(systemUser, ignoreCase = true) || b.ownerName.equals(systemUser, ignoreCase = true)))
+        }
         base = when (ownershipFilter) {
             OwnershipFilter.ALL -> base
-            OwnershipFilter.OWNED_BY_ME -> base.filter { b ->
-                b.createdBy.equals("You", ignoreCase = true) ||
-                b.ownerName.equals("You", ignoreCase = true) ||
-                b.createdBy.equals(uiState.displayName, ignoreCase = true) ||
-                b.ownerName.equals(uiState.displayName, ignoreCase = true)
-            }
-            OwnershipFilter.SHARED_WITH_ME -> base.filter { b ->
-                !b.createdBy.equals("You", ignoreCase = true) &&
-                !b.ownerName.equals("You", ignoreCase = true) &&
-                !b.createdBy.equals(uiState.displayName, ignoreCase = true) &&
-                !b.ownerName.equals(uiState.displayName, ignoreCase = true)
-            }
+            OwnershipFilter.OWNED_BY_ME -> base.filter { isOwnedByMe(it) }
+            OwnershipFilter.SHARED_WITH_ME -> base.filter { !isOwnedByMe(it) }
         }
 
         // 2. Labels multi-select filter

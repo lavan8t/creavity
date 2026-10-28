@@ -450,15 +450,6 @@ fun CanvasViewportScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Dedicated cursor hover sync keyed by selected tool to overcome Compose Desktop's AwtCursor.equals bug
-        key(uiState.selectedTool) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerHoverIcon(getToolPointerIcon(uiState.selectedTool), overrideDescendants = true)
-            )
-        }
-
         // Desktop Material 3 Expressive Context Menu
         if (contextMenuData != null) {
             DesktopCanvasContextMenu(
@@ -749,8 +740,18 @@ fun CanvasViewportScreen(
                             showOptionsMenu = true
                         },
                         zoom = uiState.zoom,
-                        onZoomIn = { onAction(BoardAction.TransformCanvas(1.15f, Offset.Zero, Offset.Zero)) },
-                        onZoomOut = { onAction(BoardAction.TransformCanvas(0.85f, Offset.Zero, Offset.Zero)) },
+                        onZoomIn = {
+                            val center = if (canvasSize.width > 0 && canvasSize.height > 0) {
+                                Offset(canvasSize.width / 2f, canvasSize.height / 2f)
+                            } else Offset.Zero
+                            onAction(BoardAction.TransformCanvas(1.15f, center, Offset.Zero))
+                        },
+                        onZoomOut = {
+                            val center = if (canvasSize.width > 0 && canvasSize.height > 0) {
+                                Offset(canvasSize.width / 2f, canvasSize.height / 2f)
+                            } else Offset.Zero
+                            onAction(BoardAction.TransformCanvas(0.85f, center, Offset.Zero))
+                        },
                         onResetZoom = { onAction(BoardAction.ResetCanvasTransform) },
                         onToggleChat = { onAction(BoardAction.ToggleChat()) },
                         unreadChatCount = uiState.unreadChatCount,
