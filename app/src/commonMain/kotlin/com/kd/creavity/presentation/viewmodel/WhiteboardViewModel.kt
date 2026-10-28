@@ -537,7 +537,9 @@ class WhiteboardViewModel(
             author = state.displayName,
             pageIndex = state.currentBoard.activePageIndex,
             strokes = activePage.strokes,
-            textElements = activePage.textElements
+            textElements = activePage.textElements,
+            imageElements = activePage.imageElements,
+            stickyNotes = activePage.stickyNotes
         )
         val updatedHistory = listOf(snapshot) + state.currentBoard.versionHistory
         val updatedBoard = state.currentBoard.copy(versionHistory = updatedHistory)
@@ -554,11 +556,20 @@ class WhiteboardViewModel(
                 previousStrokes = activePage.strokes,
                 newStrokes = snapshot.strokes,
                 previousTexts = activePage.textElements,
-                newTexts = snapshot.textElements
+                newTexts = snapshot.textElements,
+                previousImages = activePage.imageElements,
+                newImages = snapshot.imageElements,
+                previousStickyNotes = activePage.stickyNotes,
+                newStickyNotes = snapshot.stickyNotes
             )
         )
 
-        val updatedPage = activePage.copy(strokes = snapshot.strokes, textElements = snapshot.textElements)
+        val updatedPage = activePage.copy(
+            strokes = snapshot.strokes,
+            textElements = snapshot.textElements,
+            imageElements = snapshot.imageElements,
+            stickyNotes = snapshot.stickyNotes
+        )
         val updatedPages = state.currentBoard.pages.toMutableList().apply {
             this[state.currentBoard.activePageIndex] = updatedPage
         }

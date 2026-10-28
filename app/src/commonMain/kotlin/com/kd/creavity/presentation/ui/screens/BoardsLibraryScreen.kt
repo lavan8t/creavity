@@ -86,14 +86,16 @@ import com.kd.creavity.presentation.ui.components.BoardListRow
 import com.kd.creavity.presentation.ui.components.drawGridScrollbar
 import com.kd.creavity.presentation.ui.components.drawListScrollbar
 import com.kd.creavity.presentation.ui.components.DeleteConfirmDialog
-import com.kd.creavity.presentation.ui.components.FolderCard
-import com.kd.creavity.presentation.ui.components.FolderDetailHeader
-import com.kd.creavity.presentation.ui.components.GroupFolderFilterRow
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.kd.creavity.presentation.ui.components.LibraryViewModeSwitcher
 import com.kd.creavity.presentation.ui.components.LibraryNavDrawer
 import com.kd.creavity.presentation.ui.components.LibrarySearchBar
 import com.kd.creavity.presentation.ui.components.LibrarySelectionTopBar
 import com.kd.creavity.presentation.ui.components.LibraryViewMode
-import com.kd.creavity.presentation.ui.components.CreateFolderSheet
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
@@ -109,6 +111,12 @@ enum class LibrarySortOrder(val label: String) {
     TITLE("Title")
 }
 
+enum class OwnershipFilter(val label: String) {
+    ALL("All"),
+    OWNED_BY_ME("Owned by me"),
+    SHARED_WITH_ME("Shared with me")
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun BoardsLibraryScreen(
@@ -122,15 +130,13 @@ fun BoardsLibraryScreen(
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    var openedFolder by rememberSaveable { mutableStateOf<String?>(null) }
-    var isFolderGridView by rememberSaveable { mutableStateOf(true) }
-    var showCreateFolderSheet by remember { mutableStateOf(false) }
-    var folderToDeleteConfirm by remember { mutableStateOf<String?>(null) }
+    var viewMode by rememberSaveable { mutableStateOf(LibraryViewMode.GRID) }
+    var ownershipFilter by rememberSaveable { mutableStateOf(OwnershipFilter.ALL) }
+    var selectedLabels by rememberSaveable { mutableStateOf(setOf<String>()) }
     var sortOrder by remember { mutableStateOf(LibrarySortOrder.LAST_ACCESSED) }
     var isAscending by rememberSaveable { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedGroup by rememberSaveable { mutableStateOf<String?>(null) }
     var boardToEditMetadata by remember { mutableStateOf<Board?>(null) }
     var selectedBoardForActions by remember { mutableStateOf<Board?>(null) }
     var boardToExport by remember { mutableStateOf<Board?>(null) }
@@ -144,15 +150,8 @@ fun BoardsLibraryScreen(
         selectedBoardIds = emptySet()
     }
 
-    BackHandler(enabled = !isSelectionMode && openedFolder != null) {
-        openedFolder = null
-    }
-
     val listState = rememberLazyListState()
     val gridState = rememberLazyGridState()
-    val folderOverviewGridState = rememberLazyGridState()
-    val folderDetailGridState = rememberLazyGridState()
-    val folderDetailListState = rememberLazyListState()
 
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
@@ -163,22 +162,50 @@ fun BoardsLibraryScreen(
         uiState.savedBoards.count { it.isInBin }
     }
 
-    val distinctGroups = remember(activeBoards) {
-        activeBoards.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()
+    val distinctLabels = remember(activeBoards) {
+        activeBoards.flatMap { it.labels }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
     }
 
-    // Filter and sort boards with deep content search (title + venue + group + labels + content)
-    val filteredBoards = remember(activeBoards, searchQuery, sortOrder, isAscending, selectedGroup) {
+    // Filter and sort boards with deep content search & ownership & labels
+    val filteredBoards = remember(activeBoards, searchQuery, sortOrder, isAscending, ownershipFilter, selectedLabels) {
         var base = activeBoards
-        if (selectedGroup != null) {
-            base = base.filter { it.group.equals(selectedGroup, ignoreCase = true) }
+
+        // 1. Ownership scope filter
+        base = when (ownershipFilter) {
+            OwnershipFilter.ALL -> base
+            OwnershipFilter.OWNED_BY_ME -> base.filter { b ->
+                b.createdBy.equals("You", ignoreCase = true) ||
+                b.ownerName.equals("You", ignoreCase = true) ||
+                b.createdBy.equals(uiState.displayName, ignoreCase = true) ||
+                b.ownerName.equals(uiState.displayName, ignoreCase = true)
+            }
+            OwnershipFilter.SHARED_WITH_ME -> base.filter { b ->
+                !b.createdBy.equals("You", ignoreCase = true) &&
+                !b.ownerName.equals("You", ignoreCase = true) &&
+                !b.createdBy.equals(uiState.displayName, ignoreCase = true) &&
+                !b.ownerName.equals(uiState.displayName, ignoreCase = true)
+            }
         }
+
+        // 2. Labels multi-select filter
+        if (selectedLabels.isNotEmpty()) {
+            base = base.filter { b ->
+                selectedLabels.all { sel ->
+                    b.labels.any { l -> l.equals(sel, ignoreCase = true) }
+                }
+            }
+        }
+
+        // 3. Search query filter
         if (searchQuery.isNotBlank()) {
             val q = searchQuery.trim()
             base = base.filter { b ->
                 b.title.contains(q, ignoreCase = true) ||
                 b.venue.contains(q, ignoreCase = true) ||
-                b.group.contains(q, ignoreCase = true) ||
                 b.labels.any { l -> l.contains(q, ignoreCase = true) } ||
                 b.pages.any { p ->
                     p.textElements.any { t -> t.text.contains(q, ignoreCase = true) } ||
@@ -187,54 +214,11 @@ fun BoardsLibraryScreen(
             }
         }
 
+        // 4. Sorting
         when (sortOrder) {
             LibrarySortOrder.LAST_ACCESSED -> if (isAscending) base.sortedBy { it.lastAccessedAt } else base.sortedByDescending { it.lastAccessedAt }
             LibrarySortOrder.LAST_MODIFIED -> if (isAscending) base.sortedBy { it.modifiedAt } else base.sortedByDescending { it.modifiedAt }
             LibrarySortOrder.TITLE -> if (isAscending) base.sortedBy { it.title.lowercase() } else base.sortedByDescending { it.title.lowercase() }
-        }
-    }
-
-    val allFolderNames = remember(activeBoards, uiState.userFolders) {
-        val fromBoards = activeBoards.map { it.group.trim() }.filter { it.isNotBlank() }
-        (uiState.userFolders + fromBoards).distinct().sorted()
-    }
-
-    // Folders map: Maps folder name -> List of Boards inside it
-    val foldersMap = remember(allFolderNames, activeBoards, searchQuery) {
-        val q = searchQuery.trim()
-        val map = LinkedHashMap<String, List<Board>>()
-        allFolderNames.forEach { g ->
-            val inG = activeBoards.filter { it.group.equals(g, ignoreCase = true) }
-            if (q.isBlank() || g.contains(q, ignoreCase = true) || inG.any { it.title.contains(q, ignoreCase = true) }) {
-                map[g] = inG
-            }
-        }
-        val unfiled = activeBoards.filter { it.group.isBlank() }
-        if (unfiled.isNotEmpty() && (q.isBlank() || unfiled.any { it.title.contains(q, ignoreCase = true) })) {
-            map["Unfiled"] = unfiled
-        }
-        map
-    }
-
-    // Boards inside current opened folder
-    val currentFolderBoards = remember(activeBoards, openedFolder, searchQuery, sortOrder, isAscending) {
-        val folder = openedFolder ?: return@remember emptyList()
-        val inFolder = activeBoards.filter { b ->
-            if (folder == "Unfiled" || folder.isEmpty()) b.group.isBlank()
-            else b.group.equals(folder, ignoreCase = true)
-        }
-        val searched = if (searchQuery.isBlank()) inFolder else {
-            val q = searchQuery.trim()
-            inFolder.filter { b ->
-                b.title.contains(q, ignoreCase = true) ||
-                b.venue.contains(q, ignoreCase = true) ||
-                b.labels.any { l -> l.contains(q, ignoreCase = true) }
-            }
-        }
-        when (sortOrder) {
-            LibrarySortOrder.LAST_ACCESSED -> if (isAscending) searched.sortedBy { it.lastAccessedAt } else searched.sortedByDescending { it.lastAccessedAt }
-            LibrarySortOrder.LAST_MODIFIED -> if (isAscending) searched.sortedBy { it.modifiedAt } else searched.sortedByDescending { it.modifiedAt }
-            LibrarySortOrder.TITLE -> if (isAscending) searched.sortedBy { it.title.lowercase() } else searched.sortedByDescending { it.title.lowercase() }
         }
     }
 
@@ -314,7 +298,7 @@ fun BoardsLibraryScreen(
                     }
                 }
 
-                // 2. Sub-header Bar: Swapped Actions (New Folder / Sort) on Left, View Mode Switcher on Right
+                // 2. Sub-header Bar: Sort on Left, View Mode Switcher on Right
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -324,97 +308,152 @@ fun BoardsLibraryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (LibraryViewMode.FOLDERS != LibraryViewMode.FOLDERS) {
-                            // Sort Dropdown Button + Direction Toggle
-                            Box {
-                                TooltipHint(text = "Sort boards") {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50))
-                                            .clickable { showSortMenu = true }
-                                            .padding(horizontal = 6.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(
-                                            text = sortOrder.label,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        MaterialSymbol(name = "arrow_drop_down", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
-                                    }
-                                }
-
-                                DropdownMenu(
-                                    expanded = showSortMenu,
-                                    onDismissRequest = { showSortMenu = false },
-                                    shape = RoundedCornerShape(16.dp),
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        // Sort Dropdown Button
+                        Box {
+                            TooltipHint(text = "Sort boards") {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .clickable { showSortMenu = true }
+                                        .padding(horizontal = 6.dp, vertical = 6.dp)
                                 ) {
-                                    LibrarySortOrder.entries.forEach { order ->
-                                        DropdownMenuItem(
-                                            text = { Text(order.label) },
-                                            onClick = {
-                                                sortOrder = order
-                                                showSortMenu = false
-                                            }
-                                        )
-                                    }
+                                    Text(
+                                        text = sortOrder.label,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    MaterialSymbol(name = "arrow_drop_down", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
                                 }
                             }
 
-                            TooltipHint(text = if (isAscending) "Ascending order" else "Descending order") {
-                                IconButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        isAscending = !isAscending
-                                    },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    MaterialSymbol(
-                                        name = if (isAscending) "arrow_upward" else "arrow_downward",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        size = 20.dp
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false },
+                                shape = RoundedCornerShape(16.dp),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                LibrarySortOrder.entries.forEach { order ->
+                                    DropdownMenuItem(
+                                        text = { Text(order.label) },
+                                        onClick = {
+                                            sortOrder = order
+                                            showSortMenu = false
+                                        }
                                     )
                                 }
                             }
-                        } else {
-                            // In Folders mode: Create New Folder Button
-                            TooltipHint(text = "New folder") {
-                                IconButton(
-                                    onClick = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        showCreateFolderSheet = true
-                                    },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    MaterialSymbol(
-                                        name = "create_new_folder",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        size = 22.dp
-                                    )
-                                }
+                        }
+
+                        TooltipHint(text = if (isAscending) "Ascending order" else "Descending order") {
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    isAscending = !isAscending
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                MaterialSymbol(
+                                    name = if (isAscending) "arrow_upward" else "arrow_downward",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 20.dp
+                                )
                             }
                         }
                     }
 
-                    // Always folders view (folder toggler removed; inside-folder grid/list kept in FolderDetailHeader)
-                }
-
-                // Group folders filter row (in Grid or List mode when groups exist)
-                if (false) {
-                    GroupFolderFilterRow(
-                        groups = distinctGroups,
-                        selectedGroup = selectedGroup,
-                        onSelectGroup = { group ->
-                            selectedGroup = if (selectedGroup == group) null else group
-                        }
+                    // View Mode Switcher: Grid vs List
+                    LibraryViewModeSwitcher(
+                        viewMode = viewMode,
+                        onViewModeChange = { mode -> viewMode = mode }
                     )
                 }
 
-                // 3. Main Content: Grid, List, or Folders Shared Element View
-                when (LibraryViewMode.FOLDERS) {
+                // 2.5 Dynamic Filters Row: Ownership Filter Chips + Labels Filter Chips
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Ownership Filter Chips
+                    OwnershipFilter.entries.forEach { filter ->
+                        val isSelected = ownershipFilter == filter
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                ownershipFilter = filter
+                            },
+                            label = {
+                                Text(
+                                    text = filter.label,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            },
+                            leadingIcon = if (filter == OwnershipFilter.OWNED_BY_ME) {
+                                { MaterialSymbol(name = "person", size = 16.dp, tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) }
+                            } else if (filter == OwnershipFilter.SHARED_WITH_ME) {
+                                { MaterialSymbol(name = "group", size = 16.dp, tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) }
+                            } else null,
+                            border = null,
+                            shape = CircleShape,
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        )
+                    }
+
+                    // Divider between Ownership and Labels
+                    if (distinctLabels.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .height(20.dp)
+                                .width(1.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        )
+
+                        // Label Chips
+                        distinctLabels.forEach { label ->
+                            val isSelected = selectedLabels.contains(label)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    selectedLabels = if (isSelected) selectedLabels - label else selectedLabels + label
+                                },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                },
+                                leadingIcon = {
+                                    MaterialSymbol(
+                                        name = "label",
+                                        size = 15.dp,
+                                        tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                border = null,
+                                shape = CircleShape,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // 3. Main Content: Grid or List View
+                when (viewMode) {
                     LibraryViewMode.GRID -> {
                         // ==================== ALL BOARDS GRID VIEW ====================
                         if (filteredBoards.isEmpty()) {
@@ -560,219 +599,6 @@ fun BoardsLibraryScreen(
                             }
                         }
                     }
-                    LibraryViewMode.FOLDERS -> {
-                        // ==================== FOLDERS VIEW (SHARED ELEMENT) ====================
-                        SharedTransitionLayout(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            AnimatedContent(
-                                targetState = openedFolder,
-                                transitionSpec = {
-                                    fadeIn(animationSpec = BrevityMotion.springSpatial()) togetherWith
-                                    fadeOut(animationSpec = BrevityMotion.springSpatial())
-                                },
-                                label = "FolderTransition"
-                            ) { targetFolder ->
-                                if (targetFolder == null) {
-                                    // Folder Overview: Folders grid with cardless cards and names strictly above
-                                    if (foldersMap.isEmpty()) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Card(
-                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                                shape = RoundedCornerShape(16.dp),
-                                                modifier = Modifier.fillMaxWidth(0.85f).padding(24.dp)
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                                ) {
-                                                    MaterialSymbol(name = "folder_open", size = 48.dp, tint = MaterialTheme.colorScheme.primary)
-                                                    Text(
-                                                        text = if (searchQuery.isNotEmpty()) "No folders match '$searchQuery'" else "No folders yet",
-                                                        fontSize = 16.sp,
-                                                        fontWeight = FontWeight.Medium,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        LazyVerticalGrid(
-                                            columns = GridCells.Adaptive(minSize = 170.dp),
-                                            state = folderOverviewGridState,
-                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                                            contentPadding = PaddingValues(bottom = 96.dp),
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .drawGridScrollbar(folderOverviewGridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                                        ) {
-                                            items(foldersMap.entries.toList(), key = { it.key }) { (folderName, boards) ->
-                                                FolderCard(
-                                                    folderName = folderName,
-                                                    boards = boards,
-                                                    onOpenFolder = { openedFolder = folderName },
-                                                    onDeleteFolder = if (boards.isEmpty() && folderName != "Unfiled") {
-                                                        { folderToDeleteConfirm = folderName }
-                                                    } else null,
-                                                    folderNameModifier = Modifier.sharedBounds(
-                                                        sharedContentState = rememberSharedContentState(key = "folder_title_${folderName}"),
-                                                        animatedVisibilityScope = this@AnimatedContent,
-                                                        boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                    ),
-                                                    previewItemModifier = { board ->
-                                                        Modifier.sharedElement(
-                                                            rememberSharedContentState(key = "board_thumb_${board.id}"),
-                                                            animatedVisibilityScope = this@AnimatedContent,
-                                                            boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                        )
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // Opened Folder Detail: Grid or List of boards in this folder
-                                    Column(
-                                        modifier = Modifier.fillMaxSize(),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        FolderDetailHeader(
-                                            folderName = targetFolder,
-                                            count = currentFolderBoards.size,
-                                            isGridView = isFolderGridView,
-                                            onToggleView = { isFolderGridView = !isFolderGridView },
-                                            onBack = { openedFolder = null },
-                                            onDeleteFolder = if (currentFolderBoards.isEmpty() && targetFolder != "Unfiled") {
-                                                { folderToDeleteConfirm = targetFolder }
-                                            } else null,
-                                            folderNameModifier = Modifier.sharedBounds(
-                                                sharedContentState = rememberSharedContentState(key = "folder_title_${targetFolder}"),
-                                                animatedVisibilityScope = this@AnimatedContent,
-                                                boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                            )
-                                        )
-
-                                        if (currentFolderBoards.isEmpty()) {
-                                            Box(
-                                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "No boards in $targetFolder",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    fontSize = 15.sp
-                                                )
-                                            }
-                                        } else if (isFolderGridView) {
-                                            LazyVerticalGrid(
-                                                columns = GridCells.Adaptive(minSize = 170.dp),
-                                                state = folderDetailGridState,
-                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                                contentPadding = PaddingValues(bottom = 96.dp),
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .weight(1f)
-                                                    .drawGridScrollbar(folderDetailGridState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                                            ) {
-                                                items(currentFolderBoards, key = { it.id }) { board ->
-                                                    val isSelected = selectedBoardIds.contains(board.id)
-                                                    BoardGridCard(
-                                                        board = board,
-                                                        isSelected = isSelected,
-                                                        isSelectionMode = isSelectionMode,
-                                                        thumbnailModifier = Modifier.sharedElement(
-                                                            rememberSharedContentState(key = "board_thumb_${board.id}"),
-                                                            animatedVisibilityScope = this@AnimatedContent,
-                                                            boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                        ),
-                                                        onCardClick = {
-                                                            if (isSelectionMode) {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                            } else {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                                                onNavigateToCanvas()
-                                                            }
-                                                        },
-                                                        onCardLongClick = {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            if (!isSelectionMode) {
-                                                                isSelectionMode = true
-                                                                selectedBoardIds = setOf(board.id)
-                                                            } else {
-                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                            }
-                                                        },
-                                                        onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
-                                                        onOptionsClick = { selectedBoardForActions = board }
-                                                    )
-                                                }
-                                            }
-                                        } else {
-                                            LazyColumn(
-                                                state = folderDetailListState,
-                                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                                contentPadding = PaddingValues(bottom = 96.dp),
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .weight(1f)
-                                                    .drawListScrollbar(folderDetailListState, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-                                            ) {
-                                                items(currentFolderBoards, key = { it.id }) { board ->
-                                                    val isSelected = selectedBoardIds.contains(board.id)
-                                                    BoardListRow(
-                                                        board = board,
-                                                        isSelected = isSelected,
-                                                        isSelectionMode = isSelectionMode,
-                                                        thumbnailModifier = Modifier.sharedElement(
-                                                            rememberSharedContentState(key = "board_thumb_${board.id}"),
-                                                            animatedVisibilityScope = this@AnimatedContent,
-                                                            boundsTransform = { _, _ -> BrevityMotion.springSpatial() }
-                                                        ),
-                                                        dateFormat = dateFormat,
-                                                        onRowClick = {
-                                                            if (isSelectionMode) {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                            } else {
-                                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                                onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
-                                                                onNavigateToCanvas()
-                                                            }
-                                                        },
-                                                        onRowLongClick = {
-                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                            if (!isSelectionMode) {
-                                                                isSelectionMode = true
-                                                                selectedBoardIds = setOf(board.id)
-                                                            } else {
-                                                                selectedBoardIds = if (isSelected) selectedBoardIds - board.id else selectedBoardIds + board.id
-                                                                if (selectedBoardIds.isEmpty()) isSelectionMode = false
-                                                            }
-                                                        },
-                                                        onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
-                                                        onOptionsClick = { selectedBoardForActions = board }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
@@ -817,9 +643,6 @@ fun BoardsLibraryScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            val folderGroup = if (openedFolder != null && openedFolder != "Unfiled") {
-                                openedFolder ?: ""
-                            } else ""
                             onAction(BoardAction.CreateNewBoard("Untitled Board"))
                             onNavigateToCanvas()
                         },
@@ -897,31 +720,6 @@ fun BoardsLibraryScreen(
                     onDismiss = { boardIdToDeleteWithConfirm = null }
                 )
             }
-            if (folderToDeleteConfirm != null) {
-                val targetFolder = folderToDeleteConfirm!!
-                DeleteConfirmDialog(
-                    title = "Delete Folder?",
-                    text = "Are you sure you want to delete the empty folder '$targetFolder'?",
-                    confirmText = "Delete Folder",
-                    onConfirm = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onAction(BoardAction.DeleteFolder(targetFolder))
-                        if (openedFolder == targetFolder) {
-                            openedFolder = null
-                        }
-                        folderToDeleteConfirm = null
-                    },
-                    onDismiss = { folderToDeleteConfirm = null }
-                )
-            }
-
-            CreateFolderSheet(
-                show = showCreateFolderSheet,
-                onDismiss = { showCreateFolderSheet = false },
-                onCreate = { folderName ->
-                    onAction(BoardAction.CreateFolder(folderName))
-                }
-            )
         }
     }
 }

@@ -2,6 +2,7 @@ package com.kd.creavity.domain.mutation
 
 import com.kd.creavity.domain.model.BoardPage
 import com.kd.creavity.domain.model.ImageElement
+import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
 import java.util.UUID
@@ -164,13 +165,27 @@ sealed interface BoardMutation {
         val newStrokes: List<Stroke>,
         val previousTexts: List<TextElement>,
         val newTexts: List<TextElement>,
+        val previousImages: List<ImageElement> = emptyList(),
+        val newImages: List<ImageElement> = emptyList(),
+        val previousStickyNotes: List<StickyNote> = emptyList(),
+        val newStickyNotes: List<StickyNote> = emptyList(),
         override val id: String = UUID.randomUUID().toString(),
         override val timestamp: Long = System.currentTimeMillis()
     ) : BoardMutation {
         override fun apply(page: BoardPage): BoardPage =
-            page.copy(strokes = newStrokes, textElements = newTexts)
+            page.copy(
+                strokes = newStrokes,
+                textElements = newTexts,
+                imageElements = if (newImages.isNotEmpty() || previousImages.isNotEmpty()) newImages else page.imageElements,
+                stickyNotes = if (newStickyNotes.isNotEmpty() || previousStickyNotes.isNotEmpty()) newStickyNotes else page.stickyNotes
+            )
 
         override fun revert(page: BoardPage): BoardPage =
-            page.copy(strokes = previousStrokes, textElements = previousTexts)
+            page.copy(
+                strokes = previousStrokes,
+                textElements = previousTexts,
+                imageElements = if (previousImages.isNotEmpty() || newImages.isNotEmpty()) previousImages else page.imageElements,
+                stickyNotes = if (previousStickyNotes.isNotEmpty() || newStickyNotes.isNotEmpty()) previousStickyNotes else page.stickyNotes
+            )
     }
 }

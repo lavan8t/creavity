@@ -38,3 +38,10 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Floating Contextual Properties Dock**: A responsive, floating Material 3 `ElevatedCard` (`border = null`) anchored to current selections providing one-tap adjustments for fill, roughness, stroke width, color, and layer hierarchy.
 - **Canvas Vector Export**: Deterministic export pipelines rendering canvas selections or full boards into transparent/solid PNGs, clean SVG vectors, and OS clipboard bitmaps.
 
+## View-Only, Version History & Taxonomy
+
+- **Read-Only Viewport Gate**: Strict suppression of all drawing toolbars, floating property docks, element creation menus, and shape handlers when `isCanvasReadOnly` is true, replacing them with a non-intrusive Material 3 Expressive status indicator pill while preserving zoom, pan, and laser pointer navigation.
+- **Board Version Snapshot**: An immutable historical capture of board state (strokes, text elements, image elements, sticky notes, flowchart shapes, and connectors) tagged with an author, timestamp, snapshot name, and element metrics, enabling non-destructive timeline review and rollback.
+- **Board Ownership Scope**: Taxonomy partitioning boards into `Owned by me` (created on local peer profile) versus `Shared with me` (synchronized from remote collaborators/hosts) surfaced through borderless Material 3 Expressive filter chips.
+- **Label-Based Taxonomy**: Flat, multi-select tag filtering architecture replacing legacy hierarchical folders, allowing flexible categorization and discovery across arbitrarily labeled boards.
+

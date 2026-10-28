@@ -92,30 +92,31 @@ fun BoardMetadataBadges(
     board: Board,
     modifier: Modifier = Modifier
 ) {
-    if (board.group.isBlank() && board.venue.isBlank() && board.labels.isEmpty()) return
+    val isOwnedByMe = board.ownerName.equals("You", ignoreCase = true) || board.createdBy.equals("You", ignoreCase = true)
+    if (isOwnedByMe && board.venue.isBlank() && board.labels.isEmpty()) return
 
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Group Folder Badge
-        if (board.group.isNotBlank()) {
+        // Ownership Badge (when board is shared by another peer/host)
+        if (!isOwnedByMe) {
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    MaterialSymbol(name = "folder", size = 11.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    MaterialSymbol(name = "group", size = 11.dp, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                     Text(
-                        text = board.group,
+                        text = "Shared by ${board.ownerName.ifBlank { board.createdBy }}",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -127,19 +128,19 @@ fun BoardMetadataBadges(
         if (board.venue.isNotBlank()) {
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.8f)
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    MaterialSymbol(name = "map", size = 11.dp, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                    MaterialSymbol(name = "map", size = 11.dp, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                     Text(
                         text = board.venue,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -147,8 +148,8 @@ fun BoardMetadataBadges(
             }
         }
 
-        // First label tag if present
-        board.labels.firstOrNull()?.let { label ->
+        // Label tags
+        board.labels.take(2).forEach { label ->
             Surface(
                 shape = RoundedCornerShape(6.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant

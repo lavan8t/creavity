@@ -100,6 +100,7 @@ import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.PenCalloutCard
 import com.kd.creavity.presentation.ui.components.SelectCalloutCard
 import com.kd.creavity.presentation.ui.components.UndoRedoCalloutCard
+import com.kd.creavity.presentation.ui.components.VersionHistorySheet
 import com.kd.creavity.presentation.ui.components.WhiteboardMinimap
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
 import com.kd.creavity.presentation.viewmodel.WhiteboardUiState
@@ -221,6 +222,7 @@ fun CanvasViewportScreen(
     var showOptionsMenu by remember { mutableStateOf(false) }
     var showFrameBar by remember { mutableStateOf(false) }
     var showStickyNoteDialog by remember { mutableStateOf(false) }
+    var showVersionHistorySheet by remember { mutableStateOf(false) }
 
     // Board Rename Dialog
     var showRenameBoardDialog by remember { mutableStateOf(false) }
@@ -521,10 +523,10 @@ fun CanvasViewportScreen(
                         onFrameCountClick = {
                             showFrameBar = !showFrameBar
                         },
-                        canUndo = uiState.canUndo,
-                        canRedo = uiState.canRedo,
-                        onUndo = { onAction(BoardAction.Undo) },
-                        onRedo = { onAction(BoardAction.Redo) },
+                        canUndo = !uiState.isCanvasReadOnly && uiState.canUndo,
+                        canRedo = !uiState.isCanvasReadOnly && uiState.canRedo,
+                        onUndo = { if (!uiState.isCanvasReadOnly) onAction(BoardAction.Undo) },
+                        onRedo = { if (!uiState.isCanvasReadOnly) onAction(BoardAction.Redo) },
                         onMoreClick = {
                             showOptionsMenu = true
                         },
@@ -777,29 +779,43 @@ fun CanvasViewportScreen(
                                 }
                             )
 
-                            // Google Slides Link
+                            // Version History
                             DropdownMenuItem(
-                                text = { Text("Google Slides Link") },
+                                text = { Text("Version History") },
                                 leadingIcon = {
-                                    MaterialSymbol(name = "link", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                    MaterialSymbol(name = "history", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
                                 },
                                 onClick = {
                                     showOptionsMenu = false
-                                    showGoogleSlidesDialog = true
+                                    showVersionHistorySheet = true
                                 }
                             )
 
-                            // Import Presentation Slides
-                            DropdownMenuItem(
-                                text = { Text("Import Presentation (PDF/PPT)") },
-                                leadingIcon = {
-                                    MaterialSymbol(name = "file_present", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
-                                },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    launchPresentationPicker()
-                                }
-                            )
+                            // Google Slides Link (Editor only)
+                            if (!uiState.isCanvasReadOnly) {
+                                DropdownMenuItem(
+                                    text = { Text("Google Slides Link") },
+                                    leadingIcon = {
+                                        MaterialSymbol(name = "link", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                    },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        showGoogleSlidesDialog = true
+                                    }
+                                )
+
+                                // Import Presentation Slides
+                                DropdownMenuItem(
+                                    text = { Text("Import Presentation (PDF/PPT)") },
+                                    leadingIcon = {
+                                        MaterialSymbol(name = "file_present", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                    },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        launchPresentationPicker()
+                                    }
+                                )
+                            }
 
                             // Export Diagram & Canvas (SVG/PNG)
                             DropdownMenuItem(
@@ -813,19 +829,21 @@ fun CanvasViewportScreen(
                                 }
                             )
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            // Clear Board (Editor only)
+                            if (!uiState.isCanvasReadOnly) {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                            // Clear Board
-                            DropdownMenuItem(
-                                text = { Text("Clear Board", color = MaterialTheme.colorScheme.error) },
-                                leadingIcon = {
-                                    MaterialSymbol(name = "delete_sweep", tint = MaterialTheme.colorScheme.error, size = 20.dp)
-                                },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    onAction(BoardAction.ClearCanvas)
-                                }
-                            )
+                                DropdownMenuItem(
+                                    text = { Text("Clear Board", color = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = {
+                                        MaterialSymbol(name = "delete_sweep", tint = MaterialTheme.colorScheme.error, size = 20.dp)
+                                    },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        onAction(BoardAction.ClearCanvas)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -870,7 +888,7 @@ fun CanvasViewportScreen(
         }
 
         // 4. Floating Contextual Selection Dock (Fill, Roughness, Layers, Text, Colors)
-        if (selectedStrokes.isNotEmpty() || selectedTexts.isNotEmpty()) {
+        if (!uiState.isCanvasReadOnly && (selectedStrokes.isNotEmpty() || selectedTexts.isNotEmpty())) {
             FloatingSelectionDock(
                 selectedStrokeIds = selectedStrokes,
                 selectedTextIds = selectedTexts,
@@ -894,7 +912,7 @@ fun CanvasViewportScreen(
         }
 
         // 5. Callout backdrop overlay (dismisses callouts when tapping canvas)
-        if (activeCalloutTool != null) {
+        if (!uiState.isCanvasReadOnly && activeCalloutTool != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -908,69 +926,104 @@ fun CanvasViewportScreen(
         }
 
         // 6. Tools Callout Cards anchored directly above the floating toolbar
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 84.dp)
-        ) {
-            PenCalloutCard(
-                visible = activeCalloutTool == "PEN",
-                selectedTool = uiState.selectedTool,
-                currentWidth = uiState.currentWidth,
-                currentColor = effectivePenColor,
-                onSelectTool = { tool ->
-                    onAction(BoardAction.SelectTool(tool))
-                },
-                onChangeWidth = { width ->
-                    onAction(BoardAction.ChangeStrokeWidth(width))
-                },
-                onSelectColor = { col ->
-                    onAction(BoardAction.SelectColor(col))
-                },
-                onDismiss = { activeCalloutTool = null }
-            )
+        if (!uiState.isCanvasReadOnly) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 84.dp)
+            ) {
+                PenCalloutCard(
+                    visible = activeCalloutTool == "PEN",
+                    selectedTool = uiState.selectedTool,
+                    currentWidth = uiState.currentWidth,
+                    currentColor = effectivePenColor,
+                    onSelectTool = { tool ->
+                        onAction(BoardAction.SelectTool(tool))
+                    },
+                    onChangeWidth = { width ->
+                        onAction(BoardAction.ChangeStrokeWidth(width))
+                    },
+                    onSelectColor = { col ->
+                        onAction(BoardAction.SelectColor(col))
+                    },
+                    onDismiss = { activeCalloutTool = null }
+                )
 
-            EraserCalloutCard(
-                visible = activeCalloutTool == "ERASER",
-                selectedTool = uiState.selectedTool,
-                onSelectTool = { tool ->
-                    onAction(BoardAction.SelectTool(tool))
-                    activeCalloutTool = null
-                },
-                onClearCanvas = {
-                    onAction(BoardAction.ClearCanvas)
-                    activeCalloutTool = null
-                }
-            )
+                EraserCalloutCard(
+                    visible = activeCalloutTool == "ERASER",
+                    selectedTool = uiState.selectedTool,
+                    onSelectTool = { tool ->
+                        onAction(BoardAction.SelectTool(tool))
+                        activeCalloutTool = null
+                    },
+                    onClearCanvas = {
+                        onAction(BoardAction.ClearCanvas)
+                        activeCalloutTool = null
+                    }
+                )
 
-            SelectCalloutCard(
-                visible = activeCalloutTool == "SELECT",
-                selectedTool = uiState.selectedTool,
-                onSelectTool = { tool ->
-                    onAction(BoardAction.SelectTool(tool))
-                    activeCalloutTool = null
-                }
-            )
+                SelectCalloutCard(
+                    visible = activeCalloutTool == "SELECT",
+                    selectedTool = uiState.selectedTool,
+                    onSelectTool = { tool ->
+                        onAction(BoardAction.SelectTool(tool))
+                        activeCalloutTool = null
+                    }
+                )
+            }
         }
 
-        // 7. Material 3 Expressive Horizontal Floating Toolbar with FAB
-        CanvasBottomToolbar(
-            uiState = uiState,
-            activeCalloutTool = activeCalloutTool,
-            onAction = onAction,
-            onToggleCallout = { tool ->
-                activeCalloutTool = if (activeCalloutTool == tool || tool.isEmpty()) null else tool
-            },
-            onOpenStickyNote = { showStickyNoteDialog = true },
-            onOpenTextDialog = { point ->
-                activeInlineTextPoint = point
-                inlineTextContent = ""
-            },
-            onOpenGoogleSlides = { showGoogleSlidesDialog = true },
-            onPickImage = { launchImagePicker() },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+        // 7. Material 3 Expressive Horizontal Floating Toolbar with FAB (or View-Only Status Pill)
+        if (!uiState.isCanvasReadOnly) {
+            CanvasBottomToolbar(
+                uiState = uiState,
+                activeCalloutTool = activeCalloutTool,
+                onAction = onAction,
+                onToggleCallout = { tool ->
+                    activeCalloutTool = if (activeCalloutTool == tool || tool.isEmpty()) null else tool
+                },
+                onOpenStickyNote = { showStickyNoteDialog = true },
+                onOpenTextDialog = { point ->
+                    activeInlineTextPoint = point
+                    inlineTextContent = ""
+                },
+                onOpenGoogleSlides = { showGoogleSlidesDialog = true },
+                onPickImage = { launchImagePicker() },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        } else {
+            // View-Only Material 3 Expressive Pill
+            ElevatedCard(
+                shape = CircleShape,
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    MaterialSymbol(
+                        name = "visibility",
+                        tint = MaterialTheme.colorScheme.primary,
+                        size = 20.dp
+                    )
+                    Text(
+                        text = "View Only",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
 
         // 8. Sticky Note Creation Dialog
         WhiteboardStickyNoteDialog(
@@ -1119,6 +1172,21 @@ fun CanvasViewportScreen(
                 }
             )
         }
+
+        // 18. Version History Bottom Sheet
+        VersionHistorySheet(
+            visible = showVersionHistorySheet,
+            boardTitle = uiState.currentBoard.title,
+            versionHistory = uiState.versionHistory.ifEmpty { uiState.currentBoard.versionHistory },
+            isReadOnly = uiState.isCanvasReadOnly,
+            onDismiss = { showVersionHistorySheet = false },
+            onCreateSnapshot = { name ->
+                onAction(BoardAction.CreateVersionSnapshot(name))
+            },
+            onRestoreSnapshot = { snapshot ->
+                onAction(BoardAction.RestoreVersionSnapshot(snapshot))
+            }
+        )
     }
 
     // Desktop Command Center Side-Deck (Expanded screens >= 840dp)

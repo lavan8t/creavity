@@ -46,7 +46,6 @@ import com.kd.creavity.domain.model.Board
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
 
 enum class LibraryViewMode(val label: String, val icon: String) {
-    FOLDERS("Folders", "folder"),
     GRID("Grid", "grid_view"),
     LIST("List", "view_list")
 }
