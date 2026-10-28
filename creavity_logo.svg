@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 512 512"
+     width="512"
+     height="512">
+  <defs>
+    <linearGradient id="squircleBg" x1="374.71" y1="113.46" x2="496.47" y2="520.90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6E1225"/>
+      <stop offset="100%" stop-color="#1B0207"/>
+    </linearGradient>
+
+    <linearGradient id="bevelLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="40" y="40" width="432" height="432" rx="96" fill="url(#squircleBg)"/>
+  <rect x="41" y="41" width="430" height="430" rx="95" fill="none" stroke="url(#bevelLight)" stroke-width="2.5"/>
+
+  <!-- Centered and balanced inside squircle -->
+  <g transform="matrix(0.81, 0, 0, 0.81, 40, 40)">
+    <path id="user-path"
+          d="m 104.0155,199.9899 c -38.792959,-2.67609 -68.221311,50.95104 -68.946552,88.2824 -0.793007,40.81958 32.623452,87.17848 71.582752,99.38669 32.58007,10.20922 74.77034,-7.82637 96.58772,-34.08835 38.73653,-46.62786 76.50289,-143.23778 28.06034,-179.67946 -17.59301,-13.23462 -52.56866,7.11262 -59.87208,27.88108 -6.92591,19.69495 10.18515,44.84423 27.731,56.15803 54.65101,35.2397 156.53894,32.84141 204.49366,-17.57855 16.62375,-17.47833 22.48031,-60.87872 1.26289,-72.35313 -22.32791,-12.07497 -61.1135,17.47903 -62.9904,42.79341 -5.06437,68.30498 -33.85315,203.7826 151.0777,139.2713"
+          fill="none"
+          stroke="#FFF0EA"
+          stroke-width="27.9749"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- Tapering sleeve connecting 28px stroke into the nib tip -->
+    <path d="M 463.0025 361.0633 L 493.0025 350.0633"
+          fill="none"
+          stroke="#FFF0EA"
+          stroke-width="16"
+          stroke-linecap="round"/>
+
+    <!-- Stylus Triangle Alone (conical nib with rounded tip, cropped base, no inner lines) -->
+    <g transform="translate(493.0025, 350.0633) rotate(-19.23)">
+      <path d="
+        M 2 -4
+        L 52 -22
+        A 3 3 0 0 1 55 -19
+        L 55 19
+        A 3 3 0 0 1 52 22
+        L 2 4
+        A 4.5 4.5 0 0 1 2 -4
+        Z
+      "
+      fill="#FFF0EA"/>
+    </g>
+  </g>
+</svg>
