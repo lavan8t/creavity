@@ -12,7 +12,7 @@ sealed class InboundResult {
 
 class MeshRoutingEngine(
     val nodeId: String,
-    val maxDegree: Int = 6,
+    val maxDegree: Int = 128,
     var secretKey: String? = null
 ) {
     private val seqCounter = AtomicLong(0)

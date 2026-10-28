@@ -51,6 +51,16 @@ class MeshRoutingEngineTest {
     }
 
     @Test
+    fun maxDegree_supportsUpTo100Neighbors() {
+        val engine = MeshRoutingEngine(nodeId = "hostNode", maxDegree = 128)
+        for (i in 1..100) {
+            val added = engine.addNeighbor("peer_$i")
+            assertTrue("Neighbor peer_$i should be added", added)
+        }
+        assertEquals(100, engine.getNeighbors().size)
+    }
+
+    @Test
     fun multiHop_decrementsTtlAndExcludesSender() {
         val engine = MeshRoutingEngine(nodeId = "nodeRelay", maxDegree = 6)
         engine.addNeighbor("node1")

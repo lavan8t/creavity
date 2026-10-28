@@ -83,4 +83,16 @@ sealed interface BoardAction {
     data class UpdateDisplayName(val name: String) : BoardAction
     data class ToggleHaptics(val enabled: Boolean) : BoardAction
     data class SetThemeMode(val mode: com.kd.creavity.presentation.viewmodel.ThemeMode) : BoardAction
+
+    // Classroom: Delegated Worksheets & Omniview
+    data class DelegateWorksheet(val title: String, val questionText: String, val targetStudentId: String = "") : BoardAction
+    data class SubmitWorksheet(val sheetId: String) : BoardAction
+    data class SetWorksheetMode(val enabled: Boolean) : BoardAction
+    data class InspectStudentWorksheet(val studentId: String?) : BoardAction
+    data class AddStudentWorksheetStroke(val stroke: Stroke) : BoardAction
+
+    // Classroom: Quizzes & Polls
+    data class StartQuiz(val quiz: com.kd.creavity.domain.model.ActiveQuiz) : BoardAction
+    data class AnswerQuiz(val quizId: String, val selectedOptionIndex: Int) : BoardAction
+    data class EndQuiz(val quizId: String, val correctOptionIndex: Int = -1) : BoardAction
 }

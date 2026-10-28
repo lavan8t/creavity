@@ -1,6 +1,7 @@
 package com.kd.creavity.presentation.viewmodel
 
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewModelScope
 import com.kd.creavity.data.binary.WhiteboardPacket
 import com.kd.creavity.domain.model.Board
 import com.kd.creavity.domain.model.BoardPage
@@ -13,7 +14,10 @@ import com.kd.creavity.domain.model.ViewportBounds
 import com.kd.creavity.domain.model.ImageElement
 import com.kd.creavity.util.getAppStorageDir
 import java.io.File
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) {
     if (packet is WhiteboardPacket.BoardSync) {
@@ -243,6 +247,162 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
                 )
             }
         }
+        is WhiteboardPacket.DelegateSheet,
+        is WhiteboardPacket.StudentSheetStroke,
+        is WhiteboardPacket.SheetSubmission,
+        is WhiteboardPacket.QuizStart,
+        is WhiteboardPacket.QuizAnswer,
+        is WhiteboardPacket.QuizEnd,
+        is WhiteboardPacket.EngagementHeartbeat,
+        is WhiteboardPacket.RelayBridgeAnnounce -> {
+            handleClassroomSyncPacket(packet)
+        }
+    }
+}
+
+internal fun WhiteboardViewModel.handleClassroomSyncPacket(packet: WhiteboardPacket) {
+    when (packet) {
+        is WhiteboardPacket.EngagementHeartbeat -> {
+            val state = when (packet.stateIndex) {
+                0 -> com.kd.creavity.domain.model.EngagementState.WATCHING
+                1 -> com.kd.creavity.domain.model.EngagementState.NOT_WATCHING
+                else -> com.kd.creavity.domain.model.EngagementState.OFFLINE
+            }
+            _uiState.update { current ->
+                val updatedPeers = current.connectedPeers.map { peer ->
+                    if (peer.endpointId == packet.nodeId) {
+                        peer.copy(engagementState = state, lastSeenMs = packet.timestampMs)
+                    } else peer
+                }
+                val updatedPresences = current.livePeerPresences.toMutableMap()
+                val pres = updatedPresences[packet.nodeId]
+                if (pres != null) {
+                    updatedPresences[packet.nodeId] = pres.copy(engagementState = state, lastUpdatedMs = packet.timestampMs)
+                }
+                current.copy(connectedPeers = updatedPeers, livePeerPresences = updatedPresences)
+            }
+        }
+        is WhiteboardPacket.DelegateSheet -> {
+            val myId = peerTransport.localNodeId
+            if (packet.assignedToAll || packet.targetStudentId.isBlank() || packet.targetStudentId == myId) {
+                val mySheet = com.kd.creavity.domain.model.StudentWorksheet(
+                    sheetId = packet.sheetId,
+                    studentId = myId,
+                    studentName = _uiState.value.displayName,
+                    title = packet.title,
+                    questionText = packet.questionText,
+                    strokes = emptyList(),
+                    isSubmitted = false
+                )
+                _uiState.update { it.copy(activeWorksheet = mySheet, isWorksheetMode = true) }
+            }
+        }
+        is WhiteboardPacket.StudentSheetStroke -> {
+            try {
+                val innerStroke = com.kd.creavity.data.binary.PacketSerializer.deserializeSingleStroke(packet.strokePacketBytes)
+                if (innerStroke != null) {
+                    _uiState.update { current ->
+                        val existing = current.studentWorksheets[packet.studentId] ?: com.kd.creavity.domain.model.StudentWorksheet(
+                            sheetId = packet.sheetId,
+                            studentId = packet.studentId,
+                            studentName = current.connectedPeers.find { it.endpointId == packet.studentId }?.name ?: "Student ${packet.studentId.take(4)}",
+                            title = "Worksheet",
+                            questionText = ""
+                        )
+                        val updatedStrokes = (existing.strokes.filterNot { it.id == innerStroke.id } + innerStroke)
+                        val updatedSheet = existing.copy(strokes = updatedStrokes)
+                        current.copy(
+                            studentWorksheets = current.studentWorksheets + (packet.studentId to updatedSheet)
+                        )
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        is WhiteboardPacket.SheetSubmission -> {
+            _uiState.update { current ->
+                val existing = current.studentWorksheets[packet.studentId] ?: com.kd.creavity.domain.model.StudentWorksheet(
+                    sheetId = packet.sheetId,
+                    studentId = packet.studentId,
+                    studentName = current.connectedPeers.find { it.endpointId == packet.studentId }?.name ?: "Student ${packet.studentId.take(4)}",
+                    title = "Worksheet",
+                    questionText = ""
+                )
+                val updatedSheet = existing.copy(
+                    isSubmitted = true,
+                    submittedAtMs = packet.timestampMs
+                )
+                current.copy(
+                    studentWorksheets = current.studentWorksheets + (packet.studentId to updatedSheet)
+                )
+            }
+        }
+        is WhiteboardPacket.QuizStart -> {
+            quizTimerJob?.cancel()
+            val qType = if (packet.quizType == 1) com.kd.creavity.domain.model.QuizType.TIMED_QUIZ else com.kd.creavity.domain.model.QuizType.POLL
+            val activeQuiz = com.kd.creavity.domain.model.ActiveQuiz(
+                quizId = packet.quizId,
+                questionText = packet.question,
+                options = packet.options,
+                durationSeconds = packet.durationSeconds,
+                type = qType,
+                startedAtMs = packet.startTimestampMs,
+                isEnded = false
+            )
+            _uiState.update { current ->
+                current.copy(
+                    activeQuiz = activeQuiz,
+                    quizSubmissions = emptyList(),
+                    userQuizAnswer = null,
+                    quizTimeRemainingSeconds = packet.durationSeconds
+                )
+            }
+            if (packet.durationSeconds > 0) {
+                quizTimerJob = viewModelScope.launch {
+                    var remaining = packet.durationSeconds
+                    while (remaining > 0 && isActive) {
+                        delay(1000L)
+                        remaining--
+                        _uiState.update { it.copy(quizTimeRemainingSeconds = remaining) }
+                    }
+                }
+            }
+        }
+        is WhiteboardPacket.QuizAnswer -> {
+            _uiState.update { current ->
+                val quiz = current.activeQuiz
+                if (quiz != null && quiz.quizId == packet.quizId) {
+                    val studentName = current.connectedPeers.find { it.endpointId == packet.studentId }?.name ?: "Student ${packet.studentId.take(4)}"
+                    val isCorrect = quiz.correctOptionIndex >= 0 && packet.selectedOptionIndex == quiz.correctOptionIndex
+                    val submission = com.kd.creavity.domain.model.QuizSubmission(
+                        quizId = packet.quizId,
+                        studentId = packet.studentId,
+                        studentName = studentName,
+                        selectedOptionIndex = packet.selectedOptionIndex,
+                        responseTimeMs = (packet.answerTimestampMs - quiz.startedAtMs).coerceAtLeast(0L),
+                        isCorrect = isCorrect
+                    )
+                    val updated = current.quizSubmissions.filterNot { it.studentId == packet.studentId } + submission
+                    current.copy(quizSubmissions = updated)
+                } else {
+                    current
+                }
+            }
+        }
+        is WhiteboardPacket.QuizEnd -> {
+            quizTimerJob?.cancel()
+            quizTimerJob = null
+            _uiState.update { current ->
+                val quiz = current.activeQuiz
+                if (quiz != null && quiz.quizId == packet.quizId) {
+                    current.copy(
+                        activeQuiz = quiz.copy(isEnded = true, correctOptionIndex = packet.correctOptionIndex)
+                    )
+                } else {
+                    current
+                }
+            }
+        }
+        else -> {}
     }
 }
 

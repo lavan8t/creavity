@@ -61,6 +61,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        viewModel.setAppForegroundState(true)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.setAppForegroundState(false)
+    }
+
     private fun startAdvertisingWithCheck(deviceName: String) {
         val result = ConnectivityHelper.checkReadiness(this)
         when (result) {

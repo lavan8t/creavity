@@ -305,7 +305,7 @@ class LanDiscoveryTransport(
         var port = DEFAULT_TCP_PORT
         while (port < DEFAULT_TCP_PORT + 10) {
             try {
-                ss = ServerSocket(port)
+                ss = ServerSocket(port, 128)
                 boundTcpPort = port
                 break
             } catch (_: Exception) {

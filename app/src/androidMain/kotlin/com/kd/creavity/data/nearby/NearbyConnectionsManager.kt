@@ -67,7 +67,7 @@ class NearbyConnectionsManager(context: Context) : PeerTransport {
     }
 
     override val localNodeId: String = UUID.randomUUID().toString()
-    override val meshRoutingEngine: MeshRoutingEngine = MeshRoutingEngine(nodeId = localNodeId, maxDegree = 6)
+    override val meshRoutingEngine: MeshRoutingEngine = MeshRoutingEngine(nodeId = localNodeId, maxDegree = 128)
     val lanTransport = LanDiscoveryTransport(localNodeId, meshRoutingEngine, multicastLock = multicastLockHelper)
 
     private val _discoveredNearbyEndpoints = MutableStateFlow<List<PeerDevice>>(emptyList())

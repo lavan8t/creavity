@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.isActive
 import com.kd.creavity.data.binary.WhiteboardPacket
 import com.kd.creavity.data.nearby.PeerTransport
 import com.kd.creavity.data.storage.AppSettingsManager
@@ -61,6 +62,7 @@ class WhiteboardViewModel(
     internal val remoteStrokesMap = mutableMapOf<String, Stroke>()
     internal val userSessionColors = mutableMapOf<String, Long>()
     var hostOwnedBoardId: String? = null
+    internal var quizTimerJob: kotlinx.coroutines.Job? = null
 
     fun getPermanentUserColor(peerKey: String): Long {
         return userSessionColors.getOrPut(peerKey) {
@@ -137,6 +139,46 @@ class WhiteboardViewModel(
         }.launchIn(viewModelScope)
 
         peerTransport.incomingPackets.onEach { handleIncomingPacket(it) }.launchIn(viewModelScope)
+
+        viewModelScope.launch(Dispatchers.Default) {
+            while (isActive) {
+                kotlinx.coroutines.delay(3000)
+                if (_uiState.value.connectedPeers.isNotEmpty()) {
+                    val stateIndex = if (_uiState.value.isAppForeground) 0 else 1
+                    peerTransport.sendPacketToAll(
+                        WhiteboardPacket.EngagementHeartbeat(
+                            nodeId = peerTransport.localNodeId,
+                            stateIndex = stateIndex,
+                            timestampMs = System.currentTimeMillis()
+                        ),
+                        isMutation = false
+                    )
+
+                    val now = System.currentTimeMillis()
+                    _uiState.update { s ->
+                        val updated = s.connectedPeers.map { peer ->
+                            if (now - peer.lastSeenMs > 9000 && peer.engagementState != com.kd.creavity.domain.model.EngagementState.OFFLINE) {
+                                peer.copy(engagementState = com.kd.creavity.domain.model.EngagementState.OFFLINE)
+                            } else peer
+                        }
+                        s.copy(connectedPeers = updated)
+                    }
+                }
+            }
+        }
+    }
+
+    fun setAppForegroundState(isForeground: Boolean) {
+        _uiState.update { it.copy(isAppForeground = isForeground) }
+        val stateIndex = if (isForeground) 0 else 1
+        peerTransport.sendPacketToAll(
+            WhiteboardPacket.EngagementHeartbeat(
+                nodeId = peerTransport.localNodeId,
+                stateIndex = stateIndex,
+                timestampMs = System.currentTimeMillis()
+            ),
+            isMutation = false
+        )
     }
 
     private fun generateRoomCode(): String = (1..5).map { ('A'..'Z').random() }.joinToString("")

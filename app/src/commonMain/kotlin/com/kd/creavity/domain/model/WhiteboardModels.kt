@@ -91,6 +91,12 @@ data class ViewportBounds(
     val bottom: Float = 1080f
 )
 
+enum class EngagementState {
+    WATCHING,
+    NOT_WATCHING,
+    OFFLINE
+}
+
 data class PeerPresence(
     val peerId: String,
     val name: String,
@@ -99,7 +105,8 @@ data class PeerPresence(
     val activeTool: DrawingTool = DrawingTool.PEN,
     val color: Long = 0xFFDC5F00,
     val viewport: ViewportBounds? = null,
-    val lastUpdatedMs: Long = System.currentTimeMillis()
+    val lastUpdatedMs: Long = System.currentTimeMillis(),
+    val engagementState: EngagementState = EngagementState.WATCHING
 )
 
 enum class ModificationType {
@@ -196,7 +203,9 @@ data class PeerDevice(
     val isConnected: Boolean = false,
     val isReadOnly: Boolean = false,
     val role: com.kd.creavity.data.mesh.MeshRole = com.kd.creavity.data.mesh.MeshRole.VIEWER,
-    val boardId: String = ""
+    val boardId: String = "",
+    val engagementState: EngagementState = EngagementState.WATCHING,
+    val lastSeenMs: Long = System.currentTimeMillis()
 )
 
 data class RoomState(
@@ -208,3 +217,40 @@ data class RoomState(
     val imageElements: List<ImageElement> = emptyList(),
     val stickyNotes: List<StickyNote> = emptyList()
 )
+
+data class StudentWorksheet(
+    val sheetId: String = UUID.randomUUID().toString(),
+    val studentId: String,
+    val studentName: String,
+    val title: String,
+    val questionText: String,
+    val strokes: List<Stroke> = emptyList(),
+    val isSubmitted: Boolean = false,
+    val submittedAtMs: Long? = null
+)
+
+enum class QuizType {
+    POLL,
+    TIMED_QUIZ
+}
+
+data class ActiveQuiz(
+    val quizId: String = UUID.randomUUID().toString(),
+    val questionText: String,
+    val options: List<String>,
+    val correctOptionIndex: Int = -1, // -1 for open poll
+    val durationSeconds: Int = 30,
+    val type: QuizType = QuizType.POLL,
+    val startedAtMs: Long = System.currentTimeMillis(),
+    val isEnded: Boolean = false
+)
+
+data class QuizSubmission(
+    val quizId: String,
+    val studentId: String,
+    val studentName: String,
+    val selectedOptionIndex: Int,
+    val responseTimeMs: Long,
+    val isCorrect: Boolean = false
+)
+

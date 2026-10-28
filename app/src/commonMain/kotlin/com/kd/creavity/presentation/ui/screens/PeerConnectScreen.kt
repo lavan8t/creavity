@@ -1,5 +1,7 @@
 package com.kd.creavity.presentation.ui.screens
 
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import com.kd.creavity.util.PlatformBackHandler
@@ -582,16 +584,36 @@ fun PeerConnectScreen(
                                         text = cleanPeerName,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface,
-                                        fontSize = 14.sp,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    Text(
-                                        text = if (peer.isReadOnly) "Viewer (Read-Only)" else "Editor (Can Draw)",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (peer.isReadOnly) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = if (peer.isReadOnly) "Viewer" else "Editor",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Medium,
+                                            color = if (peer.isReadOnly) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                        )
+                                        val (statusLabel, statusColor) = when (peer.engagementState) {
+                                            com.kd.creavity.domain.model.EngagementState.WATCHING -> "Watching" to MaterialTheme.colorScheme.primary
+                                            com.kd.creavity.domain.model.EngagementState.NOT_WATCHING -> "Away" to MaterialTheme.colorScheme.tertiary
+                                            com.kd.creavity.domain.model.EngagementState.OFFLINE -> "Offline" to MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                        SuggestionChip(
+                                            onClick = {},
+                                            label = { Text(statusLabel, style = MaterialTheme.typography.labelSmall) },
+                                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                                containerColor = statusColor.copy(alpha = 0.12f),
+                                                labelColor = statusColor
+                                            ),
+                                            border = null,
+                                            modifier = Modifier.height(24.dp)
+                                        )
+                                    }
                                 }
                             }
 

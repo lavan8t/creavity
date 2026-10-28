@@ -74,6 +74,13 @@ import com.kd.creavity.presentation.canvas.CanvasColorUtils
 import com.kd.creavity.presentation.canvas.WhiteboardCanvas
 import com.kd.creavity.presentation.ui.NavDestination
 import com.kd.creavity.presentation.ui.BoardAction
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
+import com.kd.creavity.presentation.ui.components.DesktopCommandCenter
+import com.kd.creavity.presentation.ui.components.HostOmniviewMatrixSheet
+import com.kd.creavity.presentation.ui.components.HostQuizControlDeck
+import com.kd.creavity.presentation.ui.components.StudentQuizOverlay
+import com.kd.creavity.presentation.ui.components.StudentWorksheetBanner
 import com.kd.creavity.presentation.ui.components.BirdsEyeViewSheet
 import com.kd.creavity.presentation.ui.components.CanvasBottomToolbar
 import com.kd.creavity.presentation.ui.components.CanvasPresentationOverlay
@@ -218,8 +225,12 @@ fun CanvasViewportScreen(
     var inlineTextContent by remember { mutableStateOf("") }
     var textFontSize by remember { mutableFloatStateOf(24f) }
 
-    // Host Bird's Eye View
+    // Host Classroom Sheets
     var showBirdsEyeSheet by remember { mutableStateOf(false) }
+    var showOmniviewSheet by remember { mutableStateOf(false) }
+    var showQuizDeckSheet by remember { mutableStateOf(false) }
+    var showDesktopCommandCenter by remember { mutableStateOf(true) }
+    var inspectedStudentId by remember { mutableStateOf<String?>(null) }
 
     // Selection state
     var selectedStrokes by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -245,49 +256,77 @@ fun CanvasViewportScreen(
         isDarkCanvas
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .onSizeChanged { canvasSize = it }
-    ) {
-        // 1. Drawing Canvas
-        WhiteboardCanvas(
-            strokes = uiState.strokes,
-            textElements = uiState.textElements,
-            imageElements = uiState.imageElements,
-            stickyNotes = uiState.stickyNotes,
-            peerPresences = uiState.livePeerPresences,
-            currentColor = effectivePenColor,
-            currentWidth = uiState.currentWidth,
-            selectedTool = uiState.selectedTool,
-            backgroundColor = effectiveCanvasBg,
-            backgroundPattern = uiState.backgroundPattern,
-            hapticsEnabled = uiState.hapticsEnabled,
-            zoom = uiState.zoom,
-            panOffset = uiState.panOffset,
-            isInfiniteCanvas = uiState.isInfiniteCanvas,
-            canvasWidth = uiState.currentBoard.canvasWidth,
-            canvasHeight = uiState.currentBoard.canvasHeight,
-            onTransform = { z, focal, p -> onAction(BoardAction.TransformCanvas(z, focal, p)) },
-            onTransformStateChanged = { transforming, touchPoints ->
-                if (transforming) {
-                    hideMinimapJob?.cancel()
-                    if (!isTransforming) {
-                        minimapCorner = calculateBestMinimapCorner(touchPoints, canvasSize)
-                        isTransforming = true
-                    }
-                } else {
-                    hideMinimapJob?.cancel()
-                    hideMinimapJob = coroutineScope.launch {
-                        delay(900L.milliseconds)
-                        isTransforming = false
-                    }
-                }
-            },
-            onStrokeCompleted = { onAction(BoardAction.StrokeCompleted(it)) },
-            onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
-            onStrokeBroadcastPoint = { id, pt -> onAction(BoardAction.StrokeBroadcastPoint(id, pt)) },
-            onStrokeBroadcastEnd = { onAction(BoardAction.StrokeBroadcastEnd(it)) },
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isExpandedScreen = maxWidth >= 840.dp
+
+        Row(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(effectiveCanvasBg)
+                    .onSizeChanged { canvasSize = it }
+            ) {
+                // 1. Drawing Canvas
+                WhiteboardCanvas(
+                    strokes = if (uiState.isWorksheetMode && uiState.activeWorksheet != null) {
+                        uiState.activeWorksheet.strokes
+                    } else {
+                        uiState.strokes
+                    },
+                    textElements = uiState.textElements,
+                    imageElements = uiState.imageElements,
+                    stickyNotes = uiState.stickyNotes,
+                    peerPresences = uiState.livePeerPresences,
+                    currentColor = effectivePenColor,
+                    currentWidth = uiState.currentWidth,
+                    selectedTool = uiState.selectedTool,
+                    backgroundColor = effectiveCanvasBg,
+                    backgroundPattern = uiState.backgroundPattern,
+                    hapticsEnabled = uiState.hapticsEnabled,
+                    zoom = uiState.zoom,
+                    panOffset = uiState.panOffset,
+                    isInfiniteCanvas = uiState.isInfiniteCanvas,
+                    canvasWidth = uiState.currentBoard.canvasWidth,
+                    canvasHeight = uiState.currentBoard.canvasHeight,
+                    onTransform = { z, focal, p -> onAction(BoardAction.TransformCanvas(z, focal, p)) },
+                    onTransformStateChanged = { transforming, touchPoints ->
+                        if (transforming) {
+                            hideMinimapJob?.cancel()
+                            if (!isTransforming) {
+                                minimapCorner = calculateBestMinimapCorner(touchPoints, canvasSize)
+                                isTransforming = true
+                            }
+                        } else {
+                            hideMinimapJob?.cancel()
+                            hideMinimapJob = coroutineScope.launch {
+                                delay(900L.milliseconds)
+                                isTransforming = false
+                            }
+                        }
+                    },
+                    onStrokeCompleted = { stroke ->
+                        if (uiState.isWorksheetMode && uiState.activeWorksheet != null) {
+                            onAction(BoardAction.AddStudentWorksheetStroke(stroke))
+                        } else {
+                            onAction(BoardAction.StrokeCompleted(stroke))
+                        }
+                    },
+                    onStrokeBroadcastStart = { id, c, w, e, pt, tool ->
+                        if (!uiState.isWorksheetMode) {
+                            onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool))
+                        }
+                    },
+                    onStrokeBroadcastPoint = { id, pt ->
+                        if (!uiState.isWorksheetMode) {
+                            onAction(BoardAction.StrokeBroadcastPoint(id, pt))
+                        }
+                    },
+                    onStrokeBroadcastEnd = { id ->
+                        if (!uiState.isWorksheetMode) {
+                            onAction(BoardAction.StrokeBroadcastEnd(id))
+                        }
+                    },
             onDeleteStroke = { onAction(BoardAction.DeleteStroke(it)) },
             onDeleteText = { onAction(BoardAction.DeleteText(it)) },
             onDeleteImage = { onAction(BoardAction.DeleteImage(it)) },
@@ -464,7 +503,13 @@ fun CanvasViewportScreen(
                             showOptionsMenu = true
                         },
                         zoom = uiState.zoom,
-                        isBoardSwitchingLocked = uiState.isBoardSwitchingLocked
+                        isHost = uiState.isHost,
+                        isBoardSwitchingLocked = uiState.isBoardSwitchingLocked,
+                        onBirdsEyeClick = { showBirdsEyeSheet = true },
+                        onOmniviewClick = { showOmniviewSheet = true },
+                        onQuizClick = { showQuizDeckSheet = true },
+                        onToggleCommandCenter = { showDesktopCommandCenter = !showDesktopCommandCenter },
+                        isCommandCenterOpen = showDesktopCommandCenter
                     )
 
                     // 3-dot overflow menu
@@ -642,6 +687,30 @@ fun CanvasViewportScreen(
                                 )
                             }
 
+                            // Classroom Omniview Matrix & Quiz Deck (Host only)
+                            if (uiState.isHost) {
+                                DropdownMenuItem(
+                                    text = { Text("Omniview Matrix (Student Sheets)") },
+                                    leadingIcon = {
+                                        MaterialSymbol(name = "grid_view", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                    },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        showOmniviewSheet = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Interactive Quiz & Poll Deck") },
+                                    leadingIcon = {
+                                        MaterialSymbol(name = "checklist", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                    },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        showQuizDeckSheet = true
+                                    }
+                                )
+                            }
+
                             // Infinite Canvas Toggle
                             DropdownMenuItem(
                                 text = { Text(if (uiState.isInfiniteCanvas) "Infinite Canvas: On" else "Fixed Sheet (16:9)") },
@@ -716,7 +785,7 @@ fun CanvasViewportScreen(
         }
 
         // 3. Minimap Overlay (Auto-shows when panning and zooming in free corner, stays locked until gesture ends)
-        AnimatedVisibility(
+        androidx.compose.animation.AnimatedVisibility(
             visible = isTransforming,
             enter = BrevityMotion.enterFadeScale(),
             exit = BrevityMotion.exitFadeScale(),
@@ -932,5 +1001,68 @@ fun CanvasViewportScreen(
             uiState = uiState,
             onAction = onAction
         )
+
+        // 13. Student Worksheet Pinned Top Banner
+        StudentWorksheetBanner(
+            worksheet = uiState.activeWorksheet,
+            visible = uiState.isWorksheetMode && uiState.activeWorksheet != null,
+            onSubmit = { onAction(BoardAction.SubmitWorksheet(it)) },
+            onCloseOrToggle = { onAction(BoardAction.SetWorksheetMode(!uiState.isWorksheetMode)) },
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 54.dp)
+        )
+
+        // 14. Student Interactive Quiz & Poll Overlay (Mentimeter style)
+        if (uiState.activeQuiz != null && !uiState.isHost) {
+            StudentQuizOverlay(
+                activeQuiz = uiState.activeQuiz,
+                userAnswer = uiState.userQuizAnswer,
+                submissions = uiState.quizSubmissions,
+                timeRemainingSeconds = uiState.quizTimeRemainingSeconds,
+                onAnswer = { qId, opt -> onAction(BoardAction.AnswerQuiz(qId, opt)) },
+                onDismiss = { onAction(BoardAction.EndQuiz(uiState.activeQuiz?.quizId ?: "", -1)) },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+
+        // 15. Host Omniview Matrix Sheet (Mobile / Compact View)
+        HostOmniviewMatrixSheet(
+            visible = showOmniviewSheet,
+            isHost = uiState.isHost,
+            studentWorksheets = uiState.studentWorksheets,
+            connectedPeers = uiState.connectedPeers,
+            inspectedStudentId = inspectedStudentId,
+            onDismiss = { showOmniviewSheet = false; inspectedStudentId = null },
+            onDelegateWorksheet = { title, q, target ->
+                onAction(BoardAction.DelegateWorksheet(title, q, target))
+            },
+            onInspectStudent = { inspectedStudentId = it }
+        )
+
+        // 16. Host Quiz & Poll Control Deck (Mobile / Compact View)
+        HostQuizControlDeck(
+            visible = showQuizDeckSheet,
+            isHost = uiState.isHost,
+            activeQuiz = uiState.activeQuiz,
+            submissions = uiState.quizSubmissions,
+            timeRemainingSeconds = uiState.quizTimeRemainingSeconds,
+            connectedPeers = uiState.connectedPeers,
+            onLaunchQuiz = { onAction(BoardAction.StartQuiz(it)) },
+            onEndQuiz = { qId, key -> onAction(BoardAction.EndQuiz(qId, key)) },
+            onDismiss = { showQuizDeckSheet = false }
+        )
     }
+
+    // Desktop Command Center Side-Deck (Expanded screens >= 840dp)
+    if (isExpandedScreen && showDesktopCommandCenter && uiState.isHost) {
+        DesktopCommandCenter(
+            uiState = uiState,
+            onAction = onAction,
+            onClose = { showDesktopCommandCenter = false },
+            modifier = Modifier
+                .width(420.dp)
+                .fillMaxHeight()
+        )
+    }
+}
+}
 }

@@ -472,11 +472,31 @@ fun BirdsEyeViewSheet(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        Text(
-                                            text = if (peer.isReadOnly) "Viewer" else if (presence?.isDrawing == true) "Drawing now" else "Active",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (presence?.isDrawing == true) MaterialTheme.colorScheme.primary else onSurfaceVariant
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = if (peer.isReadOnly) "Viewer" else if (presence?.isDrawing == true) "Drawing" else "Active",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (presence?.isDrawing == true) MaterialTheme.colorScheme.primary else onSurfaceVariant
+                                            )
+                                            val (statusLabel, statusColor) = when (peer.engagementState) {
+                                                com.kd.creavity.domain.model.EngagementState.WATCHING -> "Watching" to MaterialTheme.colorScheme.primary
+                                                com.kd.creavity.domain.model.EngagementState.NOT_WATCHING -> "Away" to MaterialTheme.colorScheme.tertiary
+                                                com.kd.creavity.domain.model.EngagementState.OFFLINE -> "Offline" to onSurfaceVariant
+                                            }
+                                            SuggestionChip(
+                                                onClick = {},
+                                                label = { Text(statusLabel, style = MaterialTheme.typography.labelSmall) },
+                                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                                    containerColor = statusColor.copy(alpha = 0.12f),
+                                                    labelColor = statusColor
+                                                ),
+                                                border = null,
+                                                modifier = Modifier.height(22.dp)
+                                            )
+                                        }
                                     }
                                 }
 

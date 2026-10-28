@@ -1,7 +1,11 @@
 package com.kd.creavity.presentation.viewmodel
 
+import androidx.lifecycle.viewModelScope
 import com.kd.creavity.presentation.ui.BoardAction
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 fun WhiteboardViewModel.dispatch(action: BoardAction) {
     when (action) {
@@ -65,7 +69,149 @@ fun WhiteboardViewModel.dispatch(action: BoardAction) {
         is BoardAction.UpdateBoardMetadata -> updateBoardMetadata(action.boardId, action.title, action.venue, action.group, action.labels)
         is BoardAction.CreateFolder -> createFolder(action.folderName)
         is BoardAction.DeleteFolder -> deleteFolder(action.folderName)
+
+        // Classroom
+        is BoardAction.DelegateWorksheet -> delegateWorksheet(action.title, action.questionText, action.targetStudentId)
+        is BoardAction.SubmitWorksheet -> submitWorksheet(action.sheetId)
+        is BoardAction.SetWorksheetMode -> setWorksheetMode(action.enabled)
+        is BoardAction.InspectStudentWorksheet -> inspectStudentWorksheet(action.studentId)
+        is BoardAction.AddStudentWorksheetStroke -> addStudentWorksheetStroke(action.stroke)
+        is BoardAction.StartQuiz -> startQuiz(action.quiz)
+        is BoardAction.AnswerQuiz -> answerQuiz(action.quizId, action.selectedOptionIndex)
+        is BoardAction.EndQuiz -> endQuiz(action.quizId, action.correctOptionIndex)
     }
+}
+
+fun WhiteboardViewModel.delegateWorksheet(title: String, questionText: String, targetStudentId: String = "") {
+    val sheetId = java.util.UUID.randomUUID().toString()
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.DelegateSheet(
+        sheetId = sheetId,
+        title = title,
+        questionText = questionText,
+        assignedToAll = targetStudentId.isBlank(),
+        targetStudentId = targetStudentId
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = true)
+
+    val students = if (targetStudentId.isNotBlank()) {
+        _uiState.value.connectedPeers.filter { it.endpointId == targetStudentId }
+    } else {
+        _uiState.value.connectedPeers
+    }
+    val newSheets = students.associate { peer ->
+        peer.endpointId to com.kd.creavity.domain.model.StudentWorksheet(
+            sheetId = sheetId,
+            studentId = peer.endpointId,
+            studentName = peer.name,
+            title = title,
+            questionText = questionText,
+            strokes = emptyList(),
+            isSubmitted = false
+        )
+    }
+    _uiState.update { it.copy(studentWorksheets = it.studentWorksheets + newSheets) }
+}
+
+fun WhiteboardViewModel.submitWorksheet(sheetId: String) {
+    val active = _uiState.value.activeWorksheet ?: return
+    if (active.sheetId != sheetId || active.isSubmitted) return
+    val now = System.currentTimeMillis()
+    val submittedSheet = active.copy(isSubmitted = true, submittedAtMs = now)
+    _uiState.update { it.copy(activeWorksheet = submittedSheet) }
+
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.SheetSubmission(
+        sheetId = sheetId,
+        studentId = peerTransport.localNodeId,
+        timestampMs = now
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = true)
+}
+
+fun WhiteboardViewModel.setWorksheetMode(enabled: Boolean) {
+    _uiState.update { it.copy(isWorksheetMode = enabled) }
+}
+
+fun WhiteboardViewModel.inspectStudentWorksheet(studentId: String?) {
+    _uiState.update { it.copy(inspectedStudentId = studentId) }
+}
+
+fun WhiteboardViewModel.addStudentWorksheetStroke(stroke: com.kd.creavity.domain.model.Stroke) {
+    val active = _uiState.value.activeWorksheet ?: return
+    if (active.isSubmitted) return
+    val updatedStrokes = active.strokes + stroke
+    val updatedSheet = active.copy(strokes = updatedStrokes)
+    _uiState.update { it.copy(activeWorksheet = updatedSheet) }
+
+    val strokeBytes = com.kd.creavity.data.binary.PacketSerializer.serializeSingleStroke(stroke)
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.StudentSheetStroke(
+        sheetId = active.sheetId,
+        studentId = peerTransport.localNodeId,
+        strokePacketBytes = strokeBytes
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = false)
+}
+
+fun WhiteboardViewModel.startQuiz(quiz: com.kd.creavity.domain.model.ActiveQuiz) {
+    quizTimerJob?.cancel()
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.QuizStart(
+        quizId = quiz.quizId,
+        quizType = if (quiz.type == com.kd.creavity.domain.model.QuizType.TIMED_QUIZ) 1 else 0,
+        question = quiz.questionText,
+        options = quiz.options,
+        durationSeconds = quiz.durationSeconds,
+        startTimestampMs = quiz.startedAtMs
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = true)
+    _uiState.update {
+        it.copy(
+            activeQuiz = quiz,
+            quizSubmissions = emptyList(),
+            userQuizAnswer = null,
+            quizTimeRemainingSeconds = quiz.durationSeconds
+        )
+    }
+
+    if (quiz.durationSeconds > 0) {
+        quizTimerJob = viewModelScope.launch {
+            var remaining = quiz.durationSeconds
+            while (remaining > 0 && isActive) {
+                delay(1000L)
+                remaining--
+                _uiState.update { it.copy(quizTimeRemainingSeconds = remaining) }
+            }
+            if (uiState.value.isHost && uiState.value.activeQuiz?.quizId == quiz.quizId && !uiState.value.activeQuiz!!.isEnded) {
+                endQuiz(quiz.quizId, quiz.correctOptionIndex)
+            }
+        }
+    }
+}
+
+fun WhiteboardViewModel.answerQuiz(quizId: String, selectedOptionIndex: Int) {
+    val active = _uiState.value.activeQuiz ?: return
+    if (active.quizId != quizId || active.isEnded) return
+    val now = System.currentTimeMillis()
+    _uiState.update { it.copy(userQuizAnswer = selectedOptionIndex) }
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.QuizAnswer(
+        quizId = quizId,
+        studentId = peerTransport.localNodeId,
+        selectedOptionIndex = selectedOptionIndex,
+        answerTimestampMs = now
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = false)
+}
+
+fun WhiteboardViewModel.endQuiz(quizId: String, correctOptionIndex: Int = -1) {
+    quizTimerJob?.cancel()
+    quizTimerJob = null
+    val active = _uiState.value.activeQuiz ?: return
+    if (active.quizId != quizId) return
+    val updatedQuiz = active.copy(isEnded = true, correctOptionIndex = correctOptionIndex)
+    _uiState.update { it.copy(activeQuiz = updatedQuiz) }
+    val packet = com.kd.creavity.data.binary.WhiteboardPacket.QuizEnd(
+        quizId = quizId,
+        correctOptionIndex = correctOptionIndex
+    )
+    peerTransport.sendPacketToAll(packet, isMutation = true)
 }
 
 fun WhiteboardViewModel.createFolder(name: String) {

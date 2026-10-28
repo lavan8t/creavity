@@ -97,6 +97,76 @@ sealed class WhiteboardPacket {
         val endpointId: String,
         val isReadOnly: Boolean
     ) : WhiteboardPacket()
+
+    data class DelegateSheet(
+        val sheetId: String,
+        val title: String,
+        val questionText: String,
+        val assignedToAll: Boolean = true,
+        val targetStudentId: String = ""
+    ) : WhiteboardPacket()
+
+    data class StudentSheetStroke(
+        val sheetId: String,
+        val studentId: String,
+        val strokePacketBytes: ByteArray
+    ) : WhiteboardPacket() {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is StudentSheetStroke) return false
+            return sheetId == other.sheetId &&
+                    studentId == other.studentId &&
+                    strokePacketBytes.contentEquals(other.strokePacketBytes)
+        }
+
+        override fun hashCode(): Int {
+            var result = sheetId.hashCode()
+            result = 31 * result + studentId.hashCode()
+            result = 31 * result + strokePacketBytes.contentHashCode()
+            return result
+        }
+    }
+
+    data class SheetSubmission(
+        val sheetId: String,
+        val studentId: String,
+        val timestampMs: Long
+    ) : WhiteboardPacket()
+
+    data class QuizStart(
+        val quizId: String,
+        val quizType: Int, // 0 = Poll, 1 = Timed Quiz
+        val question: String,
+        val options: List<String>,
+        val durationSeconds: Int,
+        val startTimestampMs: Long
+    ) : WhiteboardPacket()
+
+    data class QuizAnswer(
+        val quizId: String,
+        val studentId: String,
+        val selectedOptionIndex: Int,
+        val answerTimestampMs: Long
+    ) : WhiteboardPacket()
+
+    data class QuizEnd(
+        val quizId: String,
+        val correctOptionIndex: Int
+    ) : WhiteboardPacket()
+
+    data class EngagementHeartbeat(
+        val nodeId: String,
+        val stateIndex: Int, // 0 = WATCHING, 1 = NOT_WATCHING
+        val timestampMs: Long
+    ) : WhiteboardPacket()
+
+    data class RelayBridgeAnnounce(
+        val relayNodeId: String,
+        val ssid: String,
+        val passphrase: String,
+        val ipAddress: String,
+        val port: Int
+    ) : WhiteboardPacket()
 }
 
 object PacketSerializer {
@@ -117,6 +187,27 @@ object PacketSerializer {
     private const val TYPE_IMAGE_ADD: Byte = 15
     private const val TYPE_IMAGE_DELETE: Byte = 16
     private const val TYPE_IMAGE_MOVE: Byte = 17
+    private const val TYPE_DELEGATE_SHEET: Byte = 32
+    private const val TYPE_STUDENT_SHEET_STROKE: Byte = 33
+    private const val TYPE_SHEET_SUBMISSION: Byte = 34
+    private const val TYPE_QUIZ_START: Byte = 35
+    private const val TYPE_QUIZ_ANSWER: Byte = 36
+    private const val TYPE_QUIZ_END: Byte = 37
+    private const val TYPE_ENGAGEMENT_HEARTBEAT: Byte = 38
+    private const val TYPE_RELAY_BRIDGE_ANNOUNCE: Byte = 39
+
+    fun serializeSingleStroke(stroke: Stroke): ByteArray {
+        return serializeStrokes(listOf(stroke)).first()
+    }
+
+    fun deserializeSingleStroke(bytes: ByteArray): Stroke? {
+        return try {
+            val buf = ByteBuffer.wrap(bytes)
+            deserializeStrokes(buf, 1).firstOrNull()
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun serializeStrokes(strokes: List<Stroke>): List<ByteArray> {
         return strokes.map { stroke ->
@@ -413,6 +504,120 @@ object PacketSerializer {
                 buffer.putFloat(packet.y)
                 buffer.array()
             }
+            is WhiteboardPacket.DelegateSheet -> {
+                val sheetIdBytes = packet.sheetId.toByteArray(StandardCharsets.UTF_8)
+                val titleBytes = packet.title.toByteArray(StandardCharsets.UTF_8)
+                val qBytes = packet.questionText.toByteArray(StandardCharsets.UTF_8)
+                val targetBytes = packet.targetStudentId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + sheetIdBytes.size + 2 + titleBytes.size + 2 + qBytes.size + 1 + 2 + targetBytes.size)
+                buffer.put(TYPE_DELEGATE_SHEET)
+                buffer.putShort(sheetIdBytes.size.toShort())
+                buffer.put(sheetIdBytes)
+                buffer.putShort(titleBytes.size.toShort())
+                buffer.put(titleBytes)
+                buffer.putShort(qBytes.size.toShort())
+                buffer.put(qBytes)
+                buffer.put(if (packet.assignedToAll) 1.toByte() else 0.toByte())
+                buffer.putShort(targetBytes.size.toShort())
+                buffer.put(targetBytes)
+                buffer.array()
+            }
+            is WhiteboardPacket.StudentSheetStroke -> {
+                val sheetIdBytes = packet.sheetId.toByteArray(StandardCharsets.UTF_8)
+                val studentIdBytes = packet.studentId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + sheetIdBytes.size + 2 + studentIdBytes.size + 4 + packet.strokePacketBytes.size)
+                buffer.put(TYPE_STUDENT_SHEET_STROKE)
+                buffer.putShort(sheetIdBytes.size.toShort())
+                buffer.put(sheetIdBytes)
+                buffer.putShort(studentIdBytes.size.toShort())
+                buffer.put(studentIdBytes)
+                buffer.putInt(packet.strokePacketBytes.size)
+                buffer.put(packet.strokePacketBytes)
+                buffer.array()
+            }
+            is WhiteboardPacket.SheetSubmission -> {
+                val sheetIdBytes = packet.sheetId.toByteArray(StandardCharsets.UTF_8)
+                val studentIdBytes = packet.studentId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + sheetIdBytes.size + 2 + studentIdBytes.size + 8)
+                buffer.put(TYPE_SHEET_SUBMISSION)
+                buffer.putShort(sheetIdBytes.size.toShort())
+                buffer.put(sheetIdBytes)
+                buffer.putShort(studentIdBytes.size.toShort())
+                buffer.put(studentIdBytes)
+                buffer.putLong(packet.timestampMs)
+                buffer.array()
+            }
+            is WhiteboardPacket.QuizStart -> {
+                val quizIdBytes = packet.quizId.toByteArray(StandardCharsets.UTF_8)
+                val qBytes = packet.question.toByteArray(StandardCharsets.UTF_8)
+                val optionsBytes = packet.options.map { it.toByteArray(StandardCharsets.UTF_8) }
+                val optionsTotalSize = optionsBytes.sumOf { 2 + it.size }
+                val buffer = ByteBuffer.allocate(1 + 2 + quizIdBytes.size + 1 + 2 + qBytes.size + 2 + optionsTotalSize + 4 + 8)
+                buffer.put(TYPE_QUIZ_START)
+                buffer.putShort(quizIdBytes.size.toShort())
+                buffer.put(quizIdBytes)
+                buffer.put(packet.quizType.toByte())
+                buffer.putShort(qBytes.size.toShort())
+                buffer.put(qBytes)
+                buffer.putShort(optionsBytes.size.toShort())
+                optionsBytes.forEach { opt ->
+                    buffer.putShort(opt.size.toShort())
+                    buffer.put(opt)
+                }
+                buffer.putInt(packet.durationSeconds)
+                buffer.putLong(packet.startTimestampMs)
+                buffer.array()
+            }
+            is WhiteboardPacket.QuizAnswer -> {
+                val quizIdBytes = packet.quizId.toByteArray(StandardCharsets.UTF_8)
+                val studentIdBytes = packet.studentId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + quizIdBytes.size + 2 + studentIdBytes.size + 4 + 8)
+                buffer.put(TYPE_QUIZ_ANSWER)
+                buffer.putShort(quizIdBytes.size.toShort())
+                buffer.put(quizIdBytes)
+                buffer.putShort(studentIdBytes.size.toShort())
+                buffer.put(studentIdBytes)
+                buffer.putInt(packet.selectedOptionIndex)
+                buffer.putLong(packet.answerTimestampMs)
+                buffer.array()
+            }
+            is WhiteboardPacket.QuizEnd -> {
+                val quizIdBytes = packet.quizId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + quizIdBytes.size + 4)
+                buffer.put(TYPE_QUIZ_END)
+                buffer.putShort(quizIdBytes.size.toShort())
+                buffer.put(quizIdBytes)
+                buffer.putInt(packet.correctOptionIndex)
+                buffer.array()
+            }
+            is WhiteboardPacket.EngagementHeartbeat -> {
+                val nodeIdBytes = packet.nodeId.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + nodeIdBytes.size + 1 + 8)
+                buffer.put(TYPE_ENGAGEMENT_HEARTBEAT)
+                buffer.putShort(nodeIdBytes.size.toShort())
+                buffer.put(nodeIdBytes)
+                buffer.put(packet.stateIndex.toByte())
+                buffer.putLong(packet.timestampMs)
+                buffer.array()
+            }
+            is WhiteboardPacket.RelayBridgeAnnounce -> {
+                val nodeIdBytes = packet.relayNodeId.toByteArray(StandardCharsets.UTF_8)
+                val ssidBytes = packet.ssid.toByteArray(StandardCharsets.UTF_8)
+                val passBytes = packet.passphrase.toByteArray(StandardCharsets.UTF_8)
+                val ipBytes = packet.ipAddress.toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + nodeIdBytes.size + 2 + ssidBytes.size + 2 + passBytes.size + 2 + ipBytes.size + 4)
+                buffer.put(TYPE_RELAY_BRIDGE_ANNOUNCE)
+                buffer.putShort(nodeIdBytes.size.toShort())
+                buffer.put(nodeIdBytes)
+                buffer.putShort(ssidBytes.size.toShort())
+                buffer.put(ssidBytes)
+                buffer.putShort(passBytes.size.toShort())
+                buffer.put(passBytes)
+                buffer.putShort(ipBytes.size.toShort())
+                buffer.put(ipBytes)
+                buffer.putInt(packet.port)
+                buffer.array()
+            }
         }
     }
 
@@ -635,6 +840,150 @@ object PacketSerializer {
                 val x = buffer.float
                 val y = buffer.float
                 WhiteboardPacket.ImageMove(id, x, y)
+            }
+            TYPE_DELEGATE_SHEET -> {
+                val sheetIdLen = buffer.short.toInt()
+                val sheetIdBytes = ByteArray(sheetIdLen)
+                buffer.get(sheetIdBytes)
+                val sheetId = String(sheetIdBytes, StandardCharsets.UTF_8)
+
+                val titleLen = buffer.short.toInt()
+                val titleBytes = ByteArray(titleLen)
+                buffer.get(titleBytes)
+                val title = String(titleBytes, StandardCharsets.UTF_8)
+
+                val qLen = buffer.short.toInt()
+                val qBytes = ByteArray(qLen)
+                buffer.get(qBytes)
+                val qText = String(qBytes, StandardCharsets.UTF_8)
+
+                val assignedToAll = buffer.get() == 1.toByte()
+
+                val targetLen = buffer.short.toInt()
+                val targetBytes = ByteArray(targetLen)
+                buffer.get(targetBytes)
+                val targetStudentId = String(targetBytes, StandardCharsets.UTF_8)
+
+                WhiteboardPacket.DelegateSheet(sheetId, title, qText, assignedToAll, targetStudentId)
+            }
+            TYPE_STUDENT_SHEET_STROKE -> {
+                val sheetIdLen = buffer.short.toInt()
+                val sheetIdBytes = ByteArray(sheetIdLen)
+                buffer.get(sheetIdBytes)
+                val sheetId = String(sheetIdBytes, StandardCharsets.UTF_8)
+
+                val studentIdLen = buffer.short.toInt()
+                val studentIdBytes = ByteArray(studentIdLen)
+                buffer.get(studentIdBytes)
+                val studentId = String(studentIdBytes, StandardCharsets.UTF_8)
+
+                val strokeDataLen = buffer.int
+                val strokeData = ByteArray(strokeDataLen)
+                buffer.get(strokeData)
+
+                WhiteboardPacket.StudentSheetStroke(sheetId, studentId, strokeData)
+            }
+            TYPE_SHEET_SUBMISSION -> {
+                val sheetIdLen = buffer.short.toInt()
+                val sheetIdBytes = ByteArray(sheetIdLen)
+                buffer.get(sheetIdBytes)
+                val sheetId = String(sheetIdBytes, StandardCharsets.UTF_8)
+
+                val studentIdLen = buffer.short.toInt()
+                val studentIdBytes = ByteArray(studentIdLen)
+                buffer.get(studentIdBytes)
+                val studentId = String(studentIdBytes, StandardCharsets.UTF_8)
+
+                val timestampMs = buffer.long
+                WhiteboardPacket.SheetSubmission(sheetId, studentId, timestampMs)
+            }
+            TYPE_QUIZ_START -> {
+                val quizIdLen = buffer.short.toInt()
+                val quizIdBytes = ByteArray(quizIdLen)
+                buffer.get(quizIdBytes)
+                val quizId = String(quizIdBytes, StandardCharsets.UTF_8)
+
+                val quizType = buffer.get().toInt()
+
+                val qLen = buffer.short.toInt()
+                val qBytes = ByteArray(qLen)
+                buffer.get(qBytes)
+                val question = String(qBytes, StandardCharsets.UTF_8)
+
+                val optionsCount = buffer.short.toInt()
+                val options = mutableListOf<String>()
+                for (i in 0 until optionsCount) {
+                    val optLen = buffer.short.toInt()
+                    val optBytes = ByteArray(optLen)
+                    buffer.get(optBytes)
+                    options.add(String(optBytes, StandardCharsets.UTF_8))
+                }
+
+                val durationSeconds = buffer.int
+                val startTimestampMs = buffer.long
+
+                WhiteboardPacket.QuizStart(quizId, quizType, question, options, durationSeconds, startTimestampMs)
+            }
+            TYPE_QUIZ_ANSWER -> {
+                val quizIdLen = buffer.short.toInt()
+                val quizIdBytes = ByteArray(quizIdLen)
+                buffer.get(quizIdBytes)
+                val quizId = String(quizIdBytes, StandardCharsets.UTF_8)
+
+                val studentIdLen = buffer.short.toInt()
+                val studentIdBytes = ByteArray(studentIdLen)
+                buffer.get(studentIdBytes)
+                val studentId = String(studentIdBytes, StandardCharsets.UTF_8)
+
+                val selectedOptionIndex = buffer.int
+                val answerTimestampMs = buffer.long
+
+                WhiteboardPacket.QuizAnswer(quizId, studentId, selectedOptionIndex, answerTimestampMs)
+            }
+            TYPE_QUIZ_END -> {
+                val quizIdLen = buffer.short.toInt()
+                val quizIdBytes = ByteArray(quizIdLen)
+                buffer.get(quizIdBytes)
+                val quizId = String(quizIdBytes, StandardCharsets.UTF_8)
+
+                val correctOptionIndex = buffer.int
+                WhiteboardPacket.QuizEnd(quizId, correctOptionIndex)
+            }
+            TYPE_ENGAGEMENT_HEARTBEAT -> {
+                val nodeIdLen = buffer.short.toInt()
+                val nodeIdBytes = ByteArray(nodeIdLen)
+                buffer.get(nodeIdBytes)
+                val nodeId = String(nodeIdBytes, StandardCharsets.UTF_8)
+
+                val stateIndex = buffer.get().toInt()
+                val timestampMs = buffer.long
+
+                WhiteboardPacket.EngagementHeartbeat(nodeId, stateIndex, timestampMs)
+            }
+            TYPE_RELAY_BRIDGE_ANNOUNCE -> {
+                val relayNodeIdLen = buffer.short.toInt()
+                val relayNodeIdBytes = ByteArray(relayNodeIdLen)
+                buffer.get(relayNodeIdBytes)
+                val relayNodeId = String(relayNodeIdBytes, StandardCharsets.UTF_8)
+
+                val ssidLen = buffer.short.toInt()
+                val ssidBytes = ByteArray(ssidLen)
+                buffer.get(ssidBytes)
+                val ssid = String(ssidBytes, StandardCharsets.UTF_8)
+
+                val passLen = buffer.short.toInt()
+                val passBytes = ByteArray(passLen)
+                buffer.get(passBytes)
+                val passphrase = String(passBytes, StandardCharsets.UTF_8)
+
+                val ipLen = buffer.short.toInt()
+                val ipBytes = ByteArray(ipLen)
+                buffer.get(ipBytes)
+                val ipAddress = String(ipBytes, StandardCharsets.UTF_8)
+
+                val port = buffer.int
+
+                WhiteboardPacket.RelayBridgeAnnounce(relayNodeId, ssid, passphrase, ipAddress, port)
             }
             else -> null
         }
