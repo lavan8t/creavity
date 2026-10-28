@@ -102,6 +102,7 @@ import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.domain.model.RoughnessStyle
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.presentation.ui.components.DesktopCanvasContextMenu
+import com.kd.creavity.presentation.ui.components.DesktopBoardTopMenuBar
 import com.kd.creavity.presentation.ui.components.DesktopDraggableToolbar
 import com.kd.creavity.presentation.ui.components.SelectionDockPositioner
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
@@ -657,7 +658,19 @@ fun CanvasViewportScreen(
                         onOmniviewClick = { showOmniviewSheet = true },
                         onQuizClick = { showQuizDeckSheet = true },
                         onToggleCommandCenter = { showDesktopCommandCenter = !showDesktopCommandCenter },
-                        isCommandCenterOpen = showDesktopCommandCenter
+                        isCommandCenterOpen = showDesktopCommandCenter,
+                        desktopMenuBar = if (isDesktopPlatform()) {
+                            {
+                                DesktopBoardTopMenuBar(
+                                    uiState = uiState,
+                                    onAction = onAction,
+                                    onBackToBoards = { onNavigateToDestination(NavDestination.BOARDS) },
+                                    onOpenExport = { showExportDialog = true },
+                                    onToggleBirdsEye = { showBirdsEyeSheet = true },
+                                    onToggleFrameBar = { showFrameBar = !showFrameBar }
+                                )
+                            }
+                        } else null
                     )
 
                     // 3-dot overflow menu

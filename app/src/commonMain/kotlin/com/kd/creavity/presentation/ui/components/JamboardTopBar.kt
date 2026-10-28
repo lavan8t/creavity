@@ -53,6 +53,7 @@ fun WhiteboardTopBar(
     onQuizClick: (() -> Unit)? = null,
     onToggleCommandCenter: (() -> Unit)? = null,
     isCommandCenterOpen: Boolean = false,
+    desktopMenuBar: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -101,6 +102,11 @@ fun WhiteboardTopBar(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+            }
+
+            if (desktopMenuBar != null) {
+                Spacer(modifier = Modifier.width(6.dp))
+                desktopMenuBar()
             }
         }
 
