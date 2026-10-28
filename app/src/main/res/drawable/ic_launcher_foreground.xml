@@ -1,30 +1,40 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+    
+    <!-- Optically Balanced Safe Zone Group -->
+    <group
+        android:scaleX="0.134"
+        android:scaleY="0.134"
+        android:translateX="15.5"
+        android:translateY="20.5">
+        
+        <!-- User's Continuous 'cr' Single Vector Path -->
+        <path
+            android:name="cr_stroke"
+            android:pathData="m 104.0155,199.9899 c -38.792959,-2.67609 -68.221311,50.95104 -68.946552,88.2824 -0.793007,40.81958 32.623452,87.17848 71.582752,99.38669 32.58007,10.20922 74.77034,-7.82637 96.58772,-34.08835 38.73653,-46.62786 76.50289,-143.23778 28.06034,-179.67946 -17.59301,-13.23462 -52.56866,7.11262 -59.87208,27.88108 -6.92591,19.69495 10.18515,44.84423 27.731,56.15803 54.65101,35.2397 156.53894,32.84141 204.49366,-17.57855 16.62375,-17.47833 22.48031,-60.87872 1.26289,-72.35313 -22.32791,-12.07497 -61.1135,17.47903 -62.9904,42.79341 -5.06437,68.30498 -33.85315,203.7826 151.0777,139.2713"
+            android:strokeColor="#151922"
+            android:strokeWidth="28"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+
+        <!-- Tapering Sleeve into Nib Tip -->
+        <path
+            android:pathData="M 463,361 L 493,350"
+            android:strokeColor="#151922"
+            android:strokeWidth="16"
+            android:strokeLineCap="round" />
+
+        <!-- Enlarged Stylus Conical Nib -->
+        <group
+            android:translateX="493.0"
+            android:translateY="350.0"
+            android:rotation="-19.23">
+            <path
+                android:fillColor="#151922"
+                android:pathData="M 2,-4 L 54,-24 A 3,3 0 0,1 57,-21 L 57,21 A 3,3 0 0,1 54,24 L 2,4 A 4.5,4.5 0 0,1 2,-4 Z" />
+        </group>
+    </group>
 </vector>
