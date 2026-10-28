@@ -19,6 +19,57 @@ import com.kd.creavity.presentation.viewmodel.dispatch
 import com.kd.creavity.ui.theme.boardTheme
 import java.awt.GraphicsEnvironment
 import java.awt.Toolkit
+import java.io.File
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
+import java.nio.channels.FileLock
+import kotlin.system.exitProcess
+
+private var singleInstanceFileLock: FileLock? = null
+private var singleInstanceChannel: FileChannel? = null
+
+private fun acquireSingleInstanceLock(): Boolean {
+    return try {
+        val appDir = File(System.getProperty("user.home"), ".local/share/creavity").apply { mkdirs() }
+        val lockFile = File(appDir, ".creavity.lock")
+        val channel = RandomAccessFile(lockFile, "rw").channel
+        val lock = channel.tryLock()
+        if (lock != null) {
+            singleInstanceFileLock = lock
+            singleInstanceChannel = channel
+            Runtime.getRuntime().addShutdownHook(Thread {
+                runCatching {
+                    singleInstanceFileLock?.release()
+                    singleInstanceChannel?.close()
+                }
+            })
+            true
+        } else {
+            false
+        }
+    } catch (_: Throwable) {
+        try {
+            val lockFile = File(System.getProperty("java.io.tmpdir"), "creavity_single_instance.lock")
+            val channel = RandomAccessFile(lockFile, "rw").channel
+            val lock = channel.tryLock()
+            if (lock != null) {
+                singleInstanceFileLock = lock
+                singleInstanceChannel = channel
+                Runtime.getRuntime().addShutdownHook(Thread {
+                    runCatching {
+                        singleInstanceFileLock?.release()
+                        singleInstanceChannel?.close()
+                    }
+                })
+                true
+            } else {
+                false
+            }
+        } catch (_: Throwable) {
+            true
+        }
+    }
+}
 
 fun getSystemScale(): Float {
     System.getProperty("sun.java2d.uiScale")?.toFloatOrNull()?.let { return it }
@@ -54,6 +105,10 @@ fun initDesktopFonts() {
 }
 
 fun main() {
+    if (!acquireSingleInstanceLock()) {
+        System.err.println("CreaVITy is already running. Only 1 instance can be open at a time.")
+        exitProcess(0)
+    }
     initDesktopFonts()
     if (System.getProperty("sun.java2d.uiScale.enabled") == null) {
         System.setProperty("sun.java2d.uiScale.enabled", "true")

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -233,12 +234,24 @@ fun BoardsLibraryScreen(
             .fillMaxSize()
             .onDesktopRightClick { offset -> backgroundContextMenuOffset = offset }
     ) {
-            val isWideScreen = maxWidth >= 720.dp
-            val horizontalPadding = if (isWideScreen) 36.dp else 14.dp
-            val verticalPadding = if (isWideScreen) 20.dp else 8.dp
+        val isWideScreen = maxWidth >= 720.dp
+        val horizontalPadding = when {
+            maxWidth >= 1400.dp -> 64.dp
+            maxWidth >= 1000.dp -> 48.dp
+            maxWidth >= 720.dp -> 32.dp
+            else -> 16.dp
+        }
+        val verticalPadding = if (isWideScreen) 20.dp else 10.dp
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxHeight()
+                    .widthIn(max = 1440.dp)
+                    .fillMaxWidth()
                     .statusBarsPadding()
                     .padding(horizontal = horizontalPadding, vertical = verticalPadding),
                 verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 14.dp else 10.dp)
@@ -536,7 +549,8 @@ fun BoardsLibraryScreen(
                                         onDuplicateBoard = { onAction(BoardAction.DuplicateBoard(board.id)) },
                                         onEditMetadata = { boardToEditMetadata = board },
                                         onExportBoard = { boardToExport = board },
-                                        onDeleteBoard = { boardIdToDeleteWithConfirm = board.id }
+                                        onDeleteBoard = { boardIdToDeleteWithConfirm = board.id },
+                                        currentUserName = uiState.displayName
                                     )
                                 }
                             }
@@ -617,7 +631,8 @@ fun BoardsLibraryScreen(
                                         onDuplicateBoard = { onAction(BoardAction.DuplicateBoard(board.id)) },
                                         onEditMetadata = { boardToEditMetadata = board },
                                         onExportBoard = { boardToExport = board },
-                                        onDeleteBoard = { boardIdToDeleteWithConfirm = board.id }
+                                        onDeleteBoard = { boardIdToDeleteWithConfirm = board.id },
+                                        currentUserName = uiState.displayName
                                     )
                                 }
                             }
@@ -625,8 +640,9 @@ fun BoardsLibraryScreen(
                     }
                 }
             }
+        }
 
-            // Bottom Action Bar: Connect & New Board (slides down & fades out in selection mode)
+        // Bottom Action Bar: Connect & New Board (slides down & fades out in selection mode)
             AnimatedVisibility(
                 visible = !isSelectionMode,
                 enter = slideInVertically(

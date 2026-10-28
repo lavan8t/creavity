@@ -17,6 +17,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import com.kd.creavity.presentation.canvas.getToolPointerIcon
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -314,6 +316,7 @@ fun CanvasViewportScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .pointerHoverIcon(getToolPointerIcon(uiState.selectedTool), overrideDescendants = true)
                     .background(effectiveCanvasBg)
                     .onSizeChanged { canvasSize = it }
             ) {

@@ -67,7 +67,8 @@ fun BoardGridCard(
     onExportBoard: () -> Unit = {},
     onDeleteBoard: () -> Unit = {},
     modifier: Modifier = Modifier,
-    thumbnailModifier: Modifier = Modifier
+    thumbnailModifier: Modifier = Modifier,
+    currentUserName: String = "You"
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
@@ -181,6 +182,7 @@ fun BoardGridCard(
 
                     BoardMetadataBadges(
                         board = board,
+                        currentUserName = currentUserName,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -249,7 +251,8 @@ fun BoardListRow(
     onExportBoard: () -> Unit = {},
     onDeleteBoard: () -> Unit = {},
     modifier: Modifier = Modifier,
-    thumbnailModifier: Modifier = Modifier
+    thumbnailModifier: Modifier = Modifier,
+    currentUserName: String = "You"
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
     var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
@@ -325,7 +328,10 @@ fun BoardListRow(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    BoardMetadataBadges(board = board)
+                    BoardMetadataBadges(
+                        board = board,
+                        currentUserName = currentUserName
+                    )
                 }
 
                 // Favourite Star Button

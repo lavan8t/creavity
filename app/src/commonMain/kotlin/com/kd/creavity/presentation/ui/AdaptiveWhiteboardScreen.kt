@@ -272,7 +272,7 @@ fun AdaptiveWhiteboardScreen(
                 }
                 composable(NavDestination.CANVAS.name) {
                     CanvasViewportScreen(
-                        uiState = latestUiState,
+                        uiState = uiState,
                         onAction = onAction,
                         onNavigateToDestination = { dest ->
                             if (dest == NavDestination.BOARDS) {

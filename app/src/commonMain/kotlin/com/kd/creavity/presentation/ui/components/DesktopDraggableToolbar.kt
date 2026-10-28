@@ -76,6 +76,28 @@ fun DesktopDraggableToolbar(
 
     onToolbarPositionChanged(currentClampedOffset)
 
+    val isPen = uiState.selectedTool in listOf(
+        DrawingTool.PEN,
+        DrawingTool.PENCIL,
+        DrawingTool.CALLIGRAPHY,
+        DrawingTool.MARKER
+    )
+    val penIcon = when (uiState.selectedTool) {
+        DrawingTool.PENCIL -> "pencil"
+        DrawingTool.CALLIGRAPHY -> "calligraphy"
+        DrawingTool.MARKER -> "edit"
+        else -> "pen"
+    }
+
+    val isHighlighter = uiState.selectedTool in listOf(
+        DrawingTool.HIGHLIGHTER,
+        DrawingTool.BRUSH
+    )
+    val highlighterIcon = if (uiState.selectedTool == DrawingTool.BRUSH) "brush" else "ink_highlighter"
+
+    val isEraser = uiState.selectedTool == DrawingTool.ERASER || uiState.selectedTool == DrawingTool.SELECT_ERASE
+    val eraserIcon = if (uiState.selectedTool == DrawingTool.SELECT_ERASE) "highlight_off" else "eraser"
+
     val isShape = uiState.selectedTool in listOf(
         DrawingTool.RECTANGLE,
         DrawingTool.CIRCLE,
@@ -84,6 +106,27 @@ fun DesktopDraggableToolbar(
         DrawingTool.ARROW,
         DrawingTool.LINE
     )
+    val shapeIcon = when (uiState.selectedTool) {
+        DrawingTool.CIRCLE -> "circle"
+        DrawingTool.TRIANGLE -> "triangle"
+        DrawingTool.STAR -> "star"
+        DrawingTool.ARROW -> "arrow_forward"
+        DrawingTool.LINE -> "arrow_right_alt"
+        DrawingTool.RECTANGLE -> "rectangle"
+        else -> "shapes"
+    }
+
+    val isSelect = uiState.selectedTool in listOf(
+        DrawingTool.SELECT,
+        DrawingTool.SELECT_MOVE,
+        DrawingTool.RECT_SELECT,
+        DrawingTool.LASSO_SELECT
+    )
+    val selectIcon = when (uiState.selectedTool) {
+        DrawingTool.RECT_SELECT -> "crop_free"
+        DrawingTool.LASSO_SELECT -> "gesture"
+        else -> "cursor"
+    }
 
     Surface(
         modifier = modifier
@@ -124,11 +167,11 @@ fun DesktopDraggableToolbar(
 
             // 1. Pen Tool
             DesktopToolButton(
-                icon = "pen",
+                icon = penIcon,
                 label = "Pen",
-                isSelected = uiState.selectedTool == DrawingTool.PEN,
+                isSelected = isPen,
                 onClick = {
-                    if (uiState.selectedTool == DrawingTool.PEN) {
+                    if (isPen) {
                         onToggleCallout("PEN")
                     } else {
                         onAction(BoardAction.SelectTool(DrawingTool.PEN))
@@ -138,19 +181,19 @@ fun DesktopDraggableToolbar(
 
             // 2. Highlighter Tool
             DesktopToolButton(
-                icon = "brush",
+                icon = highlighterIcon,
                 label = "Highlighter",
-                isSelected = uiState.selectedTool == DrawingTool.HIGHLIGHTER,
+                isSelected = isHighlighter,
                 onClick = { onAction(BoardAction.SelectTool(DrawingTool.HIGHLIGHTER)) }
             )
 
             // 3. Eraser Tool
             DesktopToolButton(
-                icon = "eraser",
+                icon = eraserIcon,
                 label = "Eraser",
-                isSelected = uiState.selectedTool == DrawingTool.ERASER,
+                isSelected = isEraser,
                 onClick = {
-                    if (uiState.selectedTool == DrawingTool.ERASER) {
+                    if (isEraser) {
                         onToggleCallout("ERASER")
                     } else {
                         onAction(BoardAction.SelectTool(DrawingTool.ERASER))
@@ -160,7 +203,7 @@ fun DesktopDraggableToolbar(
 
             // 4. Shapes Tool (Word / PowerPoint office shapes)
             DesktopToolButton(
-                icon = "shapes",
+                icon = shapeIcon,
                 label = "Shapes",
                 isSelected = isShape,
                 onClick = { onToggleCallout("SHAPES") }
@@ -168,16 +211,11 @@ fun DesktopDraggableToolbar(
 
             // 5. Select / Transform Tool
             DesktopToolButton(
-                icon = "cursor",
+                icon = selectIcon,
                 label = "Select",
-                isSelected = uiState.selectedTool in listOf(
-                    DrawingTool.SELECT,
-                    DrawingTool.SELECT_MOVE,
-                    DrawingTool.RECT_SELECT,
-                    DrawingTool.LASSO_SELECT
-                ),
+                isSelected = isSelect,
                 onClick = {
-                    if (uiState.selectedTool == DrawingTool.SELECT) {
+                    if (isSelect) {
                         onToggleCallout("SELECT")
                     } else {
                         onAction(BoardAction.SelectTool(DrawingTool.SELECT))

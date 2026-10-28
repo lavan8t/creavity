@@ -173,7 +173,7 @@ fun WhiteboardCanvas(
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerHoverIcon(canvasHoverIcon)
+            .pointerHoverIcon(canvasHoverIcon, overrideDescendants = true)
             .graphicsLayer {
                 // Hardware acceleration GPU backing
                 clip = true

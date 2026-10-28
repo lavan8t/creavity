@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.Board
+import com.kd.creavity.util.getDeviceName
 
 @Composable
 fun GroupFolderFilterRow(
@@ -90,9 +91,29 @@ fun GroupFolderFilterRow(
 @Composable
 fun BoardMetadataBadges(
     board: Board,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentUserName: String = "You"
 ) {
-    val isOwnedByMe = board.ownerName.equals("You", ignoreCase = true) || board.createdBy.equals("You", ignoreCase = true)
+    val myDeviceName = remember { getDeviceName() }
+    val systemUserName = remember {
+        runCatching { System.getProperty("user.name") }.getOrNull() ?: ""
+    }
+    val isOwnedByMe = board.ownerName.isBlank() ||
+            board.ownerName.equals("You", ignoreCase = true) ||
+            board.createdBy.isBlank() ||
+            board.createdBy.equals("You", ignoreCase = true) ||
+            (myDeviceName.isNotBlank() && (
+                board.ownerName.equals(myDeviceName, ignoreCase = true) ||
+                board.createdBy.equals(myDeviceName, ignoreCase = true)
+            )) ||
+            (systemUserName.isNotBlank() && (
+                board.ownerName.equals(systemUserName, ignoreCase = true) ||
+                board.createdBy.equals(systemUserName, ignoreCase = true)
+            )) ||
+            (currentUserName.isNotBlank() && (
+                board.ownerName.equals(currentUserName, ignoreCase = true) ||
+                board.createdBy.equals(currentUserName, ignoreCase = true)
+            ))
     if (isOwnedByMe && board.venue.isBlank() && board.labels.isEmpty()) return
 
     Row(

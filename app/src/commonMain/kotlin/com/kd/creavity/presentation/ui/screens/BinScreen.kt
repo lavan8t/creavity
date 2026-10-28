@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -76,7 +78,8 @@ fun BinScreen(
     var boardIdToDeletePermanently by remember { mutableStateOf<String?>(null) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-        val isWideScreen = maxWidth >= 720.dp
+        val screenMaxWidth = maxWidth
+        val isWideScreen = screenMaxWidth >= 720.dp
 
         Scaffold(
             modifier = Modifier
@@ -145,11 +148,15 @@ fun BinScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(innerPadding),
+                contentAlignment = Alignment.TopCenter
             ) {
             if (binnedBoards.isEmpty()) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 1440.dp)
+                        .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Card(
@@ -181,16 +188,26 @@ fun BinScreen(
                     }
                 }
             } else {
+                val horizontalPadding = when {
+                    screenMaxWidth >= 1400.dp -> 64.dp
+                    screenMaxWidth >= 1000.dp -> 48.dp
+                    screenMaxWidth >= 720.dp -> 32.dp
+                    else -> 16.dp
+                }
+                val verticalPadding = if (isWideScreen) 20.dp else 12.dp
+
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 300.dp),
                     contentPadding = PaddingValues(
-                        horizontal = if (isWideScreen) 36.dp else 16.dp,
-                        vertical = if (isWideScreen) 20.dp else 12.dp
+                        horizontal = horizontalPadding,
+                        vertical = verticalPadding
                     ),
                     horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 12.dp),
                     verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 12.dp),
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxHeight()
+                        .widthIn(max = 1440.dp)
+                        .fillMaxWidth()
                         .navigationBarsPadding()
                 ) {
                     items(binnedBoards, key = { it.id }) { board ->
