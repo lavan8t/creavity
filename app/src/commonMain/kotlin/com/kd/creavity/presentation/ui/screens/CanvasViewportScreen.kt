@@ -2,6 +2,9 @@ package com.kd.creavity.presentation.ui.screens
 
 import com.kd.creavity.util.FilePickerType
 import com.kd.creavity.util.rememberFilePickerLauncher
+import com.kd.creavity.util.shareBoard
+import com.kd.creavity.presentation.ui.components.CanvasExportDialog
+import com.kd.creavity.presentation.ui.components.FloatingSelectionDock
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,8 +35,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -58,6 +63,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -236,6 +242,7 @@ fun CanvasViewportScreen(
     var selectedStrokes by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedTexts by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectionBounds by remember { mutableStateOf<Rect?>(null) }
+    var activeEditingStrokeId by remember { mutableStateOf<String?>(null) }
 
     // Image Picker
     val launchImagePicker = rememberFilePickerLauncher(FilePickerType.IMAGE) { path ->
@@ -248,6 +255,7 @@ fun CanvasViewportScreen(
     }
     var showGoogleSlidesDialog by remember { mutableStateOf(false) }
     var GoogleSlidesUrlInput by remember { mutableStateOf(uiState.presentationUrl ?: "") }
+    var showExportDialog by remember { mutableStateOf(false) }
 
     val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
     val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
@@ -367,23 +375,20 @@ fun CanvasViewportScreen(
                 focusRequester.requestFocus()
             }
 
-            Box(
+            ElevatedCard(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                ),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
                 modifier = Modifier
                     .offset { IntOffset(screenX, screenY) }
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.94f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .border(
-                        width = 1.5.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp)
-                    )
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(8.dp)
                 ) {
                     BasicTextField(
                         value = inlineTextContent,
@@ -398,17 +403,27 @@ fun CanvasViewportScreen(
                         keyboardActions = KeyboardActions(
                             onDone = {
                                 if (inlineTextContent.isNotBlank()) {
-                                    onAction(
-                                        BoardAction.AddText(
-                                            text = inlineTextContent,
-                                            x = activeInlineTextPoint!!.x,
-                                            y = activeInlineTextPoint!!.y,
-                                            color = effectivePenColor,
-                                            fontSize = textFontSize,
-                                            fontName = "Google Sans Flex"
+                                    if (activeEditingStrokeId != null) {
+                                        onAction(
+                                            BoardAction.UpdateStrokeProperties(
+                                                strokeId = activeEditingStrokeId!!,
+                                                embeddedText = inlineTextContent
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        onAction(
+                                            BoardAction.AddText(
+                                                text = inlineTextContent,
+                                                x = activeInlineTextPoint!!.x,
+                                                y = activeInlineTextPoint!!.y,
+                                                color = effectivePenColor,
+                                                fontSize = textFontSize,
+                                                fontName = "Google Sans Flex"
+                                            )
+                                        )
+                                    }
                                 }
+                                activeEditingStrokeId = null
                                 activeInlineTextPoint = null
                                 inlineTextContent = ""
                             }
@@ -421,17 +436,27 @@ fun CanvasViewportScreen(
                     IconButton(
                         onClick = {
                             if (inlineTextContent.isNotBlank()) {
-                                onAction(
-                                    BoardAction.AddText(
-                                        text = inlineTextContent,
-                                        x = activeInlineTextPoint!!.x,
-                                        y = activeInlineTextPoint!!.y,
-                                        color = effectivePenColor,
-                                        fontSize = textFontSize,
-                                        fontName = "Google Sans Flex"
+                                if (activeEditingStrokeId != null) {
+                                    onAction(
+                                        BoardAction.UpdateStrokeProperties(
+                                            strokeId = activeEditingStrokeId!!,
+                                            embeddedText = inlineTextContent
+                                        )
                                     )
-                                )
+                                } else {
+                                    onAction(
+                                        BoardAction.AddText(
+                                            text = inlineTextContent,
+                                            x = activeInlineTextPoint!!.x,
+                                            y = activeInlineTextPoint!!.y,
+                                            color = effectivePenColor,
+                                            fontSize = textFontSize,
+                                            fontName = "Google Sans Flex"
+                                        )
+                                    )
+                                }
                             }
+                            activeEditingStrokeId = null
                             activeInlineTextPoint = null
                             inlineTextContent = ""
                         },
@@ -446,6 +471,7 @@ fun CanvasViewportScreen(
 
                     IconButton(
                         onClick = {
+                            activeEditingStrokeId = null
                             activeInlineTextPoint = null
                             inlineTextContent = ""
                         },
@@ -672,6 +698,18 @@ fun CanvasViewportScreen(
                                 }
                             }
 
+                            // Export Diagram & Canvas (SVG/PNG)
+                            DropdownMenuItem(
+                                text = { Text("Export Diagram (SVG/PNG)") },
+                                leadingIcon = {
+                                    MaterialSymbol(name = "share", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    showExportDialog = true
+                                }
+                            )
+
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                             // Bird's Eye View (Shown only to host when collab is connected)
                             if (uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
@@ -763,6 +801,18 @@ fun CanvasViewportScreen(
                                 }
                             )
 
+                            // Export Diagram & Canvas (SVG/PNG)
+                            DropdownMenuItem(
+                                text = { Text("Export Diagram (SVG/PNG)") },
+                                leadingIcon = {
+                                    MaterialSymbol(name = "share", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    showExportDialog = true
+                                }
+                            )
+
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             // Clear Board
@@ -819,26 +869,29 @@ fun CanvasViewportScreen(
             )
         }
 
-        // 4. Selection Context Bar (Duplicate, Recolor, Delete)
-        CanvasSelectionBar(
-            selectedCount = selectedStrokes.size + selectedTexts.size,
-            onDuplicate = {
-                onAction(BoardAction.DuplicateElements(selectedStrokes, selectedTexts))
-            },
-            onRecolor = {
-                onAction(BoardAction.RecolorElements(selectedStrokes, selectedTexts, effectivePenColor))
-            },
-            onDelete = {
-                selectedStrokes.forEach { onAction(BoardAction.DeleteStroke(it)) }
-                selectedTexts.forEach { onAction(BoardAction.DeleteText(it)) }
-                selectedStrokes = emptyList()
-                selectedTexts = emptyList()
-            },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 54.dp)
-        )
+        // 4. Floating Contextual Selection Dock (Fill, Roughness, Layers, Text, Colors)
+        if (selectedStrokes.isNotEmpty() || selectedTexts.isNotEmpty()) {
+            FloatingSelectionDock(
+                selectedStrokeIds = selectedStrokes,
+                selectedTextIds = selectedTexts,
+                strokes = uiState.strokes,
+                onAction = onAction,
+                onOpenEmbeddedTextEditor = { strokeId, currentText ->
+                    val stroke = uiState.strokes.firstOrNull { it.id == strokeId }
+                    if (stroke != null && stroke.points.isNotEmpty()) {
+                        val midX = (stroke.points.minOf { it.x } + stroke.points.maxOf { it.x }) / 2f
+                        val midY = (stroke.points.minOf { it.y } + stroke.points.maxOf { it.y }) / 2f
+                        activeInlineTextPoint = Point(midX, midY)
+                        inlineTextContent = currentText ?: ""
+                        activeEditingStrokeId = strokeId
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 54.dp)
+            )
+        }
 
         // 5. Callout backdrop overlay (dismisses callouts when tapping canvas)
         if (activeCalloutTool != null) {
@@ -1050,6 +1103,22 @@ fun CanvasViewportScreen(
             onEndQuiz = { qId, key -> onAction(BoardAction.EndQuiz(qId, key)) },
             onDismiss = { showQuizDeckSheet = false }
         )
+
+        // 17. High-Fidelity Canvas Export Dialog (SVG/PNG/Clipboard)
+        if (showExportDialog) {
+            CanvasExportDialog(
+                boardTitle = uiState.currentBoard.title,
+                strokes = uiState.strokes,
+                texts = uiState.textElements,
+                stickyNotes = uiState.stickyNotes,
+                selectedStrokeIds = selectedStrokes,
+                backgroundColor = effectiveCanvasBg.toArgb().toLong(),
+                onDismiss = { showExportDialog = false },
+                onExportFile = { format, isTransparent, isSelectionOnly ->
+                    shareBoard(uiState.currentBoard, format)
+                }
+            )
+        }
     }
 
     // Desktop Command Center Side-Deck (Expanded screens >= 840dp)

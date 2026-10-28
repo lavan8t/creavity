@@ -10,7 +10,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke as CanvasStrokeStyle
 import com.kd.creavity.domain.math.PathUtils
 import com.kd.creavity.domain.model.DrawingTool
+import com.kd.creavity.domain.model.FillStyle
 import com.kd.creavity.domain.model.Point
+import com.kd.creavity.domain.model.RoughnessStyle
 import com.kd.creavity.presentation.canvas.renderers.CalligraphyStrokeRenderer
 import com.kd.creavity.presentation.canvas.renderers.PenStrokeRenderer
 import com.kd.creavity.presentation.canvas.renderers.PencilStrokeRenderer
@@ -27,7 +29,10 @@ object StrokeDrawer {
         color: Color,
         width: Float,
         tool: DrawingTool,
-        cachedPath: Path? = null
+        cachedPath: Path? = null,
+        roughness: RoughnessStyle = RoughnessStyle.SKETCHY,
+        fillStyle: FillStyle = FillStyle.TRANSPARENT,
+        strokeId: String = ""
     ) {
         if (points.isEmpty()) return
         if (points.size == 1 && tool != DrawingTool.LASER && tool != DrawingTool.CALLIGRAPHY && tool != DrawingTool.PENCIL && tool != DrawingTool.PEN) {
@@ -91,37 +96,63 @@ object StrokeDrawer {
                     )
                 )
             }
-            DrawingTool.ARROW -> {
-                if (points.size >= 2) {
-                    drawArrow(points.first(), points.last(), color, width)
-                }
-            }
-            DrawingTool.TRIANGLE -> {
-                if (points.size >= 2) {
-                    drawTriangle(points.first(), points.last(), color, width)
-                }
-            }
-            DrawingTool.RECTANGLE -> {
-                if (points.size >= 2) {
-                    drawRectangle(points.first(), points.last(), color, width)
-                }
-            }
-            DrawingTool.CIRCLE -> {
-                if (points.size >= 2) {
-                    drawCircleShape(points.first(), points.last(), color, width)
-                }
-            }
+            DrawingTool.ARROW,
+            DrawingTool.TRIANGLE,
+            DrawingTool.RECTANGLE,
+            DrawingTool.CIRCLE,
+            DrawingTool.DIAMOND,
+            DrawingTool.CYLINDER,
+            DrawingTool.STAR,
             DrawingTool.LINE -> {
                 if (points.size >= 2) {
-                    val start = points.first()
-                    val end = points.last()
-                    drawLine(
-                        color = color,
-                        start = Offset(start.x, start.y),
-                        end = Offset(end.x, end.y),
+                    val roughShape = RoughShapeGenerator.getOrCreateRoughShape(
+                        strokeId = strokeId,
+                        tool = tool,
+                        points = points,
                         strokeWidth = width,
-                        cap = StrokeCap.Round
+                        roughness = roughness,
+                        fillStyle = fillStyle
                     )
+
+                    // 1. Fill (if semi-transparent or solid)
+                    if (roughShape.fillPath != null) {
+                        when (fillStyle) {
+                            FillStyle.SEMI_TRANSPARENT -> {
+                                drawPath(roughShape.fillPath, color.copy(alpha = 0.22f))
+                            }
+                            FillStyle.SOLID -> {
+                                drawPath(roughShape.fillPath, color)
+                            }
+                            else -> {}
+                        }
+                    }
+
+                    // 2. Hachure Cross-Hatching
+                    if (fillStyle == FillStyle.HACHURE && roughShape.hachurePaths.isNotEmpty()) {
+                        roughShape.hachurePaths.forEach { hPath ->
+                            drawPath(
+                                path = hPath,
+                                color = color.copy(alpha = 0.70f),
+                                style = CanvasStrokeStyle(
+                                    width = (width * 0.75f).coerceAtLeast(1f),
+                                    cap = StrokeCap.Round
+                                )
+                            )
+                        }
+                    }
+
+                    // 3. Outlines
+                    roughShape.strokePaths.forEach { sPath ->
+                        drawPath(
+                            path = sPath,
+                            color = color,
+                            style = CanvasStrokeStyle(
+                                width = width,
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
                 }
             }
             DrawingTool.LASER -> {

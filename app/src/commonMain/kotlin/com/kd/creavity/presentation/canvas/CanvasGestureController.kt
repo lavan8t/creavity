@@ -50,6 +50,7 @@ class CanvasGestureController(
     var activeToolUsed = DrawingTool.PEN
         private set
     var pendingStroke: Stroke? = null
+    var activeHoverAnchor: ShapeAnchor? = null
 
     // Laser pointer points (ephemeral)
     val laserPoints = mutableListOf<Point>()
@@ -74,6 +75,7 @@ class CanvasGestureController(
     val movingStrokes = mutableListOf<Stroke>()
     val movingTexts = mutableListOf<TextElement>()
     val movingImages = mutableListOf<ImageElement>()
+    val activeAlignmentGuides = mutableListOf<AlignmentGuide>()
 
     // Stylus button state
     var isStylusButtonActive = false
@@ -102,6 +104,7 @@ class CanvasGestureController(
         }
         activeDrawingPointerId = -1L
         activeStrokeIsStylus = false
+        activeHoverAnchor = null
     }
 
     private fun distanceSqToSegment(p: Point, a: Point, b: Point): Float {
@@ -295,6 +298,7 @@ class CanvasGestureController(
             if (wasPinching) {
                 activePoints.clear()
                 activePath.reset()
+                activeHoverAnchor = null
                 if (activeStrokeId.isNotEmpty()) {
                     onStrokeBroadcastEnd(activeStrokeId)
                     activeStrokeId = ""
@@ -311,6 +315,7 @@ class CanvasGestureController(
                 movingStrokes.clear()
                 movingTexts.clear()
                 movingImages.clear()
+                activeAlignmentGuides.clear()
             }
             marqueeStart = null
             marqueeRect = null
@@ -331,14 +336,31 @@ class CanvasGestureController(
                         listOf(activePoints.first(), activePoints.last())
                     }
 
-                    if (finalPoints.isNotEmpty()) {
+                    var snappedPoints = finalPoints
+                    var startAnchorId: String? = null
+                    var endAnchorId: String? = null
+
+                    if ((activeToolUsed == DrawingTool.ARROW || activeToolUsed == DrawingTool.LINE) && finalPoints.size >= 2) {
+                        val snapResult = ConnectorManager.snapEndpoints(
+                            points = finalPoints,
+                            anchors = ConnectorManager.computeAllAnchors(strokes, stickyNotes),
+                            threshold = 32f / zoom
+                        )
+                        snappedPoints = snapResult.points
+                        startAnchorId = snapResult.startAnchorId
+                        endAnchorId = snapResult.endAnchorId
+                    }
+
+                    if (snappedPoints.isNotEmpty()) {
                         val finalStroke = Stroke(
                             id = activeStrokeId,
-                            points = finalPoints,
+                            points = snappedPoints,
                             color = currentColor.toArgb().toLong(),
                             strokeWidth = currentWidth / zoom,
                             tool = activeToolUsed,
-                            isEraser = activeToolUsed == DrawingTool.ERASER
+                            isEraser = activeToolUsed == DrawingTool.ERASER,
+                            connectedStartAnchor = startAnchorId,
+                            connectedEndAnchor = endAnchorId
                         )
                         pendingStroke = finalStroke
                         onStrokeCompleted(finalStroke)
@@ -350,6 +372,7 @@ class CanvasGestureController(
                 }
                 activePoints.clear()
                 activePath.reset()
+                activeHoverAnchor = null
             }
             requestInvalidate()
             return true
@@ -544,6 +567,39 @@ class CanvasGestureController(
                             val im = movingImages[i]
                             movingImages[i] = im.copy(x = im.x + dx, y = im.y + dy)
                         }
+
+                        // Smart alignment guide calculation
+                        if (movingStrokes.isNotEmpty()) {
+                            val allPoints = movingStrokes.flatMap { it.points }
+                            if (allPoints.isNotEmpty()) {
+                                val tLeft = allPoints.minOf { it.x }
+                                val tRight = allPoints.maxOf { it.x }
+                                val tTop = allPoints.minOf { it.y }
+                                val tBottom = allPoints.maxOf { it.y }
+                                val targetRect = Rect(tLeft, tTop, tRight, tBottom)
+
+                                val candidateRects = strokes
+                                    .filterNot { selectedStrokeIds.contains(it.id) }
+                                    .mapNotNull { s ->
+                                        if (s.points.isEmpty()) null
+                                        else Rect(
+                                            s.points.minOf { it.x },
+                                            s.points.minOf { it.y },
+                                            s.points.maxOf { it.x },
+                                            s.points.maxOf { it.y }
+                                        )
+                                    }
+
+                                val guideResult = SmartGuideEngine.computeAlignmentGuides(
+                                    targetRect = targetRect,
+                                    candidateRects = candidateRects,
+                                    threshold = 10f / zoom
+                                )
+                                activeAlignmentGuides.clear()
+                                activeAlignmentGuides.addAll(guideResult.guides)
+                            }
+                        }
+
                         lastMovePoint = worldPoint
                     } else if (effectiveTool == DrawingTool.LASSO_SELECT) {
                         lassoPoints.add(worldPoint)
@@ -601,6 +657,7 @@ class CanvasGestureController(
                         movingStrokes.clear()
                         movingTexts.clear()
                         movingImages.clear()
+                        activeAlignmentGuides.clear()
                     }
                     marqueeStart = null
                     marqueeRect = null
@@ -698,6 +755,15 @@ class CanvasGestureController(
                     activePoints.add(worldPoint)
                     activePath.reset()
                     activePath.addPath(PathUtils.createToolPath(activeToolUsed, listOf(activePoints.first(), worldPoint)))
+                    if (activeToolUsed == DrawingTool.ARROW || activeToolUsed == DrawingTool.LINE) {
+                        activeHoverAnchor = ConnectorManager.findClosestAnchor(
+                            Offset(worldPoint.x, worldPoint.y),
+                            ConnectorManager.computeAllAnchors(strokes, stickyNotes),
+                            threshold = 32f / zoom
+                        )
+                    } else {
+                        activeHoverAnchor = null
+                    }
                 }
 
                 if (activeToolUsed != DrawingTool.LASER) {

@@ -302,6 +302,42 @@ fun CanvasBottomToolbar(
                                 }
                             )
                             FabMenuItem(
+                                icon = "diamond",
+                                label = "Diamond",
+                                filled = uiState.selectedTool == DrawingTool.DIAMOND,
+                                onClick = {
+                                    fabMenuExpanded = false
+                                    onAction(BoardAction.SelectTool(DrawingTool.DIAMOND))
+                                }
+                            )
+                            FabMenuItem(
+                                icon = "cylinder",
+                                label = "Cylinder",
+                                filled = uiState.selectedTool == DrawingTool.CYLINDER,
+                                onClick = {
+                                    fabMenuExpanded = false
+                                    onAction(BoardAction.SelectTool(DrawingTool.CYLINDER))
+                                }
+                            )
+                            FabMenuItem(
+                                icon = "star",
+                                label = "Star",
+                                filled = uiState.selectedTool == DrawingTool.STAR,
+                                onClick = {
+                                    fabMenuExpanded = false
+                                    onAction(BoardAction.SelectTool(DrawingTool.STAR))
+                                }
+                            )
+                            FabMenuItem(
+                                icon = "triangle",
+                                label = "Triangle",
+                                filled = uiState.selectedTool == DrawingTool.TRIANGLE,
+                                onClick = {
+                                    fabMenuExpanded = false
+                                    onAction(BoardAction.SelectTool(DrawingTool.TRIANGLE))
+                                }
+                            )
+                            FabMenuItem(
                                 icon = "flare",
                                 label = "Laser pointer",
                                 filled = uiState.selectedTool == DrawingTool.LASER,

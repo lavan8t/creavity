@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flare
@@ -80,6 +81,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StickyNote2
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.TextFormat
 import androidx.compose.material.icons.filled.Title
@@ -107,6 +109,7 @@ import androidx.compose.material.icons.outlined.CropFree
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Devices
+import androidx.compose.material.icons.outlined.Diamond
 import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Flare
@@ -140,6 +143,7 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Slideshow
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.StickyNote2
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.TextFormat
 import androidx.compose.material.icons.outlined.Title
@@ -184,6 +188,8 @@ fun MaterialSymbol(
         "rectangle", "crop_square", "filter_none" -> if (filled) Icons.Filled.Rectangle else Icons.Outlined.Rectangle
         "circle", "radio_button_unchecked" -> if (filled) Icons.Filled.Circle else Icons.Outlined.Circle
         "triangle", "change_history" -> if (filled) Icons.Filled.ChangeHistory else Icons.Outlined.ChangeHistory
+        "diamond" -> if (filled) Icons.Filled.Diamond else Icons.Outlined.Diamond
+        "cylinder", "database", "storage" -> if (filled) Icons.Filled.Storage else Icons.Outlined.Storage
         "text", "title" -> if (filled) Icons.Filled.Title else Icons.Outlined.Title
         "text_fields" -> if (filled) Icons.Filled.TextFields else Icons.Outlined.TextFields
         "text_format" -> if (filled) Icons.Filled.TextFormat else Icons.Outlined.TextFormat

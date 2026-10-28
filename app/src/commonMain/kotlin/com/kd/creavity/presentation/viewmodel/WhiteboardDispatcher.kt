@@ -30,6 +30,8 @@ fun WhiteboardViewModel.dispatch(action: BoardAction) {
         is BoardAction.MoveElements -> updateMovedElements(action.strokes, action.texts, action.images)
         is BoardAction.DuplicateElements -> duplicateElements(action.strokeIds, action.textIds)
         is BoardAction.RecolorElements -> recolorElements(action.strokeIds, action.textIds, action.color)
+        is BoardAction.UpdateStrokeProperties -> updateStrokeProperties(action)
+        is BoardAction.ReorderElements -> reorderElements(action.strokeIds, action.bringToFront)
         is BoardAction.Undo -> undo()
         is BoardAction.Redo -> redo()
         is BoardAction.CreateVersionSnapshot -> createVersionSnapshot(action.name)

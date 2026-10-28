@@ -40,6 +40,15 @@ sealed interface BoardAction {
     data class MoveElements(val strokes: List<Stroke>, val texts: List<TextElement>, val images: List<ImageElement>) : BoardAction
     data class DuplicateElements(val strokeIds: List<String>, val textIds: List<String>) : BoardAction
     data class RecolorElements(val strokeIds: List<String>, val textIds: List<String>, val color: Color) : BoardAction
+    data class UpdateStrokeProperties(
+        val strokeId: String,
+        val roughness: com.kd.creavity.domain.model.RoughnessStyle? = null,
+        val fillStyle: com.kd.creavity.domain.model.FillStyle? = null,
+        val embeddedText: String? = null,
+        val color: Color? = null,
+        val width: Float? = null
+    ) : BoardAction
+    data class ReorderElements(val strokeIds: List<String>, val bringToFront: Boolean) : BoardAction
 
     // Undo / Redo / Snapshot
     data object Undo : BoardAction

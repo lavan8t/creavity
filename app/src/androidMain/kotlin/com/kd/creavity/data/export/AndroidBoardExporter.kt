@@ -175,60 +175,13 @@ object AndroidBoardExporter {
 
     private fun exportToSvg(board: Board, pageIndex: Int, file: File) {
         val page = board.pages.getOrElse(pageIndex) { board.pages.firstOrNull() ?: BoardPage() }
-        val width = 1920
-        val height = 1080
-        val bgHex = String.format("#%06X", 0xFFFFFF and board.backgroundColor.toInt())
-
-        val sb = StringBuilder()
-        sb.append("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $width $height" width="$width" height="$height">""").append("\n")
-        sb.append("""  <rect width="100%" height="100%" fill="$bgHex" />""").append("\n")
-
-        page.strokes.forEach { stroke ->
-            if (stroke.points.size < 2 || stroke.isEraser) return@forEach
-            val colorHex = String.format("#%06X", 0xFFFFFF and stroke.color.toInt())
-            val opacity = if (stroke.tool == DrawingTool.HIGHLIGHTER) "0.35" else "1.0"
-            val sw = stroke.strokeWidth * (if (stroke.tool == DrawingTool.HIGHLIGHTER) 3f else 1f)
-
-            val d = buildSvgPathData(stroke.points)
-            sb.append("""  <path d="$d" fill="none" stroke="$colorHex" stroke-width="$sw" stroke-linecap="round" stroke-linejoin="round" opacity="$opacity" />""").append("\n")
-        }
-
-        page.stickyNotes.forEach { note ->
-            val noteHex = String.format("#%06X", 0xFFFFFF and note.color.toInt())
-            sb.append("""  <rect x="${note.x}" y="${note.y}" width="${note.width}" height="${note.height}" rx="12" fill="$noteHex" />""").append("\n")
-            sb.append("""  <text x="${note.x + 16}" y="${note.y + 36}" font-size="20" fill="#1C1B1F" font-family="sans-serif">${escapeXml(note.text)}</text>""").append("\n")
-        }
-
-        page.textElements.forEach { txt ->
-            val colorHex = String.format("#%06X", 0xFFFFFF and txt.color.toInt())
-            sb.append("""  <text x="${txt.x}" y="${txt.y + txt.fontSize}" font-size="${txt.fontSize}" fill="$colorHex" font-family="sans-serif">${escapeXml(txt.text)}</text>""").append("\n")
-        }
-
-        sb.append("</svg>\n")
-        file.writeText(sb.toString())
-    }
-
-    private fun buildSvgPathData(points: List<Point>): String {
-        if (points.isEmpty()) return ""
-        val sb = StringBuilder()
-        sb.append("M ${points[0].x} ${points[0].y}")
-        for (i in 1 until points.size) {
-            val p0 = points[i - 1]
-            val p1 = points[i]
-            val midX = (p0.x + p1.x) / 2f
-            val midY = (p0.y + p1.y) / 2f
-            sb.append(" Q ${p0.x} ${p0.y} $midX $midY")
-        }
-        sb.append(" L ${points.last().x} ${points.last().y}")
-        return sb.toString()
-    }
-
-    private fun escapeXml(str: String): String {
-        return str.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-            .replace("'", "&apos;")
+        val svg = com.kd.creavity.presentation.canvas.CanvasExportManager.exportToSvg(
+            strokes = page.strokes,
+            texts = page.textElements,
+            stickyNotes = page.stickyNotes,
+            backgroundColor = board.backgroundColor
+        )
+        file.writeText(svg)
     }
 
     private fun exportToCreavity(board: Board, file: File) {

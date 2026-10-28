@@ -795,7 +795,12 @@ class WhiteboardViewModel(
         val previousTexts = activePage.textElements.filter { textMap.containsKey(it.id) }
         val previousImages = activePage.imageElements.filter { imageMap.containsKey(it.id) }
 
-        val updatedStrokes = activePage.strokes.map { strokeMap[it.id] ?: it }
+        val baseStrokes = activePage.strokes.map { strokeMap[it.id] ?: it }
+        val updatedStrokes = com.kd.creavity.presentation.canvas.ConnectorManager.rerouteConnectedStrokes(
+            allStrokes = baseStrokes,
+            movedStrokes = movedStrokes,
+            stickyNotes = activePage.stickyNotes
+        )
         val updatedTexts = activePage.textElements.map { textMap[it.id] ?: it }
         val updatedImages = activePage.imageElements.map { imageMap[it.id] ?: it }
 
@@ -908,6 +913,56 @@ class WhiteboardViewModel(
         )
 
         peerTransport.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedStrokes, updatedTexts))
+    }
+
+    fun updateStrokeProperties(action: BoardAction.UpdateStrokeProperties) {
+        val state = _uiState.value
+        val activePage = state.activePage
+        val target = activePage.strokes.firstOrNull { it.id == action.strokeId } ?: return
+
+        val updatedStroke = target.copy(
+            roughness = action.roughness ?: target.roughness,
+            fillStyle = action.fillStyle ?: target.fillStyle,
+            embeddedText = action.embeddedText ?: target.embeddedText,
+            color = action.color?.let { it.toArgb().toLong() } ?: target.color,
+            strokeWidth = action.width ?: target.strokeWidth
+        )
+
+        val updatedStrokes = activePage.strokes.map { if (it.id == action.strokeId) updatedStroke else it }
+        val updatedPage = activePage.copy(strokes = updatedStrokes)
+        val updatedPages = state.currentBoard.pages.toMutableList().apply {
+            this[state.currentBoard.activePageIndex] = updatedPage
+        }
+        val updatedBoard = state.currentBoard.copy(
+            pages = updatedPages,
+            modifiedAt = System.currentTimeMillis(),
+            lastAccessedAt = System.currentTimeMillis()
+        )
+        persistBoard(updatedBoard)
+        peerTransport.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedStrokes, activePage.textElements))
+    }
+
+    fun reorderElements(strokeIds: List<String>, bringToFront: Boolean) {
+        val state = _uiState.value
+        val activePage = state.activePage
+        val selected = activePage.strokes.filter { strokeIds.contains(it.id) }
+        val remaining = activePage.strokes.filterNot { strokeIds.contains(it.id) }
+        val updatedStrokes = if (bringToFront) {
+            remaining + selected
+        } else {
+            selected + remaining
+        }
+        val updatedPage = activePage.copy(strokes = updatedStrokes)
+        val updatedPages = state.currentBoard.pages.toMutableList().apply {
+            this[state.currentBoard.activePageIndex] = updatedPage
+        }
+        val updatedBoard = state.currentBoard.copy(
+            pages = updatedPages,
+            modifiedAt = System.currentTimeMillis(),
+            lastAccessedAt = System.currentTimeMillis()
+        )
+        persistBoard(updatedBoard)
+        peerTransport.sendPacketToAll(WhiteboardPacket.SyncResponse(updatedStrokes, activePage.textElements))
     }
 
     fun broadcastStrokeStart(strokeId: String, color: Long, strokeWidth: Float, isEraser: Boolean, point: Point, tool: DrawingTool = DrawingTool.PEN) {

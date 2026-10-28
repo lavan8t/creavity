@@ -27,3 +27,14 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Synchronized Quiz / Poll Engine**: A server-authoritative assessment protocol broadcasting question payloads, option sets, and countdown timers, rendering an interactive Material 3 Expressive overlay and streaming responses into live statistical distributions.
 - **Engagement Telemetry**: Real-time tracking of participant app lifecycle and window focus (`Watching`, `Away / Not Watching`, `Offline`) communicated through lifecycle state transitions and keepalive heartbeats.
 - **Adaptive Host Cockpit**: A responsive multi-pane layout for desktop displays and expanded screen widths (> 840dp) combining the master canvas, student matrix, quiz controls, and network topology diagnostics into an integrated workstation.
+
+## Diagramming & Sketch Mechanics (Excalidraw Engine)
+
+- **Rough Engine (Hand-Drawn Jitter)**: Algorithmic multi-pass line displacement producing natural, human-like sketchiness with configurable roughness levels (`CLEAN`, `SKETCHY`, `CARTOON`).
+- **Hachure & Cross-Hatch Fill**: Stylized hand-drawn shading using parameterized parallel or cross-hatched stroke lines rather than flat color fills.
+- **Magnetic Connector & Anchor Snap**: Semantic bindings between arrows/connectors and bounding anchors (North, South, East, West, Center) of target shapes that dynamically update geometry when shapes are dragged.
+- **Shape-Embedded Text**: Text elements intrinsically bound and centered inside flowchart nodes (rectangles, diamonds, cylinders, ellipses) that move, scale, and delete together.
+- **Smart Alignment Guides**: Ephemeral visual axes in `MaterialTheme.colorScheme.primary` that appear during element transformation to magnetically snap collinear edges and centroids.
+- **Floating Contextual Properties Dock**: A responsive, floating Material 3 `ElevatedCard` (`border = null`) anchored to current selections providing one-tap adjustments for fill, roughness, stroke width, color, and layer hierarchy.
+- **Canvas Vector Export**: Deterministic export pipelines rendering canvas selections or full boards into transparent/solid PNGs, clean SVG vectors, and OS clipboard bitmaps.
+

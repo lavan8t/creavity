@@ -148,6 +148,51 @@ object PathUtils {
                 path.lineTo(end.x, end.y)
                 path.close()
             }
+            DrawingTool.DIAMOND -> {
+                val left = minOf(start.x, end.x)
+                val top = minOf(start.y, end.y)
+                val right = maxOf(start.x, end.x)
+                val bottom = maxOf(start.y, end.y)
+                val midX = (left + right) / 2f
+                val midY = (top + bottom) / 2f
+                path.moveTo(midX, top)
+                path.lineTo(right, midY)
+                path.lineTo(midX, bottom)
+                path.lineTo(left, midY)
+                path.close()
+            }
+            DrawingTool.CYLINDER -> {
+                val left = minOf(start.x, end.x)
+                val top = minOf(start.y, end.y)
+                val right = maxOf(start.x, end.x)
+                val bottom = maxOf(start.y, end.y)
+                val h = bottom - top
+                val capH = kotlin.math.min(h * 0.25f, 40f).coerceAtLeast(6f)
+                path.addOval(Rect(left, top, right, top + capH))
+                path.moveTo(left, top + capH / 2f)
+                path.lineTo(left, bottom - capH / 2f)
+                path.quadraticTo((left + right) / 2f, bottom, right, bottom - capH / 2f)
+                path.lineTo(right, top + capH / 2f)
+            }
+            DrawingTool.STAR -> {
+                val left = minOf(start.x, end.x)
+                val top = minOf(start.y, end.y)
+                val right = maxOf(start.x, end.x)
+                val bottom = maxOf(start.y, end.y)
+                val cx = (left + right) / 2f
+                val cy = (top + bottom) / 2f
+                val rOuter = kotlin.math.min(right - left, bottom - top) / 2f
+                val rInner = rOuter * 0.40f
+                val step = Math.PI / 5.0
+                for (i in 0 until 10) {
+                    val r = if (i % 2 == 0) rOuter else rInner
+                    val angle = -Math.PI / 2.0 + i * step
+                    val x = (cx + r * kotlin.math.cos(angle)).toFloat()
+                    val y = (cy + r * kotlin.math.sin(angle)).toFloat()
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                path.close()
+            }
             else -> return createSmoothPath(points)
         }
         return path

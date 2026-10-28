@@ -36,6 +36,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -93,6 +94,7 @@ fun WhiteboardCanvas(
     val geometryCache = remember { StrokeGeometryCache() }
     val textLayoutCache = remember { HashMap<String, TextLayoutResult>() }
     val stickyTextLayoutCache = remember { HashMap<String, TextLayoutResult>() }
+    val embeddedTextLayoutCache = remember { HashMap<String, TextLayoutResult>() }
 
     val hapticFeedback = LocalHapticFeedback.current
     val drawingHaptics = remember(hapticFeedback) { DrawingHaptics(hapticFeedback) }
@@ -350,8 +352,49 @@ fun WhiteboardCanvas(
                             color = drawColor,
                             width = pending.strokeWidth,
                             tool = pending.tool,
-                            cachedPath = path
+                            cachedPath = path,
+                            roughness = pending.roughness,
+                            fillStyle = pending.fillStyle,
+                            strokeId = pending.id
                         )
+                    }
+                }
+            }
+
+            // 3b. Draw In-Shape Embedded Text (Centered within diagram nodes)
+            strokes.forEach { stroke ->
+                val activeStroke = movingStrokeMap[stroke.id] ?: stroke
+                val text = activeStroke.embeddedText
+                if (!text.isNullOrBlank() && activeStroke.points.size >= 2) {
+                    val minX = activeStroke.points.minOf { it.x }
+                    val maxX = activeStroke.points.maxOf { it.x }
+                    val minY = activeStroke.points.minOf { it.y }
+                    val maxY = activeStroke.points.maxOf { it.y }
+
+                    if (maxX >= vLeft && minX <= vRight && maxY >= vTop && minY <= vBottom) {
+                        val shapeW = maxX - minX
+                        val shapeH = maxY - minY
+                        val maxW = (shapeW * 0.82f).coerceAtLeast(20f)
+
+                        val textLayout = embeddedTextLayoutCache.getOrPut("${activeStroke.id}_${text}_${maxW.toInt()}_${activeStroke.embeddedTextColor}") {
+                            textMeasurer.measure(
+                                text = AnnotatedString(text),
+                                style = TextStyle(
+                                    fontFamily = AppFontFamily,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    color = if (activeStroke.embeddedTextColor != 0L) Color(activeStroke.embeddedTextColor) else m3OnSurface
+                                ),
+                                constraints = androidx.compose.ui.unit.Constraints(
+                                    maxWidth = maxW.toInt()
+                                )
+                            )
+                        }
+
+                        val textLeft = minX + (shapeW - textLayout.size.width) / 2f
+                        val textTop = minY + (shapeH - textLayout.size.height) / 2f
+                        drawText(textLayout, topLeft = Offset(textLeft, textTop))
                     }
                 }
             }
@@ -439,6 +482,21 @@ fun WhiteboardCanvas(
                         baseWidth = (currentWidth * 1.5f) / zoom
                     )
                 }
+            }
+
+            // 6b. Draw Magnetic Connector Anchor Snap Indicator
+            controller.activeHoverAnchor?.let { anchor ->
+                drawCircle(
+                    color = selectionPrimary,
+                    radius = 9.dp.toPx() / zoom,
+                    center = anchor.position,
+                    style = CanvasStrokeStyle(width = 2.5f / zoom)
+                )
+                drawCircle(
+                    color = selectionPrimary.copy(alpha = 0.45f),
+                    radius = 5.dp.toPx() / zoom,
+                    center = anchor.position
+                )
             }
 
             // 7. Draw Selection Overlays (Marquee Rect, Freeform Lasso, and Selection Bounding Box)
@@ -544,6 +602,30 @@ fun WhiteboardCanvas(
                                 center = corner,
                                 style = CanvasStrokeStyle(width = 2.dp.toPx() / zoom)
                             )
+                        }
+
+                        // 7b. Draw Smart Alignment Guides (Dashed snap lines)
+                        if (controller.activeAlignmentGuides.isNotEmpty()) {
+                            val guideDash = PathEffect.dashPathEffect(floatArrayOf(8f / zoom, 6f / zoom), 0f)
+                            controller.activeAlignmentGuides.forEach { guide ->
+                                if (guide.isVertical) {
+                                    drawLine(
+                                        color = selectionPrimary,
+                                        start = Offset(guide.position, guide.start),
+                                        end = Offset(guide.position, guide.end),
+                                        strokeWidth = 1.5f / zoom,
+                                        pathEffect = guideDash
+                                    )
+                                } else {
+                                    drawLine(
+                                        color = selectionPrimary,
+                                        start = Offset(guide.start, guide.position),
+                                        end = Offset(guide.end, guide.position),
+                                        strokeWidth = 1.5f / zoom,
+                                        pathEffect = guideDash
+                                    )
+                                }
+                            }
                         }
                     }
                 }

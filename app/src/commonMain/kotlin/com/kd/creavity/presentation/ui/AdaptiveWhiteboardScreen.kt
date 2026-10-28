@@ -140,6 +140,10 @@ fun AdaptiveWhiteboardScreen(
                             onAction(BoardAction.SelectTool(DrawingTool.CIRCLE))
                             true
                         }
+                        Key.D -> {
+                            onAction(BoardAction.SelectTool(DrawingTool.DIAMOND))
+                            true
+                        }
                         Key.Escape -> {
                             onAction(BoardAction.SelectTool(DrawingTool.PEN))
                             true

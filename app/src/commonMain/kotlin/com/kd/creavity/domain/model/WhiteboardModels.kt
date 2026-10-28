@@ -22,7 +22,10 @@ enum class DrawingTool {
     SELECT_MOVE, // Compatibility mapping to SELECT
     RECT_SELECT,
     LASSO_SELECT,
-    TRIANGLE
+    TRIANGLE,
+    DIAMOND,
+    CYLINDER,
+    STAR
 }
 
 enum class AppThemePreset(val displayName: String, val isDynamic: Boolean = true) {
@@ -38,6 +41,19 @@ data class Point(
     val orientation: Float = 0f
 )
 
+enum class RoughnessStyle {
+    CLEAN,     // Geometric crisp lines (Roughness = 0f)
+    SKETCHY,   // Natural hand-drawn multi-pass tremor (Roughness = 1.2f)
+    CARTOON    // High-jitter comic style (Roughness = 2.4f)
+}
+
+enum class FillStyle {
+    TRANSPARENT,      // Outline only
+    SEMI_TRANSPARENT, // Translucent color tint (alpha = 0.25f)
+    SOLID,            // Opaque color fill
+    HACHURE           // Parallel cross-hatch hand-drawn shading
+}
+
 data class Stroke(
     val id: String = UUID.randomUUID().toString(),
     val points: List<Point> = emptyList(),
@@ -46,7 +62,13 @@ data class Stroke(
     val tool: DrawingTool = DrawingTool.PEN,
     val isEraser: Boolean = (tool == DrawingTool.ERASER),
     val author: String = "You",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val roughness: RoughnessStyle = RoughnessStyle.SKETCHY,
+    val fillStyle: FillStyle = FillStyle.TRANSPARENT,
+    val embeddedText: String? = null,
+    val embeddedTextColor: Long = 0L,
+    val connectedStartAnchor: String? = null,
+    val connectedEndAnchor: String? = null
 )
 
 data class TextElement(

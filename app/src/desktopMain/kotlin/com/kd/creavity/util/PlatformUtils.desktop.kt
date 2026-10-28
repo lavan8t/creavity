@@ -161,11 +161,26 @@ actual fun shareBoard(board: com.kd.creavity.domain.model.Board, format: com.kd.
         exportDir.mkdirs()
         val sanitized = board.title.replace(Regex("[^a-zA-Z0-9.-]"), "_").trim('_').ifBlank { "Whiteboard" }
         val target = File(exportDir, "$sanitized.${format.extension}")
-        val bm = com.kd.creavity.data.storage.BoardManager()
-        bm.saveBoard(board)
-        val src = File(File(getAppStorageDir(), "boards"), "${board.id}.json")
-        if (src.exists()) {
-            src.copyTo(target, overwrite = true)
+
+        when (format) {
+            com.kd.creavity.data.export.ExportFormat.SVG -> {
+                val page = board.pages.getOrElse(board.activePageIndex) { board.pages.firstOrNull() ?: com.kd.creavity.domain.model.BoardPage() }
+                val svg = com.kd.creavity.presentation.canvas.CanvasExportManager.exportToSvg(
+                    strokes = page.strokes,
+                    texts = page.textElements,
+                    stickyNotes = page.stickyNotes,
+                    backgroundColor = board.backgroundColor
+                )
+                target.writeText(svg)
+            }
+            else -> {
+                val bm = com.kd.creavity.data.storage.BoardManager()
+                bm.saveBoard(board)
+                val src = File(File(getAppStorageDir(), "boards"), "${board.id}.json")
+                if (src.exists()) {
+                    src.copyTo(target, overwrite = true)
+                }
+            }
         }
     }
 }
