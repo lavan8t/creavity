@@ -102,7 +102,10 @@ import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.domain.model.RoughnessStyle
 import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.presentation.ui.components.DesktopCanvasContextMenu
+import com.kd.creavity.presentation.ui.components.DesktopDraggableToolbar
+import com.kd.creavity.presentation.ui.components.SelectionDockPositioner
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
+import com.kd.creavity.util.isDesktopPlatform
 import com.kd.creavity.presentation.ui.components.PenCalloutCard
 import com.kd.creavity.presentation.ui.components.SelectCalloutCard
 import com.kd.creavity.presentation.ui.components.ShapeCalloutCard
@@ -259,6 +262,7 @@ fun CanvasViewportScreen(
     var selectionBounds by remember { mutableStateOf<Rect?>(null) }
     var activeEditingStrokeId by remember { mutableStateOf<String?>(null) }
     var contextMenuData by remember { mutableStateOf<CanvasContextMenuData?>(null) }
+    var desktopToolbarOffset by remember { mutableStateOf(Offset(24f, 100f)) }
 
     // Image Picker
     val launchImagePicker = rememberFilePickerLauncher(FilePickerType.IMAGE) { path ->
@@ -1003,8 +1007,19 @@ fun CanvasViewportScreen(
             )
         }
 
-        // 4. Floating Contextual Selection Dock (Fill, Roughness, Layers, Text, Colors)
+        // 4. Floating Contextual Selection Dock (positioned directly around the selected curve/shape)
         if (!uiState.isCanvasReadOnly && (selectedStrokes.isNotEmpty() || selectedTexts.isNotEmpty())) {
+            val dockOffset = if (selectionBounds != null) {
+                SelectionDockPositioner.calculateDockPosition(
+                    selectionBounds = selectionBounds!!,
+                    zoom = uiState.zoom,
+                    panOffset = uiState.panOffset,
+                    canvasSize = canvasSize
+                )
+            } else {
+                IntOffset((canvasSize.width / 2f - 210f).roundToInt().coerceAtLeast(16), 72)
+            }
+
             FloatingSelectionDock(
                 selectedStrokeIds = selectedStrokes,
                 selectedTextIds = selectedTexts,
@@ -1020,10 +1035,7 @@ fun CanvasViewportScreen(
                         activeEditingStrokeId = strokeId
                     }
                 },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 54.dp)
+                modifier = Modifier.offset { dockOffset }
             )
         }
 
@@ -1041,13 +1053,22 @@ fun CanvasViewportScreen(
             )
         }
 
-        // 6. Tools Callout Cards anchored directly above the floating toolbar
+        // 6. Tools Callout Cards anchored adjacent to toolbar (Desktop) or above bottom bar (Mobile)
         if (!uiState.isCanvasReadOnly) {
-            Box(
-                modifier = Modifier
+            val isDesktop = isDesktopPlatform()
+            val calloutModifier = if (isDesktop) {
+                val calloutX = (desktopToolbarOffset.x + 64f).roundToInt()
+                val calloutY = desktopToolbarOffset.y.roundToInt().coerceIn(70, (canvasSize.height - 360).coerceAtLeast(70))
+                Modifier.offset { IntOffset(calloutX, calloutY) }
+            } else {
+                Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 84.dp)
+            }
+
+            Box(
+                modifier = calloutModifier
             ) {
                 PenCalloutCard(
                     visible = activeCalloutTool == "PEN",
@@ -1099,24 +1120,42 @@ fun CanvasViewportScreen(
             }
         }
 
-        // 7. Material 3 Expressive Horizontal Floating Toolbar with FAB (or View-Only Status Pill)
+        // 7. Material 3 Expressive Drawing Toolbar (Draggable Vertical on Desktop; Bottom with FAB on Mobile)
         if (!uiState.isCanvasReadOnly) {
-            CanvasBottomToolbar(
-                uiState = uiState,
-                activeCalloutTool = activeCalloutTool,
-                onAction = onAction,
-                onToggleCallout = { tool ->
-                    activeCalloutTool = if (activeCalloutTool == tool || tool.isEmpty()) null else tool
-                },
-                onOpenStickyNote = { showStickyNoteDialog = true },
-                onOpenTextDialog = { point ->
-                    activeInlineTextPoint = point
-                    inlineTextContent = ""
-                },
-                onOpenGoogleSlides = { showGoogleSlidesDialog = true },
-                onPickImage = { launchImagePicker() },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+            if (isDesktopPlatform()) {
+                DesktopDraggableToolbar(
+                    uiState = uiState,
+                    activeCalloutTool = activeCalloutTool,
+                    canvasSize = canvasSize,
+                    onAction = onAction,
+                    onToggleCallout = { tool ->
+                        activeCalloutTool = if (activeCalloutTool == tool || tool.isEmpty()) null else tool
+                    },
+                    onOpenStickyNote = { showStickyNoteDialog = true },
+                    onOpenTextDialog = { point ->
+                        activeInlineTextPoint = point
+                        inlineTextContent = ""
+                    },
+                    onToolbarPositionChanged = { desktopToolbarOffset = it }
+                )
+            } else {
+                CanvasBottomToolbar(
+                    uiState = uiState,
+                    activeCalloutTool = activeCalloutTool,
+                    onAction = onAction,
+                    onToggleCallout = { tool ->
+                        activeCalloutTool = if (activeCalloutTool == tool || tool.isEmpty()) null else tool
+                    },
+                    onOpenStickyNote = { showStickyNoteDialog = true },
+                    onOpenTextDialog = { point ->
+                        activeInlineTextPoint = point
+                        inlineTextContent = ""
+                    },
+                    onOpenGoogleSlides = { showGoogleSlidesDialog = true },
+                    onPickImage = { launchImagePicker() },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
         } else {
             // View-Only Material 3 Expressive Pill
             ElevatedCard(

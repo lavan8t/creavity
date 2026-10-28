@@ -53,6 +53,10 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Desktop Synchronous Font Provider**: Direct synchronous extraction and AWT registration of raw TrueType font bytes (`google_sans_flex.ttf`) bypassing asynchronous multiplatform compose resource loaders to eliminate glyph fallback glitches and measure latency.
 - **Desktop Canvas Context Menu**: Context-sensitive Material 3 Expressive `DropdownMenu` triggered by non-drag secondary pointer clicks (`<= 8px`), supporting selection-level manipulation (Duplicate, Bring to Front, Send to Back, Delete) and open canvas insertion (Sticky Note, Text, Rectangle, Circle, Select All, Reset Zoom, Clear Canvas).
 - **Adaptive Modal Container**: Universal modal architecture presenting full-width bottom sheets on mobile Android, and transforming into floating, centered, rounded Material 3 `Dialog` surfaces (`RoundedCornerShape(24.dp)`, max width 680dp) on Desktop systems to prevent distorted wide-monitor sheets.
+- **Cubic Bézier Ellipse Geometry**: 4-quadrant cubic Bézier curve generation ($k = 0.55228475f$) ensuring smooth $C^1$ circular curvature across all roughness settings, eliminating decagon and polygonal segment artifacts.
+- **Draggable Desktop Toolbar**: Material 3 Expressive vertical drawing dock docked to the left canvas margin by default with an interactive drag handle pill, freely repositionable anywhere within desktop screen boundaries with anchored flyout callouts.
+- **Contextual Selection Dock Positioning**: Dynamic positioning engine transforming canvas world selection bounds into viewport coordinates, placing the action dock directly centered above or below the active selection with screen margin clamping, eliminating detached static screen-top toolbars.
+
 
 
 
