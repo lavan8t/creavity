@@ -43,29 +43,6 @@ class FlowchartShapesTest {
     }
 
     @Test
-    fun testCylinderShapeGeneration() {
-        val points = listOf(Point(50f, 50f), Point(150f, 250f))
-
-        // 1. PathUtils clean path
-        val cleanPath = PathUtils.createToolPath(DrawingTool.CYLINDER, points)
-        assertNotNull(cleanPath)
-
-        // 2. Rough shape generation
-        val cylinder = RoughShapeGenerator.getOrCreateRoughShape(
-            strokeId = "cylinder-1",
-            tool = DrawingTool.CYLINDER,
-            points = points,
-            strokeWidth = 3f,
-            roughness = RoughnessStyle.SKETCHY,
-            fillStyle = FillStyle.SOLID
-        )
-
-        // Top ellipse (2 passes) + 2 sides (2x2=4) + bottom rim (2) = at least 8 paths
-        assertTrue("Cylinder should have multiple stroke paths for 3D body", cylinder.strokePaths.size >= 6)
-        assertNotNull(cylinder.fillPath)
-    }
-
-    @Test
     fun testStarShapeGeneration() {
         val points = listOf(Point(100f, 100f), Point(300f, 300f))
 
@@ -91,7 +68,6 @@ class FlowchartShapesTest {
     @Test
     fun testToolOrdinalsArePreserved() {
         assertTrue(DrawingTool.entries.contains(DrawingTool.DIAMOND))
-        assertTrue(DrawingTool.entries.contains(DrawingTool.CYLINDER))
         assertTrue(DrawingTool.entries.contains(DrawingTool.STAR))
     }
 }

@@ -1,5 +1,9 @@
 package com.kd.creavity.presentation.ui.screens
 
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.kd.creavity.ui.theme.getDocFontFamily
+import com.kd.creavity.util.TextSvgGenerator
 import com.kd.creavity.util.FilePickerType
 import com.kd.creavity.util.rememberFilePickerLauncher
 import com.kd.creavity.util.shareBoard
@@ -248,6 +252,8 @@ fun CanvasViewportScreen(
     var activeInlineTextPoint by remember { mutableStateOf<Point?>(null) }
     var inlineTextContent by remember { mutableStateOf("") }
     var textFontSize by remember { mutableFloatStateOf(24f) }
+    var activeEditingTextId by remember { mutableStateOf<String?>(null) }
+    var selectedFontFamilyName by remember { mutableStateOf("Google Sans Flex") }
 
     // Host Classroom Sheets
     var showBirdsEyeSheet by remember { mutableStateOf(false) }
@@ -367,6 +373,11 @@ fun CanvasViewportScreen(
             },
             onTapForText = { pt ->
                 if (activeInlineTextPoint != null && inlineTextContent.isNotBlank()) {
+                    val svgData = TextSvgGenerator.generateSvgData(
+                        text = inlineTextContent,
+                        fontName = selectedFontFamilyName,
+                        fontSize = textFontSize
+                    )
                     onAction(
                         BoardAction.AddText(
                             text = inlineTextContent,
@@ -374,12 +385,39 @@ fun CanvasViewportScreen(
                             y = activeInlineTextPoint!!.y,
                             color = effectivePenColor,
                             fontSize = textFontSize,
-                            fontName = "Google Sans Flex"
+                            fontName = selectedFontFamilyName,
+                            id = activeEditingTextId,
+                            svgData = svgData
                         )
                     )
                 }
-                activeInlineTextPoint = pt
-                inlineTextContent = ""
+
+                // Check if user tapped an existing text element to edit it
+                val hitText = uiState.activePage.textElements.findLast { txt ->
+                    val approxW = (txt.text.length * txt.fontSize * 0.65f).coerceAtLeast(60f)
+                    val approxH = (txt.fontSize * 1.5f).coerceAtLeast(30f)
+                    pt.x >= txt.x - 10f && pt.x <= txt.x + approxW &&
+                    pt.y >= txt.y - 10f && pt.y <= txt.y + approxH
+                }
+
+                if (hitText != null) {
+                    activeEditingTextId = hitText.id
+                    activeEditingStrokeId = null
+                    activeInlineTextPoint = Point(hitText.x, hitText.y)
+                    inlineTextContent = hitText.text
+                    textFontSize = hitText.fontSize
+                    // If font is not available on this device, seamlessly fall back to local system font upon editing!
+                    selectedFontFamilyName = if (TextSvgGenerator.isFontAvailable(hitText.fontName)) {
+                        hitText.fontName
+                    } else {
+                        "Google Sans Flex"
+                    }
+                } else {
+                    activeEditingTextId = null
+                    activeEditingStrokeId = null
+                    activeInlineTextPoint = pt
+                    inlineTextContent = ""
+                }
             },
             onContextMenu = { screenOffset, worldPoint, hasSelection ->
                 contextMenuData = CanvasContextMenuData(screenOffset, worldPoint, hasSelection)
@@ -437,6 +475,8 @@ fun CanvasViewportScreen(
                 },
                 onInsertText = {
                     val wp = contextMenuData?.worldPoint ?: Point(0f, 0f)
+                    activeEditingTextId = null
+                    activeEditingStrokeId = null
                     activeInlineTextPoint = wp
                     inlineTextContent = ""
                 },
@@ -487,7 +527,7 @@ fun CanvasViewportScreen(
             )
         }
 
-        // 1.5 Inline Canvas Text Editor (Directly on canvas, no dialogs or bottom sheets)
+        // 1.5 Inline Canvas Text Editor (Directly on canvas, accepting fonts with live typography preview)
         if (activeInlineTextPoint != null) {
             val screenX = (activeInlineTextPoint!!.x * uiState.zoom + uiState.panOffset.x).roundToInt()
             val screenY = (activeInlineTextPoint!!.y * uiState.zoom + uiState.panOffset.y).roundToInt()
@@ -497,109 +537,134 @@ fun CanvasViewportScreen(
                 focusRequester.requestFocus()
             }
 
+            val submitInlineText: () -> Unit = {
+                if (inlineTextContent.isNotBlank()) {
+                    if (activeEditingStrokeId != null) {
+                        onAction(
+                            BoardAction.UpdateStrokeProperties(
+                                strokeId = activeEditingStrokeId!!,
+                                embeddedText = inlineTextContent
+                            )
+                        )
+                    } else {
+                        val svgData = TextSvgGenerator.generateSvgData(
+                            text = inlineTextContent,
+                            fontName = selectedFontFamilyName,
+                            fontSize = textFontSize
+                        )
+                        onAction(
+                            BoardAction.AddText(
+                                text = inlineTextContent,
+                                x = activeInlineTextPoint!!.x,
+                                y = activeInlineTextPoint!!.y,
+                                color = effectivePenColor,
+                                fontSize = textFontSize,
+                                fontName = selectedFontFamilyName,
+                                id = activeEditingTextId,
+                                svgData = svgData
+                            )
+                        )
+                    }
+                }
+                activeEditingStrokeId = null
+                activeEditingTextId = null
+                activeInlineTextPoint = null
+                inlineTextContent = ""
+            }
+
             ElevatedCard(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
                 ),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 8.dp),
                 modifier = Modifier
                     .offset { IntOffset(screenX, screenY) }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(8.dp)
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    BasicTextField(
-                        value = inlineTextContent,
-                        onValueChange = { inlineTextContent = it },
-                        textStyle = TextStyle(
-                            color = effectivePenColor,
-                            fontSize = (textFontSize * uiState.zoom).coerceIn(14f, 48f).sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        cursorBrush = SolidColor(effectivePenColor),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (inlineTextContent.isNotBlank()) {
-                                    if (activeEditingStrokeId != null) {
-                                        onAction(
-                                            BoardAction.UpdateStrokeProperties(
-                                                strokeId = activeEditingStrokeId!!,
-                                                embeddedText = inlineTextContent
-                                            )
-                                        )
-                                    } else {
-                                        onAction(
-                                            BoardAction.AddText(
-                                                text = inlineTextContent,
-                                                x = activeInlineTextPoint!!.x,
-                                                y = activeInlineTextPoint!!.y,
-                                                color = effectivePenColor,
-                                                fontSize = textFontSize,
-                                                fontName = "Google Sans Flex"
-                                            )
-                                        )
-                                    }
-                                }
-                                activeEditingStrokeId = null
-                                activeInlineTextPoint = null
-                                inlineTextContent = ""
-                            }
-                        ),
-                        modifier = Modifier
-                            .widthIn(min = 120.dp, max = 320.dp)
-                            .focusRequester(focusRequester)
-                    )
-
-                    IconButton(
-                        onClick = {
-                            if (inlineTextContent.isNotBlank()) {
-                                if (activeEditingStrokeId != null) {
-                                    onAction(
-                                        BoardAction.UpdateStrokeProperties(
-                                            strokeId = activeEditingStrokeId!!,
-                                            embeddedText = inlineTextContent
-                                        )
-                                    )
-                                } else {
-                                    onAction(
-                                        BoardAction.AddText(
-                                            text = inlineTextContent,
-                                            x = activeInlineTextPoint!!.x,
-                                            y = activeInlineTextPoint!!.y,
-                                            color = effectivePenColor,
-                                            fontSize = textFontSize,
-                                            fontName = "Google Sans Flex"
-                                        )
-                                    )
-                                }
-                            }
-                            activeEditingStrokeId = null
-                            activeInlineTextPoint = null
-                            inlineTextContent = ""
-                        },
-                        modifier = Modifier.size(32.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                    // Font Family Selector Chips
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        MaterialSymbol(name = "check", tint = MaterialTheme.colorScheme.onPrimary, size = 18.dp)
+                        val fontOptions = listOf(
+                            "Google Sans Flex" to "Sans",
+                            "Serif" to "Serif",
+                            "Cursive" to "Script",
+                            "Monospace" to "Mono"
+                        )
+                        fontOptions.forEach { (fontKey, label) ->
+                            val isSelected = selectedFontFamilyName.equals(fontKey, ignoreCase = true) ||
+                                (fontKey == "Google Sans Flex" && selectedFontFamilyName.equals("Sans", ignoreCase = true))
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { selectedFontFamilyName = fontKey },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = getDocFontFamily(fontKey)
+                                    )
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
                     }
 
-                    IconButton(
-                        onClick = {
-                            activeEditingStrokeId = null
-                            activeInlineTextPoint = null
-                            inlineTextContent = ""
-                        },
-                        modifier = Modifier.size(28.dp)
+                    // Input & Actions Row
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        MaterialSymbol(name = "close", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 16.dp)
+                        BasicTextField(
+                            value = inlineTextContent,
+                            onValueChange = { inlineTextContent = it },
+                            textStyle = TextStyle(
+                                color = effectivePenColor,
+                                fontSize = (textFontSize * uiState.zoom).coerceIn(14f, 48f).sp,
+                                fontFamily = getDocFontFamily(selectedFontFamilyName),
+                                fontWeight = FontWeight.Medium
+                            ),
+                            cursorBrush = SolidColor(effectivePenColor),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = { submitInlineText() }
+                            ),
+                            modifier = Modifier
+                                .widthIn(min = 140.dp, max = 340.dp)
+                                .focusRequester(focusRequester)
+                        )
+
+                        IconButton(
+                            onClick = { submitInlineText() },
+                            modifier = Modifier.size(32.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            MaterialSymbol(name = "check", tint = MaterialTheme.colorScheme.onPrimary, size = 18.dp)
+                        }
+
+                        IconButton(
+                            onClick = {
+                                activeEditingStrokeId = null
+                                activeEditingTextId = null
+                                activeInlineTextPoint = null
+                                inlineTextContent = ""
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            MaterialSymbol(name = "close", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 16.dp)
+                        }
                     }
                 }
             }
@@ -1034,6 +1099,22 @@ fun CanvasViewportScreen(
                         activeInlineTextPoint = Point(midX, midY)
                         inlineTextContent = currentText ?: ""
                         activeEditingStrokeId = strokeId
+                        activeEditingTextId = null
+                    }
+                },
+                onOpenTextEditor = { textId ->
+                    val txt = uiState.activePage.textElements.find { it.id == textId }
+                    if (txt != null) {
+                        activeEditingTextId = txt.id
+                        activeEditingStrokeId = null
+                        activeInlineTextPoint = Point(txt.x, txt.y)
+                        inlineTextContent = txt.text
+                        textFontSize = txt.fontSize
+                        selectedFontFamilyName = if (TextSvgGenerator.isFontAvailable(txt.fontName)) {
+                            txt.fontName
+                        } else {
+                            "Google Sans Flex"
+                        }
                     }
                 },
                 modifier = Modifier.offset { dockOffset }
@@ -1134,6 +1215,8 @@ fun CanvasViewportScreen(
                     },
                     onOpenStickyNote = { showStickyNoteDialog = true },
                     onOpenTextDialog = { point ->
+                        activeEditingTextId = null
+                        activeEditingStrokeId = null
                         activeInlineTextPoint = point
                         inlineTextContent = ""
                     },
@@ -1149,6 +1232,8 @@ fun CanvasViewportScreen(
                     },
                     onOpenStickyNote = { showStickyNoteDialog = true },
                     onOpenTextDialog = { point ->
+                        activeEditingTextId = null
+                        activeEditingStrokeId = null
                         activeInlineTextPoint = point
                         inlineTextContent = ""
                     },

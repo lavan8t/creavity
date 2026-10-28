@@ -153,6 +153,9 @@ class BoardManager(
                 txtObj.put("fontName", textElem.fontName)
                 txtObj.put("author", textElem.author)
                 txtObj.put("createdAt", textElem.createdAt)
+                if (!textElem.svgData.isNullOrBlank()) {
+                    txtObj.put("svgData", textElem.svgData)
+                }
                 textArray.put(txtObj)
             }
             pageObj.put("textElements", textArray)
@@ -263,7 +266,8 @@ class BoardManager(
                         fontSize = txtObj.optDouble("fontSize", 24.0).toFloat(),
                         fontName = txtObj.optString("fontName", "Google Sans Flex"),
                         author = txtObj.optString("author", "You"),
-                        createdAt = txtObj.optLong("createdAt", System.currentTimeMillis())
+                        createdAt = txtObj.optLong("createdAt", System.currentTimeMillis()),
+                        svgData = txtObj.optString("svgData").takeIf { !it.isNullOrBlank() }
                     )
                 )
             }

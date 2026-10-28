@@ -101,7 +101,6 @@ object StrokeDrawer {
             DrawingTool.RECTANGLE,
             DrawingTool.CIRCLE,
             DrawingTool.DIAMOND,
-            DrawingTool.CYLINDER,
             DrawingTool.STAR,
             DrawingTool.LINE -> {
                 if (points.size >= 2) {

@@ -32,7 +32,17 @@ sealed interface BoardAction {
     data class ImportPresentation(val pathOrUri: String) : BoardAction
 
     // Canvas Elements
-    data class AddText(val text: String, val x: Float, val y: Float, val color: Color, val fontSize: Float, val fontName: String) : BoardAction
+    data class AddText(
+        val text: String,
+        val x: Float,
+        val y: Float,
+        val color: Color,
+        val fontSize: Float,
+        val fontName: String,
+        val id: String? = null,
+        val svgData: String? = null
+    ) : BoardAction
+    data class UpdateTextElement(val textElement: TextElement) : BoardAction
     data class DeleteStroke(val strokeId: String) : BoardAction
     data class DeleteText(val textId: String) : BoardAction
     data class AddImage(val pathOrUri: String) : BoardAction

@@ -424,7 +424,9 @@ internal fun WhiteboardViewModel.deleteStrokeLocally(strokeId: String) {
 
 internal fun WhiteboardViewModel.addTextLocally(elem: TextElement) {
     _uiState.update { state ->
-        val activePage = state.activePage.copy(textElements = state.activePage.textElements + elem)
+        val activePage = state.activePage.copy(
+            textElements = state.activePage.textElements.filterNot { it.id == elem.id } + elem
+        )
         val updatedPages = state.currentBoard.pages.toMutableList().apply {
             this[state.currentBoard.activePageIndex] = activePage
         }

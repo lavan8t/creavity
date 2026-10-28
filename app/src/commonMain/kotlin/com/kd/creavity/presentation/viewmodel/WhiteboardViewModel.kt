@@ -633,7 +633,16 @@ class WhiteboardViewModel(
         }
     }
 
-    fun addTextElement(text: String, x: Float, y: Float, color: Color, fontSize: Float, fontName: String) {
+    fun addTextElement(
+        text: String,
+        x: Float,
+        y: Float,
+        color: Color,
+        fontSize: Float,
+        fontName: String,
+        id: String? = null,
+        svgData: String? = null
+    ) {
         if (text.isBlank()) return
         val state = _uiState.value
         val baseBoard = if (state.currentBoard.id.isBlank()) {
@@ -644,17 +653,20 @@ class WhiteboardViewModel(
             )
         } else state.currentBoard
 
+        val textId = id ?: java.util.UUID.randomUUID().toString()
         val newText = TextElement(
+            id = textId,
             text = text,
             x = x,
             y = y,
             color = color.toArgb().toLong(),
             fontSize = fontSize,
             fontName = fontName,
-            author = state.displayName
+            author = state.displayName,
+            svgData = svgData
         )
         val activePage = baseBoard.pages.getOrElse(baseBoard.activePageIndex) { BoardPage() }
-        val updatedTextList = activePage.textElements + newText
+        val updatedTextList = activePage.textElements.filterNot { it.id == textId } + newText
         val updatedPage = activePage.copy(textElements = updatedTextList)
         val updatedPages = baseBoard.pages.toMutableList().apply {
             if (baseBoard.activePageIndex in indices) {
@@ -672,6 +684,19 @@ class WhiteboardViewModel(
         persistBoard(updatedBoard)
         recordMutation(BoardMutation.AddText(newText))
         peerTransport.sendPacketToAll(WhiteboardPacket.TextAdd(newText))
+    }
+
+    fun updateTextElement(element: TextElement) {
+        addTextElement(
+            text = element.text,
+            x = element.x,
+            y = element.y,
+            color = Color(element.color),
+            fontSize = element.fontSize,
+            fontName = element.fontName,
+            id = element.id,
+            svgData = element.svgData
+        )
     }
 
     fun deleteStrokeById(strokeId: String) {

@@ -148,22 +148,6 @@ object CanvasExportManager {
                     val fillOpacity = if (stroke.fillStyle == FillStyle.SEMI_TRANSPARENT) "0.22" else opacity
                     sb.append("""  <path d="$d" fill="$fill" fill-opacity="$fillOpacity" stroke="$colorHex" stroke-width="$sw" stroke-linejoin="round" />""").append("\n")
                 }
-                DrawingTool.CYLINDER -> {
-                    val p1 = stroke.points.first()
-                    val p2 = stroke.points.last()
-                    val left = min(p1.x, p2.x)
-                    val top = min(p1.y, p2.y)
-                    val right = max(p1.x, p2.x)
-                    val bottom = max(p1.y, p2.y)
-                    val h = bottom - top
-                    val capH = min(h * 0.25f, 40f).coerceAtLeast(6f)
-                    val cx = (left + right) / 2f
-                    val cy = top + capH / 2f
-                    val rx = (right - left) / 2f
-                    val ry = capH / 2f
-                    sb.append("""  <ellipse cx="$cx" cy="$cy" rx="$rx" ry="$ry" fill="none" stroke="$colorHex" stroke-width="$sw" />""").append("\n")
-                    sb.append("""  <path d="M $left $cy L $left ${bottom - ry} A $rx $ry 0 0 0 $right ${bottom - ry} L $right $cy" fill="none" stroke="$colorHex" stroke-width="$sw" stroke-linejoin="round" />""").append("\n")
-                }
                 DrawingTool.STAR -> {
                     val p1 = stroke.points.first()
                     val p2 = stroke.points.last()
@@ -235,7 +219,16 @@ object CanvasExportManager {
         // Render Text Elements
         texts.forEach { txt ->
             val colorHex = String.format("#%06X", 0xFFFFFF and txt.color.toInt())
-            sb.append("""  <text x="${txt.x}" y="${txt.y + txt.fontSize}" font-size="${txt.fontSize}" fill="$colorHex" font-family="sans-serif">${escapeXml(txt.text)}</text>""").append("\n")
+            if (!txt.svgData.isNullOrBlank()) {
+                val cleanPath = if (txt.svgData.startsWith("<")) {
+                    Regex("""\bd=["']([^"']+)["']""").find(txt.svgData)?.groupValues?.get(1) ?: txt.svgData
+                } else txt.svgData
+                sb.append("""  <g transform="translate(${txt.x}, ${txt.y})">""").append("\n")
+                sb.append("""    <path d="$cleanPath" fill="$colorHex" />""").append("\n")
+                sb.append("""  </g>""").append("\n")
+            } else {
+                sb.append("""  <text x="${txt.x}" y="${txt.y + txt.fontSize}" font-size="${txt.fontSize}" fill="$colorHex" font-family="${escapeXml(txt.fontName)}">${escapeXml(txt.text)}</text>""").append("\n")
+            }
         }
 
         sb.append("</svg>\n")

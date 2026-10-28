@@ -35,7 +35,6 @@ object ConnectorManager {
         DrawingTool.CIRCLE,
         DrawingTool.TRIANGLE,
         DrawingTool.DIAMOND,
-        DrawingTool.CYLINDER,
         DrawingTool.STAR
     )
 

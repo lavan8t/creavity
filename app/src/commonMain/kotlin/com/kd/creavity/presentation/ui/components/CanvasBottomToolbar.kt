@@ -118,7 +118,6 @@ fun CanvasBottomToolbar(
         DrawingTool.CIRCLE,
         DrawingTool.TRIANGLE,
         DrawingTool.STAR,
-        DrawingTool.CYLINDER,
         DrawingTool.ARROW,
         DrawingTool.LINE
     )
@@ -208,7 +207,6 @@ fun CanvasBottomToolbar(
                         DrawingTool.CIRCLE -> "circle"
                         DrawingTool.TRIANGLE -> "triangle"
                         DrawingTool.STAR -> "star"
-                        DrawingTool.CYLINDER -> "cylinder"
                         DrawingTool.ARROW -> "arrow_forward"
                         DrawingTool.LINE -> "horizontal_rule"
                         DrawingTool.RECTANGLE -> "rectangle"

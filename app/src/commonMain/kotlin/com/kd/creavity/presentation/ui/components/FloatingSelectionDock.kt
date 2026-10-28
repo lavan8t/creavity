@@ -43,6 +43,7 @@ fun FloatingSelectionDock(
     strokes: List<Stroke>,
     onAction: (BoardAction) -> Unit,
     onOpenEmbeddedTextEditor: (strokeId: String, currentText: String?) -> Unit,
+    onOpenTextEditor: (textId: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (selectedStrokeIds.isEmpty() && selectedTextIds.isEmpty()) return
@@ -104,6 +105,22 @@ fun FloatingSelectionDock(
                     ) {
                         MaterialSymbol(
                             name = "title",
+                            size = 18.dp,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // Edit Text element button (if a single text element is selected)
+                if (selectedTextIds.size == 1 && selectedStrokeIds.isEmpty()) {
+                    IconButton(
+                        onClick = {
+                            onOpenTextEditor(selectedTextIds.first())
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = "edit",
                             size = 18.dp,
                             tint = MaterialTheme.colorScheme.primary
                         )

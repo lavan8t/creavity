@@ -39,10 +39,6 @@ class OfficeShapesAndResizeTest {
         val trianglePath = PathUtils.createToolPath(DrawingTool.TRIANGLE, points)
         assertNotNull(trianglePath)
 
-        // Cylinder
-        val cylinderPath = PathUtils.createToolPath(DrawingTool.CYLINDER, points)
-        assertNotNull(cylinderPath)
-
         // Star
         val starPath = PathUtils.createToolPath(DrawingTool.STAR, points)
         assertNotNull(starPath)

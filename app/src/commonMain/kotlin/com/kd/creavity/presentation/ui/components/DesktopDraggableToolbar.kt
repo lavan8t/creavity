@@ -81,7 +81,6 @@ fun DesktopDraggableToolbar(
         DrawingTool.CIRCLE,
         DrawingTool.TRIANGLE,
         DrawingTool.STAR,
-        DrawingTool.CYLINDER,
         DrawingTool.ARROW,
         DrawingTool.LINE
     )

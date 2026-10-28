@@ -503,7 +503,7 @@ fun SelectCalloutCard(
 }
 
 /**
- * Compact Callout Card for Shape Tools (Rectangle, Circle/Oval, Triangle, Arrow, Line, Star, Cylinder).
+ * Compact Callout Card for Shape Tools (Rectangle, Circle/Oval, Triangle, Arrow, Line, Star).
  * Opens on tap or long-press of Shapes tool in toolbar. Rounded rectangle shape (14dp).
  */
 @Composable
@@ -562,8 +562,7 @@ fun ShapeCalloutCard(
                         DrawingTool.TRIANGLE to ("triangle" to "Triangle"),
                         DrawingTool.ARROW to ("arrow_forward" to "Arrow"),
                         DrawingTool.LINE to ("horizontal_rule" to "Line"),
-                        DrawingTool.STAR to ("star" to "Star"),
-                        DrawingTool.CYLINDER to ("cylinder" to "Cylinder")
+                        DrawingTool.STAR to ("star" to "Star")
                     )
                     shapes.forEach { (tool, iconAndName) ->
                         val isSelected = selectedTool == tool

@@ -17,7 +17,12 @@ fun getAppFontFamily(): FontFamily {
     return family
 }
 
-fun getDocFontFamily(fontName: String): FontFamily = AppFontFamily
+fun getDocFontFamily(fontName: String): FontFamily = when (fontName.lowercase()) {
+    "serif", "merriweather", "georgia" -> FontFamily.Serif
+    "cursive", "handwriting", "script", "caveat", "kalam" -> FontFamily.Cursive
+    "monospace", "mono", "jetbrains mono" -> FontFamily.Monospace
+    else -> AppFontFamily
+}
 
 fun createAppTypography(fontFamily: FontFamily): Typography {
     val base = Typography()

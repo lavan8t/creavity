@@ -166,19 +166,6 @@ object PathUtils {
                 path.lineTo(left, midY)
                 path.close()
             }
-            DrawingTool.CYLINDER -> {
-                val left = minOf(start.x, end.x)
-                val top = minOf(start.y, end.y)
-                val right = maxOf(start.x, end.x)
-                val bottom = maxOf(start.y, end.y)
-                val h = bottom - top
-                val capH = kotlin.math.min(h * 0.25f, 40f).coerceAtLeast(6f)
-                path.addOval(Rect(left, top, right, top + capH))
-                path.moveTo(left, top + capH / 2f)
-                path.lineTo(left, bottom - capH / 2f)
-                path.quadraticTo((left + right) / 2f, bottom, right, bottom - capH / 2f)
-                path.lineTo(right, top + capH / 2f)
-            }
             DrawingTool.STAR -> {
                 val left = minOf(start.x, end.x)
                 val top = minOf(start.y, end.y)

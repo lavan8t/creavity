@@ -61,7 +61,6 @@ object RoughShapeGenerator {
             DrawingTool.CIRCLE -> createRoughEllipse(points.first(), points.last(), strokeWidth, rFactor, fillStyle, random)
             DrawingTool.TRIANGLE -> createRoughTriangle(points.first(), points.last(), strokeWidth, rFactor, fillStyle, random)
             DrawingTool.DIAMOND -> createRoughDiamond(points.first(), points.last(), strokeWidth, rFactor, fillStyle, random)
-            DrawingTool.CYLINDER -> createRoughCylinder(points.first(), points.last(), strokeWidth, rFactor, fillStyle, random)
             DrawingTool.STAR -> createRoughStar(points.first(), points.last(), strokeWidth, rFactor, fillStyle, random)
             DrawingTool.LINE -> createRoughLineShape(points.first(), points.last(), strokeWidth, rFactor, random)
             DrawingTool.ARROW -> createRoughArrowShape(points.first(), points.last(), strokeWidth, rFactor, random)
@@ -358,70 +357,6 @@ object RoughShapeGenerator {
             lineTo(pRight.x, pRight.y)
             lineTo(pBottom.x, pBottom.y)
             lineTo(pLeft.x, pLeft.y)
-            close()
-        }
-
-        val hachurePaths = if (fillStyle == FillStyle.HACHURE) {
-            createHachureLines(left, top, right, bottom, strokeWidth, roughness, random)
-        } else emptyList()
-
-        return RoughShapePaths(strokePaths, fillPath, hachurePaths)
-    }
-
-    fun createRoughCylinder(
-        start: Point,
-        end: Point,
-        strokeWidth: Float,
-        roughness: Float,
-        fillStyle: FillStyle,
-        random: Random
-    ): RoughShapePaths {
-        val left = min(start.x, end.x)
-        val top = min(start.y, end.y)
-        val right = max(start.x, end.x)
-        val bottom = max(start.y, end.y)
-        val h = bottom - top
-        val capH = min(h * 0.25f, 40f).coerceAtLeast(6f)
-
-        val strokePaths = mutableListOf<Path>()
-        val overshoot = if (roughness > 0.05f) min(strokeWidth * 1.5f + 2f, 8f) else 0f
-
-        // Top ellipse
-        val topEllipse = createRoughEllipse(Point(left, top), Point(right, top + capH), strokeWidth, roughness, FillStyle.TRANSPARENT, random)
-        strokePaths.addAll(topEllipse.strokePaths)
-
-        // Left and right vertical sides
-        val sideTopLeft = Offset(left, top + capH / 2f)
-        val sideBottomLeft = Offset(left, bottom - capH / 2f)
-        val sideTopRight = Offset(right, top + capH / 2f)
-        val sideBottomRight = Offset(right, bottom - capH / 2f)
-
-        strokePaths.addAll(createRoughLine(sideTopLeft, sideBottomLeft, roughness, random, overshoot))
-        strokePaths.addAll(createRoughLine(sideTopRight, sideBottomRight, roughness, random, overshoot))
-
-        // Bottom curved rim
-        if (roughness <= 0.05f) {
-            val bottomRim = Path().apply {
-                moveTo(sideBottomLeft.x, sideBottomLeft.y)
-                quadraticTo((left + right) / 2f, bottom, sideBottomRight.x, sideBottomRight.y)
-            }
-            strokePaths.add(bottomRim)
-        } else {
-            for (pass in 0 until 2) {
-                val rimPath = Path()
-                val midJitterY = (random.nextFloat() - 0.5f) * roughness * 3f
-                rimPath.moveTo(sideBottomLeft.x, sideBottomLeft.y)
-                rimPath.quadraticTo((left + right) / 2f, bottom + midJitterY, sideBottomRight.x, sideBottomRight.y)
-                strokePaths.add(rimPath)
-            }
-        }
-
-        // Fill path enclosing the cylinder
-        val fillPath = Path().apply {
-            moveTo(sideTopLeft.x, sideTopLeft.y)
-            quadraticTo((left + right) / 2f, top, sideTopRight.x, sideTopRight.y)
-            lineTo(sideBottomRight.x, sideBottomRight.y)
-            quadraticTo((left + right) / 2f, bottom, sideBottomLeft.x, sideBottomLeft.y)
             close()
         }
 

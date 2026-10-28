@@ -176,7 +176,6 @@ private fun createCustomToolCursor(tool: DrawingTool): PointerIcon {
             DrawingTool.CIRCLE,
             DrawingTool.TRIANGLE,
             DrawingTool.DIAMOND,
-            DrawingTool.CYLINDER,
             DrawingTool.STAR -> {
                 PointerIcon(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR))
             }

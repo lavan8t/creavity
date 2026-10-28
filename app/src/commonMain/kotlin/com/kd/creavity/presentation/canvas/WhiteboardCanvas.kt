@@ -54,6 +54,8 @@ import com.kd.creavity.domain.model.Stroke
 import com.kd.creavity.domain.model.TextElement
 import com.kd.creavity.ui.theme.AppFontFamily
 import com.kd.creavity.ui.theme.getDocFontFamily
+import com.kd.creavity.util.TextSvgGenerator
+import androidx.compose.ui.graphics.vector.PathParser
 import kotlin.math.abs
 import androidx.compose.ui.graphics.drawscope.Stroke as CanvasStrokeStyle
 
@@ -97,6 +99,7 @@ fun WhiteboardCanvas(
     val imageBitmapCache = remember { HashMap<String, ImageBitmap>() }
     val geometryCache = remember { StrokeGeometryCache() }
     val textLayoutCache = remember { HashMap<String, TextLayoutResult>() }
+    val svgPathCache = remember { HashMap<String, androidx.compose.ui.graphics.Path?>() }
     val stickyTextLayoutCache = remember { HashMap<String, TextLayoutResult>() }
     val embeddedTextLayoutCache = remember { HashMap<String, TextLayoutResult>() }
 
@@ -422,18 +425,56 @@ fun WhiteboardCanvas(
                     activeElem.y + 200f < vTop || activeElem.y > vBottom) {
                     return@forEach
                 }
-                val fontFam = getDocFontFamily(activeElem.fontName)
-                val result = textLayoutCache.getOrPut("${activeElem.id}_${activeElem.text}_${activeElem.fontSize}_${activeElem.color}") {
-                    textMeasurer.measure(
-                        text = AnnotatedString(activeElem.text),
-                        style = TextStyle(
-                            fontFamily = fontFam,
-                            fontSize = activeElem.fontSize.sp,
-                            color = Color(activeElem.color)
+
+                val fontAvailable = TextSvgGenerator.isFontAvailable(activeElem.fontName)
+                if (!fontAvailable && !activeElem.svgData.isNullOrBlank()) {
+                    val pathKey = "${activeElem.id}_${activeElem.svgData.hashCode()}"
+                    val path = svgPathCache.getOrPut(pathKey) {
+                        try {
+                            val parser = PathParser()
+                            val cleanD = if (activeElem.svgData.startsWith("<")) {
+                                Regex("""\bd=["']([^"']+)["']""").find(activeElem.svgData)?.groupValues?.get(1) ?: activeElem.svgData
+                            } else activeElem.svgData
+                            parser.parsePathString(cleanD)
+                            parser.toPath()
+                        } catch (e: Throwable) {
+                            null
+                        }
+                    }
+
+                    if (path != null) {
+                        drawContext.canvas.save()
+                        drawContext.canvas.translate(activeElem.x, activeElem.y)
+                        drawPath(path = path, color = Color(activeElem.color))
+                        drawContext.canvas.restore()
+                    } else {
+                        val fontFam = getDocFontFamily(activeElem.fontName)
+                        val result = textLayoutCache.getOrPut("${activeElem.id}_${activeElem.text}_${activeElem.fontSize}_${activeElem.color}_${activeElem.fontName}") {
+                            textMeasurer.measure(
+                                text = AnnotatedString(activeElem.text),
+                                style = TextStyle(
+                                    fontFamily = fontFam,
+                                    fontSize = activeElem.fontSize.sp,
+                                    color = Color(activeElem.color)
+                                )
+                            )
+                        }
+                        drawText(result, topLeft = Offset(activeElem.x, activeElem.y))
+                    }
+                } else {
+                    val fontFam = getDocFontFamily(activeElem.fontName)
+                    val result = textLayoutCache.getOrPut("${activeElem.id}_${activeElem.text}_${activeElem.fontSize}_${activeElem.color}_${activeElem.fontName}") {
+                        textMeasurer.measure(
+                            text = AnnotatedString(activeElem.text),
+                            style = TextStyle(
+                                fontFamily = fontFam,
+                                fontSize = activeElem.fontSize.sp,
+                                color = Color(activeElem.color)
+                            )
                         )
-                    )
+                    }
+                    drawText(result, topLeft = Offset(activeElem.x, activeElem.y))
                 }
-                drawText(result, topLeft = Offset(activeElem.x, activeElem.y))
             }
 
             // 4b. Draw Whiteboard Sticky Notes (Culled & Layout Cached)

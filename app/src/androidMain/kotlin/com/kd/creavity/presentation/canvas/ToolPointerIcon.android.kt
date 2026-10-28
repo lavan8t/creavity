@@ -18,7 +18,6 @@ actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon = when (tool) {
     DrawingTool.CIRCLE,
     DrawingTool.TRIANGLE,
     DrawingTool.DIAMOND,
-    DrawingTool.CYLINDER,
     DrawingTool.STAR,
     DrawingTool.LASER -> PointerIcon.Crosshair
     DrawingTool.TEXT -> PointerIcon.Text

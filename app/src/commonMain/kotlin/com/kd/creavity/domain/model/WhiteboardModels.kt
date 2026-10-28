@@ -24,7 +24,6 @@ enum class DrawingTool {
     LASSO_SELECT,
     TRIANGLE,
     DIAMOND,
-    CYLINDER,
     STAR
 }
 
@@ -80,7 +79,8 @@ data class TextElement(
     val fontSize: Float = 24.0f,
     val fontName: String = "Google Sans Flex",
     val author: String = "You",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val svgData: String? = null
 )
 
 data class ImageElement(

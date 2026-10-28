@@ -237,7 +237,8 @@ object PacketSerializer {
             val idBytes = elem.id.toByteArray(StandardCharsets.UTF_8)
             val textBytes = elem.text.toByteArray(StandardCharsets.UTF_8)
             val fontBytes = elem.fontName.toByteArray(StandardCharsets.UTF_8)
-            val buf = ByteBuffer.allocate(2 + idBytes.size + 2 + textBytes.size + 4 + 4 + 8 + 4 + 2 + fontBytes.size)
+            val svgBytes = (elem.svgData ?: "").toByteArray(StandardCharsets.UTF_8)
+            val buf = ByteBuffer.allocate(2 + idBytes.size + 2 + textBytes.size + 4 + 4 + 8 + 4 + 2 + fontBytes.size + 4 + svgBytes.size)
             buf.putShort(idBytes.size.toShort())
             buf.put(idBytes)
             buf.putShort(textBytes.size.toShort())
@@ -248,6 +249,8 @@ object PacketSerializer {
             buf.putFloat(elem.fontSize)
             buf.putShort(fontBytes.size.toShort())
             buf.put(fontBytes)
+            buf.putInt(svgBytes.size)
+            buf.put(svgBytes)
             buf.array()
         }
     }
@@ -297,7 +300,16 @@ object PacketSerializer {
             buffer.get(fontBytes)
             val fontName = String(fontBytes, StandardCharsets.UTF_8)
 
-            textElements.add(TextElement(id, text, x, y, color, fontSize, fontName))
+            val svgData = if (buffer.remaining() >= 4) {
+                val svgLen = buffer.int
+                if (svgLen > 0 && buffer.remaining() >= svgLen) {
+                    val sBytes = ByteArray(svgLen)
+                    buffer.get(sBytes)
+                    String(sBytes, StandardCharsets.UTF_8)
+                } else null
+            } else null
+
+            textElements.add(TextElement(id, text, x, y, color, fontSize, fontName, svgData = svgData))
         }
         return textElements
     }
@@ -359,7 +371,8 @@ object PacketSerializer {
                 val idBytes = elem.id.toByteArray(StandardCharsets.UTF_8)
                 val textBytes = elem.text.toByteArray(StandardCharsets.UTF_8)
                 val fontBytes = elem.fontName.toByteArray(StandardCharsets.UTF_8)
-                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size + 2 + textBytes.size + 4 + 4 + 8 + 4 + 2 + fontBytes.size)
+                val svgBytes = (elem.svgData ?: "").toByteArray(StandardCharsets.UTF_8)
+                val buffer = ByteBuffer.allocate(1 + 2 + idBytes.size + 2 + textBytes.size + 4 + 4 + 8 + 4 + 2 + fontBytes.size + 4 + svgBytes.size)
                 buffer.put(TYPE_TEXT_ADD)
                 buffer.putShort(idBytes.size.toShort())
                 buffer.put(idBytes)
@@ -371,6 +384,8 @@ object PacketSerializer {
                 buffer.putFloat(elem.fontSize)
                 buffer.putShort(fontBytes.size.toShort())
                 buffer.put(fontBytes)
+                buffer.putInt(svgBytes.size)
+                buffer.put(svgBytes)
                 buffer.array()
             }
             is WhiteboardPacket.TextDelete -> {
@@ -687,7 +702,16 @@ object PacketSerializer {
                 buffer.get(fontBytes)
                 val fontName = String(fontBytes, StandardCharsets.UTF_8)
 
-                WhiteboardPacket.TextAdd(TextElement(id, text, x, y, color, fontSize, fontName))
+                val svgData = if (buffer.remaining() >= 4) {
+                    val svgLen = buffer.int
+                    if (svgLen > 0 && buffer.remaining() >= svgLen) {
+                        val sBytes = ByteArray(svgLen)
+                        buffer.get(sBytes)
+                        String(sBytes, StandardCharsets.UTF_8)
+                    } else null
+                } else null
+
+                WhiteboardPacket.TextAdd(TextElement(id, text, x, y, color, fontSize, fontName, svgData = svgData))
             }
             TYPE_TEXT_DELETE -> {
                 val idLength = buffer.short.toInt()
