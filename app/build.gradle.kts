@@ -53,7 +53,8 @@ compose.desktop {
         nativeDistributions {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe,
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Rpm
             )
             packageName = "CreaVITy"
             packageVersion = "1.2.0"
@@ -66,6 +67,10 @@ compose.desktop {
                 shortcut = true
                 dirChooser = true
                 perUserInstall = true
+            }
+            linux {
+                shortcut = true
+                menuGroup = "Graphics"
             }
         }
     }

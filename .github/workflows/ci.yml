@@ -43,6 +43,61 @@ jobs:
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest
 
+  release-linux:
+    name: Build & Release Linux RPM
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install RPM packaging tools
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
+      - name: Package Release RPM
+        run: ./gradlew :app:packageReleaseRpm --console=plain
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreaVITy-linux-rpm
+          path: app/build/compose/binaries/**/rpm/*.rpm
+
+      - name: Upload RPM to GitHub Release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TARGET_TAG=""
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TARGET_TAG="$GITHUB_REF_NAME"
+          else
+            TARGET_TAG=$(gh release view -R ${{ github.repository }} --json tagName -q .tagName)
+          fi
+
+          if [ -z "$TARGET_TAG" ]; then
+            echo "Error: Could not determine target release tag in ${{ github.repository }}."
+            exit 1
+          fi
+
+          echo "Target GitHub release tag: $TARGET_TAG"
+          RPM_FILE=$(find app/build/compose/binaries -name "*.rpm" | head -n 1)
+          if [ -z "$RPM_FILE" ]; then
+            echo "Error: No .rpm found in app/build/compose/binaries/**/rpm/"
+            exit 1
+          fi
+
+          echo "Uploading $RPM_FILE to release $TARGET_TAG"
+          gh release upload -R ${{ github.repository }} "$TARGET_TAG" "$RPM_FILE" --clobber
+
   release-desktop:
     name: Build & Release Windows EXE
     needs: check
