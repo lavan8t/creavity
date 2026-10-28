@@ -1,195 +1,119 @@
 package com.kd.creavity.presentation.canvas
 
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.PaintingStyle
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.vector.VectorGroup
+import androidx.compose.ui.graphics.vector.VectorPath
 import androidx.compose.ui.input.pointer.PointerIcon
 import com.kd.creavity.domain.model.DrawingTool
-import java.awt.BasicStroke
-import java.awt.Color
-import java.awt.Cursor
+import com.kd.creavity.presentation.ui.symbols.generated.*
 import java.awt.Point
-import java.awt.RenderingHints
 import java.awt.Toolkit
-import java.awt.geom.Path2D
-import java.awt.geom.RoundRectangle2D
-import java.awt.image.BufferedImage
 
 private val cursorCache = mutableMapOf<DrawingTool, PointerIcon>()
 
 actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon {
     return cursorCache.getOrPut(tool) {
-        createCustomToolCursor(tool)
+        createMaterialToolCursor(tool)
     }
 }
 
-private fun createCustomToolCursor(tool: DrawingTool): PointerIcon {
+private fun createMaterialToolCursor(tool: DrawingTool): PointerIcon {
     return runCatching {
         val toolkit = Toolkit.getDefaultToolkit()
-        when (tool) {
-            DrawingTool.PEN,
+        val spec = when (tool) {
+            DrawingTool.PEN ->
+                CursorSpec(draw, Point(4, 21), Color(0xFF1E293B), Color.White)
             DrawingTool.PENCIL,
             DrawingTool.MARKER,
-            DrawingTool.BRUSH,
-            DrawingTool.CALLIGRAPHY -> {
-                val img = BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB)
-                val g = img.createGraphics()
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-                
-                // Angled pen nib pointing to (1, 1)
-                val body = Path2D.Float()
-                body.moveTo(1f, 1f)
-                body.lineTo(7f, 2f)
-                body.lineTo(16f, 11f)
-                body.lineTo(11f, 16f)
-                body.lineTo(2f, 7f)
-                body.closePath()
-
-                // High-contrast white border
-                g.color = Color.WHITE
-                g.stroke = BasicStroke(2.5f)
-                g.draw(body)
-
-                // Dark slate pen body
-                g.color = Color(0xFF1E293B.toInt())
-                g.fill(body)
-
-                // Golden metallic nib tip
-                val nib = Path2D.Float()
-                nib.moveTo(1f, 1f)
-                nib.lineTo(4f, 2f)
-                nib.lineTo(2f, 4f)
-                nib.closePath()
-                g.color = Color(0xFFF59E0B.toInt())
-                g.fill(nib)
-
-                g.dispose()
-                PointerIcon(toolkit.createCustomCursor(img, Point(1, 1), "PenCursor"))
-            }
-
-            DrawingTool.HIGHLIGHTER -> {
-                val img = BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB)
-                val g = img.createGraphics()
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-
-                // Wide chisel marker pointing to (1, 1)
-                val body = Path2D.Float()
-                body.moveTo(1f, 1f)
-                body.lineTo(6f, 1f)
-                body.lineTo(15f, 10f)
-                body.lineTo(10f, 15f)
-                body.lineTo(1f, 6f)
-                body.closePath()
-
-                g.color = Color.WHITE
-                g.stroke = BasicStroke(2.5f)
-                g.draw(body)
-
-                g.color = Color(0xFFEAB308.toInt()) // Vibrant yellow
-                g.fill(body)
-
-                val tip = Path2D.Float()
-                tip.moveTo(1f, 1f)
-                tip.lineTo(4f, 1f)
-                tip.lineTo(1f, 4f)
-                tip.closePath()
-                g.color = Color(0xFF1E293B.toInt())
-                g.fill(tip)
-
-                g.dispose()
-                PointerIcon(toolkit.createCustomCursor(img, Point(1, 1), "HighlighterCursor"))
-            }
-
-            DrawingTool.ERASER,
-            DrawingTool.SELECT_ERASE -> {
-                val img = BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB)
-                val g = img.createGraphics()
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-
-                // Clean angled eraser block
-                val eraser = RoundRectangle2D.Float(2f, 2f, 14f, 14f, 4f, 4f)
-
-                g.color = Color.WHITE
-                g.stroke = BasicStroke(2.5f)
-                g.draw(eraser)
-
-                g.color = Color(0xFFFFB5BA.toInt()) // Classic eraser pink
-                g.fill(eraser)
-
-                g.color = Color(0xFFE11D48.toInt())
-                g.drawLine(3, 9, 15, 9)
-
-                g.dispose()
-                PointerIcon(toolkit.createCustomCursor(img, Point(9, 9), "EraserCursor"))
-            }
-
-            DrawingTool.LASER -> {
-                val img = BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB)
-                val g = img.createGraphics()
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-
-                // Outer red halo
-                g.color = Color(0x66EF4444)
-                g.fillOval(2, 2, 16, 16)
-
-                // Sharp white ring
-                g.color = Color.WHITE
-                g.stroke = BasicStroke(1.5f)
-                g.drawOval(4, 4, 12, 12)
-
-                // Center laser red dot
-                g.color = Color(0xFFDC2626.toInt())
-                g.fillOval(7, 7, 6, 6)
-
-                g.dispose()
-                PointerIcon(toolkit.createCustomCursor(img, Point(10, 10), "LaserCursor"))
-            }
-
-            DrawingTool.STICKY_NOTE -> {
-                val img = BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB)
-                val g = img.createGraphics()
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-
-                val note = Path2D.Float()
-                note.moveTo(2f, 2f)
-                note.lineTo(14f, 2f)
-                note.lineTo(18f, 6f)
-                note.lineTo(18f, 18f)
-                note.lineTo(2f, 18f)
-                note.closePath()
-
-                g.color = Color.WHITE
-                g.stroke = BasicStroke(2.5f)
-                g.draw(note)
-
-                g.color = Color(0xFFFEF08A.toInt()) // Post-it yellow
-                g.fill(note)
-
-                g.color = Color(0xFFCA8A04.toInt())
-                g.drawLine(14, 2, 14, 6)
-                g.drawLine(14, 6, 18, 6)
-
-                g.dispose()
-                PointerIcon(toolkit.createCustomCursor(img, Point(2, 2), "StickyNoteCursor"))
-            }
-
-            DrawingTool.LINE,
-            DrawingTool.ARROW,
-            DrawingTool.RECTANGLE,
-            DrawingTool.CIRCLE,
-            DrawingTool.TRIANGLE,
-            DrawingTool.DIAMOND,
-            DrawingTool.STAR -> {
-                PointerIcon(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR))
-            }
-
-            DrawingTool.TEXT -> {
-                PointerIcon(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR))
-            }
-
+            DrawingTool.CALLIGRAPHY ->
+                CursorSpec(edit, Point(4, 21), Color(0xFF0284C7), Color.White)
+            DrawingTool.HIGHLIGHTER ->
+                CursorSpec(ink_highlighter, Point(2, 21), Color(0xFFFACC15), Color(0xFF0F172A))
+            DrawingTool.BRUSH ->
+                CursorSpec(brush, Point(5, 20), Color(0xFF8B5CF6), Color.White)
+            DrawingTool.ERASER ->
+                CursorSpec(ink_eraser, Point(4, 20), Color(0xFFFB7185), Color(0xFF0F172A))
+            DrawingTool.SELECT_ERASE ->
+                CursorSpec(highlight_off, Point(12, 12), Color(0xFFE11D48), Color.White)
+            DrawingTool.LASER ->
+                CursorSpec(flare, Point(12, 12), Color(0xFFEF4444), Color.White)
+            DrawingTool.STICKY_NOTE ->
+                CursorSpec(sticky_note_2, Point(3, 3), Color(0xFFFEF08A), Color(0xFF0F172A))
+            DrawingTool.LINE ->
+                CursorSpec(arrow_right_alt, Point(12, 12), Color.White, Color(0xFF0F172A))
+            DrawingTool.ARROW ->
+                CursorSpec(arrow_forward, Point(21, 12), Color.White, Color(0xFF0F172A))
+            DrawingTool.RECTANGLE ->
+                CursorSpec(rectangle, Point(12, 12), Color.White, Color(0xFF0F172A))
+            DrawingTool.CIRCLE ->
+                CursorSpec(circle, Point(12, 12), Color.White, Color(0xFF0F172A))
+            DrawingTool.TRIANGLE ->
+                CursorSpec(change_history, Point(12, 4), Color.White, Color(0xFF0F172A))
+            DrawingTool.DIAMOND ->
+                CursorSpec(diamond, Point(12, 12), Color.White, Color(0xFF0F172A))
+            DrawingTool.STAR ->
+                CursorSpec(star, Point(12, 12), Color.White, Color(0xFF0F172A))
+            DrawingTool.TEXT ->
+                CursorSpec(title, Point(12, 4), Color.White, Color(0xFF0F172A))
             DrawingTool.SELECT,
-            DrawingTool.SELECT_MOVE,
-            DrawingTool.RECT_SELECT,
-            DrawingTool.LASSO_SELECT -> {
-                PointerIcon(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR))
+            DrawingTool.SELECT_MOVE ->
+                CursorSpec(pan_tool_alt, Point(8, 2), Color.White, Color(0xFF0F172A))
+            DrawingTool.RECT_SELECT ->
+                CursorSpec(crop_free, Point(12, 12), Color(0xFF38BDF8), Color(0xFF0F172A))
+            DrawingTool.LASSO_SELECT ->
+                CursorSpec(gesture, Point(12, 12), Color(0xFF38BDF8), Color(0xFF0F172A))
+        }
+
+        val path = spec.icon.toComposePath()
+        val bitmap = ImageBitmap(32, 32)
+        val canvas = Canvas(bitmap)
+
+        val strokePaint = Paint().apply {
+            color = spec.strokeColor
+            style = PaintingStyle.Stroke
+            strokeWidth = 2.5f
+        }
+        val fillPaint = Paint().apply {
+            color = spec.fillColor
+            style = PaintingStyle.Fill
+        }
+
+        // Draw dual-contrast border then fill for optimal visibility on all canvases
+        canvas.drawPath(path, strokePaint)
+        canvas.drawPath(path, fillPaint)
+
+        val awtImg = bitmap.toAwtImage()
+        PointerIcon(toolkit.createCustomCursor(awtImg, spec.hotspot, "${tool.name}MaterialCursor"))
+    }.getOrDefault(PointerIcon.Default)
+}
+
+private data class CursorSpec(
+    val icon: ImageVector,
+    val hotspot: Point,
+    val fillColor: Color,
+    val strokeColor: Color
+)
+
+private fun ImageVector.toComposePath(): Path {
+    val path = Path()
+    val parser = PathParser()
+    fun extract(group: VectorGroup) {
+        for (node in group) {
+            when (node) {
+                is VectorPath -> parser.addPathNodes(node.pathData)
+                is VectorGroup -> extract(node)
             }
         }
-    }.getOrDefault(PointerIcon.Default)
+    }
+    extract(root)
+    parser.toPath(path)
+    return path
 }
