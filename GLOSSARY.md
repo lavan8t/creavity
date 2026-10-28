@@ -50,5 +50,9 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Office-Grade Shapes**: Clean geometric vector shapes (Rectangle, Oval/Circle, Triangle, Line, Arrow, Star, Cylinder) rendered with crisp anti-aliased paths (`RoughnessStyle.CLEAN` by default) matching Microsoft Word, PowerPoint, and Google Slides fidelity.
 - **Eight-Point Bounding Box Resizing**: Interactive transformation handles positioned at the 8 perimeter points (NW, N, NE, E, SE, S, SW, W) of selected shapes and elements, allowing proportional and directional resizing.
 - **Two-Word Fusion Board Name**: Automatically generated memorable titles combining evocative adjectives and canvas/nature nouns (e.g. "Cosmic Canvas", "Solar Drift", "Amber Horizon") replacing generic placeholders.
+- **Desktop Synchronous Font Provider**: Direct synchronous extraction and AWT registration of raw TrueType font bytes (`google_sans_flex.ttf`) bypassing asynchronous multiplatform compose resource loaders to eliminate glyph fallback glitches and measure latency.
+- **Desktop Canvas Context Menu**: Context-sensitive Material 3 Expressive `DropdownMenu` triggered by non-drag secondary pointer clicks (`<= 8px`), supporting selection-level manipulation (Duplicate, Bring to Front, Send to Back, Delete) and open canvas insertion (Sticky Note, Text, Rectangle, Circle, Select All, Reset Zoom, Clear Canvas).
+- **Adaptive Modal Container**: Universal modal architecture presenting full-width bottom sheets on mobile Android, and transforming into floating, centered, rounded Material 3 `Dialog` surfaces (`RoundedCornerShape(24.dp)`, max width 680dp) on Desktop systems to prevent distorted wide-monitor sheets.
+
 
 

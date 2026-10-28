@@ -58,7 +58,7 @@ fun WhiteboardStickyNoteDialog(
     var selectedColor by remember { mutableStateOf(Whiteboard_STICKY_COLORS[0]) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),

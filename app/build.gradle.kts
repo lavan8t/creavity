@@ -41,6 +41,11 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.1")
             }
         }
+        val desktopTest by getting {
+            dependencies {
+                implementation(libs.junit)
+            }
+        }
     }
 }
 

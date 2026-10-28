@@ -182,7 +182,7 @@ fun BoardEditMetadataSheet(
     var group by remember(board.id) { mutableStateOf(board.group) }
     var labelsText by remember(board.id) { mutableStateOf(board.labels.joinToString(", ")) }
 
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

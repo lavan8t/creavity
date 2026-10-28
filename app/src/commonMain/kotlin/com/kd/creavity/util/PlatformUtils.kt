@@ -40,3 +40,5 @@ expect suspend fun importPdfPages(pathOrUri: String): List<BoardPage>
 expect fun createDefaultPeerTransport(): PeerTransport
 
 expect fun shareBoard(board: com.kd.creavity.domain.model.Board, format: com.kd.creavity.data.export.ExportFormat)
+
+expect fun isDesktopPlatform(): Boolean

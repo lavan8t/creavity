@@ -92,7 +92,7 @@ fun HostOmniviewMatrixSheet(
     val submittedCount = studentWorksheets.values.count { it.isSubmitted }
     val totalSheets = studentWorksheets.size
 
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),

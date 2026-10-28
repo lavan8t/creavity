@@ -97,6 +97,11 @@ import com.kd.creavity.presentation.ui.components.EraserCalloutCard
 import com.kd.creavity.presentation.ui.components.GoogleSlidesDialog
 import com.kd.creavity.presentation.ui.components.WhiteboardStickyNoteDialog
 import com.kd.creavity.presentation.ui.components.WhiteboardTopBar
+import com.kd.creavity.domain.model.BoardPage
+import com.kd.creavity.domain.model.DrawingTool
+import com.kd.creavity.domain.model.RoughnessStyle
+import com.kd.creavity.domain.model.Stroke
+import com.kd.creavity.presentation.ui.components.DesktopCanvasContextMenu
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.PenCalloutCard
 import com.kd.creavity.presentation.ui.components.SelectCalloutCard
@@ -113,6 +118,12 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+
+data class CanvasContextMenuData(
+    val screenOffset: Offset,
+    val worldPoint: Point,
+    val hasSelection: Boolean
+)
 
 enum class MinimapCorner(val alignment: Alignment) {
     TOP_START(Alignment.TopStart),
@@ -247,6 +258,7 @@ fun CanvasViewportScreen(
     var selectedTexts by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectionBounds by remember { mutableStateOf<Rect?>(null) }
     var activeEditingStrokeId by remember { mutableStateOf<String?>(null) }
+    var contextMenuData by remember { mutableStateOf<CanvasContextMenuData?>(null) }
 
     // Image Picker
     val launchImagePicker = rememberFilePickerLauncher(FilePickerType.IMAGE) { path ->
@@ -365,9 +377,111 @@ fun CanvasViewportScreen(
                 activeInlineTextPoint = pt
                 inlineTextContent = ""
             },
+            onContextMenu = { screenOffset, worldPoint, hasSelection ->
+                contextMenuData = CanvasContextMenuData(screenOffset, worldPoint, hasSelection)
+            },
             isReadOnly = uiState.isCanvasReadOnly,
             modifier = Modifier.fillMaxSize()
         )
+
+        // Desktop Material 3 Expressive Context Menu
+        if (contextMenuData != null) {
+            DesktopCanvasContextMenu(
+                expanded = true,
+                onDismissRequest = { contextMenuData = null },
+                screenOffset = contextMenuData!!.screenOffset,
+                hasSelection = contextMenuData!!.hasSelection,
+                onDuplicate = {
+                    if (selectedStrokes.isNotEmpty() || selectedTexts.isNotEmpty()) {
+                        onAction(BoardAction.DuplicateElements(selectedStrokes, selectedTexts))
+                    }
+                },
+                onBringToFront = {
+                    if (selectedStrokes.isNotEmpty()) {
+                        onAction(BoardAction.ReorderElements(selectedStrokes, bringToFront = true))
+                    }
+                },
+                onSendToBack = {
+                    if (selectedStrokes.isNotEmpty()) {
+                        onAction(BoardAction.ReorderElements(selectedStrokes, bringToFront = false))
+                    }
+                },
+                onDeleteSelection = {
+                    selectedStrokes.forEach { onAction(BoardAction.DeleteStroke(it)) }
+                    selectedTexts.forEach { onAction(BoardAction.DeleteText(it)) }
+                    selectedStrokes = emptyList()
+                    selectedTexts = emptyList()
+                    selectionBounds = null
+                },
+                onDeselect = {
+                    selectedStrokes = emptyList()
+                    selectedTexts = emptyList()
+                    selectionBounds = null
+                },
+                onAddStickyNote = {
+                    val wp = contextMenuData?.worldPoint ?: Point(0f, 0f)
+                    onAction(
+                        BoardAction.AddStickyNote(
+                            StickyNote(
+                                x = wp.x - 70f,
+                                y = wp.y - 70f,
+                                text = "Note",
+                                color = 0xFFFFF59D
+                            )
+                        )
+                    )
+                },
+                onInsertText = {
+                    val wp = contextMenuData?.worldPoint ?: Point(0f, 0f)
+                    activeInlineTextPoint = wp
+                    inlineTextContent = ""
+                },
+                onInsertRectangle = {
+                    val wp = contextMenuData?.worldPoint ?: Point(0f, 0f)
+                    val strokeColorLong = effectivePenColor.toArgb().toLong() and 0xFFFFFFFFL
+                    val rectStroke = Stroke(
+                        tool = DrawingTool.RECTANGLE,
+                        color = strokeColorLong,
+                        strokeWidth = uiState.currentWidth,
+                        roughness = RoughnessStyle.CLEAN,
+                        points = listOf(
+                            Point(wp.x - 100f, wp.y - 60f),
+                            Point(wp.x + 100f, wp.y + 60f)
+                        )
+                    )
+                    onAction(BoardAction.StrokeCompleted(rectStroke))
+                },
+                onInsertCircle = {
+                    val wp = contextMenuData?.worldPoint ?: Point(0f, 0f)
+                    val strokeColorLong = effectivePenColor.toArgb().toLong() and 0xFFFFFFFFL
+                    val circleStroke = Stroke(
+                        tool = DrawingTool.CIRCLE,
+                        color = strokeColorLong,
+                        strokeWidth = uiState.currentWidth,
+                        roughness = RoughnessStyle.CLEAN,
+                        points = listOf(
+                            Point(wp.x - 80f, wp.y - 80f),
+                            Point(wp.x + 80f, wp.y + 80f)
+                        )
+                    )
+                    onAction(BoardAction.StrokeCompleted(circleStroke))
+                },
+                onSelectAll = {
+                    val page = uiState.currentBoard.pages.getOrElse(uiState.currentBoard.activePageIndex) {
+                        uiState.currentBoard.pages.firstOrNull() ?: BoardPage()
+                    }
+                    selectedStrokes = page.strokes.map { it.id }
+                    selectedTexts = page.textElements.map { it.id }
+                    onAction(BoardAction.SelectTool(DrawingTool.SELECT))
+                },
+                onResetZoom = {
+                    onAction(BoardAction.ResetCanvasTransform)
+                },
+                onClearCanvas = {
+                    onAction(BoardAction.ClearCanvas)
+                }
+            )
+        }
 
         // 1.5 Inline Canvas Text Editor (Directly on canvas, no dialogs or bottom sheets)
         if (activeInlineTextPoint != null) {

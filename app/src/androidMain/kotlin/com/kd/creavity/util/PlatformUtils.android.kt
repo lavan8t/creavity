@@ -197,3 +197,6 @@ actual fun shareBoard(board: com.kd.creavity.domain.model.Board, format: com.kd.
     com.kd.creavity.data.export.AndroidBoardExporter.shareBoard(ctx, board, format)
 }
 
+actual fun isDesktopPlatform(): Boolean = false
+
+

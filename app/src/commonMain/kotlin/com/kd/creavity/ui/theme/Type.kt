@@ -5,23 +5,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import creavity.app.generated.resources.Res
-import creavity.app.generated.resources.google_sans_flex
-import org.jetbrains.compose.resources.Font
 
-val LocalAppFontFamily = compositionLocalOf<FontFamily> { FontFamily.Default }
+val LocalAppFontFamily = compositionLocalOf<FontFamily> { PlatformFontProvider.staticFontFamily }
 
-var AppFontFamily: FontFamily = FontFamily.Default
+var AppFontFamily: FontFamily = PlatformFontProvider.staticFontFamily
 
 @Composable
 fun getAppFontFamily(): FontFamily {
-    val family = FontFamily(
-        Font(Res.font.google_sans_flex, weight = FontWeight.Light),
-        Font(Res.font.google_sans_flex, weight = FontWeight.Normal),
-        Font(Res.font.google_sans_flex, weight = FontWeight.Medium),
-        Font(Res.font.google_sans_flex, weight = FontWeight.SemiBold),
-        Font(Res.font.google_sans_flex, weight = FontWeight.Bold)
-    )
+    val family = PlatformFontProvider.getFontFamily()
     AppFontFamily = family
     return family
 }
@@ -49,4 +40,4 @@ fun createAppTypography(fontFamily: FontFamily): Typography {
     )
 }
 
-val Typography = createAppTypography(FontFamily.Default)
+val Typography = createAppTypography(PlatformFontProvider.staticFontFamily)

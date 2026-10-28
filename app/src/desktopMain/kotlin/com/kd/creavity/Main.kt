@@ -46,28 +46,7 @@ fun getSystemScale(): Float {
 
 fun initDesktopFonts() {
     try {
-        val classLoader = Thread.currentThread().contextClassLoader ?: object {}.javaClass.classLoader
-        val fontStream = classLoader.getResourceAsStream("font/google_sans_flex.ttf")
-            ?: object {}.javaClass.getResourceAsStream("/font/google_sans_flex.ttf")
-            ?: object {}.javaClass.getResourceAsStream("/composeResources/creavity.app.generated.resources/font/google_sans_flex.ttf")
-
-        if (fontStream != null) {
-            val awtFont = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, fontStream)
-            val ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
-            ge.registerFont(awtFont)
-        }
-    } catch (e: Throwable) {
-        println("Note: Could not register Google Sans Flex in AWT: ${e.message}")
-    }
-
-    try {
-        val family = androidx.compose.ui.text.font.FontFamily(
-            androidx.compose.ui.text.platform.Font("font/google_sans_flex.ttf", androidx.compose.ui.text.font.FontWeight.Light),
-            androidx.compose.ui.text.platform.Font("font/google_sans_flex.ttf", androidx.compose.ui.text.font.FontWeight.Normal),
-            androidx.compose.ui.text.platform.Font("font/google_sans_flex.ttf", androidx.compose.ui.text.font.FontWeight.Medium),
-            androidx.compose.ui.text.platform.Font("font/google_sans_flex.ttf", androidx.compose.ui.text.font.FontWeight.SemiBold),
-            androidx.compose.ui.text.platform.Font("font/google_sans_flex.ttf", androidx.compose.ui.text.font.FontWeight.Bold)
-        )
+        val family = com.kd.creavity.ui.theme.PlatformFontProvider.staticFontFamily
         com.kd.creavity.ui.theme.AppFontFamily = family
     } catch (e: Throwable) {
         println("Note: Could not register Google Sans Flex Compose FontFamily: ${e.message}")

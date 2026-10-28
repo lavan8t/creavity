@@ -473,7 +473,7 @@ fun CreateFolderSheet(
     var folderName by remember { mutableStateOf("") }
     val haptic = LocalHapticFeedback.current
 
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

@@ -86,6 +86,7 @@ fun WhiteboardCanvas(
     onElementsMoved: (List<Stroke>, List<TextElement>, List<ImageElement>) -> Unit = { _, _, _ -> },
     onSelectionChanged: (List<String>, List<String>, Rect?) -> Unit = { _, _, _ -> },
     onTapForText: (Point) -> Unit = {},
+    onContextMenu: ((screenOffset: Offset, worldPoint: Point, hasSelection: Boolean) -> Unit)? = null,
     isReadOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -121,8 +122,11 @@ fun WhiteboardCanvas(
             requestInvalidate = { drawInvalidator.longValue = System.nanoTime() }
         ).apply {
             this.density = density
+            this.onContextMenu = onContextMenu
         }
     }
+
+    controller.onContextMenu = onContextMenu
 
     LaunchedEffect(controller.laserActiveToken) {
         if (controller.laserPoints.isEmpty()) return@LaunchedEffect

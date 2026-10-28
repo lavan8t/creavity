@@ -31,6 +31,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import com.kd.creavity.presentation.ui.components.AdaptiveModalSheet
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -213,7 +214,7 @@ fun CanvasBackgroundBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val haptic = LocalHapticFeedback.current
 
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface
@@ -501,7 +502,7 @@ fun SettingsScreen(
 
     if (showEditDisplayNameDialog) {
         val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
+        AdaptiveModalSheet(
             onDismissRequest = { showEditDisplayNameDialog = false },
             sheetState = editSheetState,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -575,7 +576,7 @@ fun SettingsScreen(
 
     if (showThemeModeSheet) {
         val themeSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
+        AdaptiveModalSheet(
             onDismissRequest = { showThemeModeSheet = false },
             sheetState = themeSheetState,
             containerColor = MaterialTheme.colorScheme.surface

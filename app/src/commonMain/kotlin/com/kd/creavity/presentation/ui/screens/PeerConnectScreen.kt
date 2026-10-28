@@ -55,6 +55,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import com.kd.creavity.presentation.ui.components.AdaptiveModalSheet
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -718,7 +719,7 @@ fun PeerConnectScreen(
         var selectedEmoji by remember { mutableStateOf(userEmoji) }
         var nameText by remember { mutableStateOf(rawName) }
 
-        ModalBottomSheet(
+        AdaptiveModalSheet(
             onDismissRequest = { showEditSheet = false },
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),

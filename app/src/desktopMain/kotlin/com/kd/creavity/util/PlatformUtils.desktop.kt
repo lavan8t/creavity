@@ -185,3 +185,6 @@ actual fun shareBoard(board: com.kd.creavity.domain.model.Board, format: com.kd.
     }
 }
 
+actual fun isDesktopPlatform(): Boolean = true
+
+

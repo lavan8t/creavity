@@ -41,6 +41,12 @@ class CanvasGestureController(
     private var lastMidY = 0f
     private var lastDist = 0f
 
+    // Secondary click / context menu tracking
+    private var secondaryDownScreenX = 0f
+    private var secondaryDownScreenY = 0f
+    private var secondaryDragDist = 0f
+    var onContextMenu: ((screenOffset: Offset, worldPoint: Point, hasSelection: Boolean) -> Unit)? = null
+
     // Drawing in-progress state
     val userSessionId = UUID.randomUUID().toString().take(8)
     val activePath = Path()
@@ -162,27 +168,72 @@ class CanvasGestureController(
             return true
         }
 
-        // 1.5. Mouse Right-Click handling (Canvas Pan on drag, Deselect on click)
+        // 1.5. Mouse Right-Click handling (Canvas Pan on drag, Context Menu on click)
         if (event.activePointer.isSecondaryButton) {
             discardActiveStroke()
             when (event.action) {
                 CanvasPointerAction.DOWN -> {
+                    secondaryDownScreenX = event.x
+                    secondaryDownScreenY = event.y
+                    secondaryDragDist = 0f
                     lastMidX = event.x
                     lastMidY = event.y
                 }
                 CanvasPointerAction.MOVE -> {
                     val dx = event.x - lastMidX
                     val dy = event.y - lastMidY
-                    onTransform(1.0f, Offset.Zero, Offset(dx, dy))
+                    val stepDist = kotlin.math.hypot(dx, dy)
+                    secondaryDragDist += stepDist
+                    if (secondaryDragDist > 8f) {
+                        onTransform(1.0f, Offset.Zero, Offset(dx, dy))
+                    }
                     lastMidX = event.x
                     lastMidY = event.y
                 }
                 CanvasPointerAction.UP -> {
-                    if (selectedStrokeIds.isNotEmpty() || selectedTextIds.isNotEmpty() || selectedImageIds.isNotEmpty()) {
-                        selectedStrokeIds.clear()
-                        selectedTextIds.clear()
-                        selectedImageIds.clear()
-                        notifySelectionChanged(strokes, textElements, imageElements)
+                    if (secondaryDragDist <= 8f) {
+                        val clickScreen = Offset(event.x, event.y)
+                        val clickWorld = Point((event.x - panOffset.x) / zoom, (event.y - panOffset.y) / zoom)
+                        val hitRadius = (32f / zoom)
+                        val hitRadiusSq = hitRadius * hitRadius
+
+                        val hitStroke = strokes.findLast { s ->
+                            s.points.any { p ->
+                                val ddx = p.x - clickWorld.x
+                                val ddy = p.y - clickWorld.y
+                                (ddx * ddx + ddy * ddy) <= hitRadiusSq
+                            }
+                        }
+                        val hitText = textElements.findLast { t ->
+                            val ddx = t.x - clickWorld.x
+                            val ddy = t.y - clickWorld.y
+                            (ddx * ddx + ddy * ddy) <= (hitRadiusSq * 3f)
+                        }
+                        val hitImage = imageElements.findLast { im ->
+                            clickWorld.x >= im.x && clickWorld.x <= (im.x + im.width) &&
+                            clickWorld.y >= im.y && clickWorld.y <= (im.y + im.height)
+                        }
+
+                        val elementHit = hitStroke != null || hitText != null || hitImage != null
+                        if (elementHit) {
+                            val alreadySelected = (hitStroke != null && selectedStrokeIds.contains(hitStroke.id)) ||
+                                    (hitText != null && selectedTextIds.contains(hitText.id)) ||
+                                    (hitImage != null && selectedImageIds.contains(hitImage.id))
+                            if (!alreadySelected) {
+                                selectedStrokeIds.clear()
+                                selectedTextIds.clear()
+                                selectedImageIds.clear()
+                                if (hitStroke != null) selectedStrokeIds.add(hitStroke.id)
+                                if (hitText != null) selectedTextIds.add(hitText.id)
+                                if (hitImage != null) selectedImageIds.add(hitImage.id)
+                                notifySelectionChanged(strokes, textElements, imageElements)
+                                requestInvalidate()
+                            }
+                            onContextMenu?.invoke(clickScreen, clickWorld, true)
+                        } else {
+                            val hasExistingSelection = selectedStrokeIds.isNotEmpty() || selectedTextIds.isNotEmpty() || selectedImageIds.isNotEmpty()
+                            onContextMenu?.invoke(clickScreen, clickWorld, hasExistingSelection)
+                        }
                     }
                 }
                 else -> {}
