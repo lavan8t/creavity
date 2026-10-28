@@ -8,12 +8,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import com.kd.creavity.data.nearby.ConnectivityCheckResult
 import com.kd.creavity.data.nearby.ConnectivityHelper
 import com.kd.creavity.presentation.ui.AdaptiveWhiteboardScreen
 import com.kd.creavity.presentation.ui.BoardAction
+import com.kd.creavity.presentation.ui.components.SplashDrawingOverlay
 import com.kd.creavity.presentation.viewmodel.ThemeMode
 import com.kd.creavity.presentation.viewmodel.WhiteboardViewModel
 import com.kd.creavity.presentation.viewmodel.dispatch
@@ -39,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val uiState by viewModel.uiState.collectAsState()
+            var showSplash by remember { mutableStateOf(true) }
 
             val isDark = when (uiState.themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -47,16 +55,24 @@ class MainActivity : ComponentActivity() {
             }
 
             boardTheme(darkTheme = isDark) {
-                AdaptiveWhiteboardScreen(
-                    uiState = uiState,
-                    onAction = { action ->
-                        when (action) {
-                            is BoardAction.StartAdvertising -> startAdvertisingWithCheck(action.deviceName)
-                            is BoardAction.StartDiscovery -> startDiscoveryWithCheck()
-                            else -> viewModel.dispatch(action)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AdaptiveWhiteboardScreen(
+                        uiState = uiState,
+                        onAction = { action ->
+                            when (action) {
+                                is BoardAction.StartAdvertising -> startAdvertisingWithCheck(action.deviceName)
+                                is BoardAction.StartDiscovery -> startDiscoveryWithCheck()
+                                else -> viewModel.dispatch(action)
+                            }
                         }
+                    )
+
+                    if (showSplash) {
+                        SplashDrawingOverlay(
+                            onFinished = { showSplash = false }
+                        )
                     }
-                )
+                }
             }
         }
     }
