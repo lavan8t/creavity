@@ -45,3 +45,10 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Board Ownership Scope**: Taxonomy partitioning boards into `Owned by me` (created on local peer profile) versus `Shared with me` (synchronized from remote collaborators/hosts) surfaced through borderless Material 3 Expressive filter chips.
 - **Label-Based Taxonomy**: Flat, multi-select tag filtering architecture replacing legacy hierarchical folders, allowing flexible categorization and discovery across arbitrarily labeled boards.
 
+## Office-Grade Shapes & Identity
+
+- **Office-Grade Shapes**: Clean geometric vector shapes (Rectangle, Oval/Circle, Triangle, Line, Arrow, Star, Cylinder) rendered with crisp anti-aliased paths (`RoughnessStyle.CLEAN` by default) matching Microsoft Word, PowerPoint, and Google Slides fidelity.
+- **Eight-Point Bounding Box Resizing**: Interactive transformation handles positioned at the 8 perimeter points (NW, N, NE, E, SE, S, SW, W) of selected shapes and elements, allowing proportional and directional resizing.
+- **Two-Word Fusion Board Name**: Automatically generated memorable titles combining evocative adjectives and canvas/nature nouns (e.g. "Cosmic Canvas", "Solar Drift", "Amber Horizon") replacing generic placeholders.
+
+

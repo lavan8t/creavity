@@ -585,21 +585,27 @@ fun WhiteboardCanvas(
                         )
 
                         val handleRadius = 6.dp.toPx() / zoom
+                        val midX = (boundRect.left + boundRect.right) / 2f
+                        val midY = (boundRect.top + boundRect.bottom) / 2f
                         listOf(
                             Offset(boundRect.left, boundRect.top),
+                            Offset(midX, boundRect.top),
                             Offset(boundRect.right, boundRect.top),
+                            Offset(boundRect.right, midY),
+                            Offset(boundRect.right, boundRect.bottom),
+                            Offset(midX, boundRect.bottom),
                             Offset(boundRect.left, boundRect.bottom),
-                            Offset(boundRect.right, boundRect.bottom)
-                        ).forEach { corner ->
+                            Offset(boundRect.left, midY)
+                        ).forEach { handleCenter ->
                             drawCircle(
                                 color = m3Surface,
                                 radius = handleRadius,
-                                center = corner
+                                center = handleCenter
                             )
                             drawCircle(
                                 color = selectionPrimary,
                                 radius = handleRadius,
-                                center = corner,
+                                center = handleCenter,
                                 style = CanvasStrokeStyle(width = 2.dp.toPx() / zoom)
                             )
                         }

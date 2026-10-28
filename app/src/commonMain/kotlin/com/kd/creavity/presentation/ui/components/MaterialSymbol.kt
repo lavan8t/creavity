@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BorderColor
 import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.ChangeHistory
 import androidx.compose.material.icons.filled.Check
@@ -97,6 +98,7 @@ import androidx.compose.material.icons.outlined.ArrowRightAlt
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.Brush
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ChangeHistory
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronLeft
@@ -187,6 +189,7 @@ fun MaterialSymbol(
         "arrow_downward", "south" -> Icons.Default.ArrowDownward
         "rectangle", "crop_square", "filter_none" -> if (filled) Icons.Filled.Rectangle else Icons.Outlined.Rectangle
         "circle", "radio_button_unchecked" -> if (filled) Icons.Filled.Circle else Icons.Outlined.Circle
+        "shapes", "category" -> if (filled) Icons.Filled.Category else Icons.Outlined.Category
         "triangle", "change_history" -> if (filled) Icons.Filled.ChangeHistory else Icons.Outlined.ChangeHistory
         "diamond" -> if (filled) Icons.Filled.Diamond else Icons.Outlined.Diamond
         "cylinder", "database", "storage" -> if (filled) Icons.Filled.Storage else Icons.Outlined.Storage

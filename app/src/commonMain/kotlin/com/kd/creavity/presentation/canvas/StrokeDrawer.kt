@@ -105,46 +105,17 @@ object StrokeDrawer {
             DrawingTool.STAR,
             DrawingTool.LINE -> {
                 if (points.size >= 2) {
-                    val roughShape = RoughShapeGenerator.getOrCreateRoughShape(
-                        strokeId = strokeId,
-                        tool = tool,
-                        points = points,
-                        strokeWidth = width,
-                        roughness = roughness,
-                        fillStyle = fillStyle
-                    )
-
-                    // 1. Fill (if semi-transparent or solid)
-                    if (roughShape.fillPath != null) {
-                        when (fillStyle) {
-                            FillStyle.SEMI_TRANSPARENT -> {
-                                drawPath(roughShape.fillPath, color.copy(alpha = 0.22f))
-                            }
-                            FillStyle.SOLID -> {
-                                drawPath(roughShape.fillPath, color)
-                            }
-                            else -> {}
+                    val rFactor = RoughShapeGenerator.getRoughnessFactor(roughness)
+                    if (rFactor <= 0.05f) {
+                        // Office-Grade Clean Vector Geometry (Word / PowerPoint precision)
+                        val cleanPath = cachedPath ?: PathUtils.createToolPath(tool, points)
+                        if (fillStyle == FillStyle.SOLID) {
+                            drawPath(cleanPath, color)
+                        } else if (fillStyle == FillStyle.SEMI_TRANSPARENT) {
+                            drawPath(cleanPath, color.copy(alpha = 0.22f))
                         }
-                    }
-
-                    // 2. Hachure Cross-Hatching
-                    if (fillStyle == FillStyle.HACHURE && roughShape.hachurePaths.isNotEmpty()) {
-                        roughShape.hachurePaths.forEach { hPath ->
-                            drawPath(
-                                path = hPath,
-                                color = color.copy(alpha = 0.70f),
-                                style = CanvasStrokeStyle(
-                                    width = (width * 0.75f).coerceAtLeast(1f),
-                                    cap = StrokeCap.Round
-                                )
-                            )
-                        }
-                    }
-
-                    // 3. Outlines
-                    roughShape.strokePaths.forEach { sPath ->
                         drawPath(
-                            path = sPath,
+                            path = cleanPath,
                             color = color,
                             style = CanvasStrokeStyle(
                                 width = width,
@@ -152,6 +123,55 @@ object StrokeDrawer {
                                 join = StrokeJoin.Round
                             )
                         )
+                    } else {
+                        val roughShape = RoughShapeGenerator.getOrCreateRoughShape(
+                            strokeId = strokeId,
+                            tool = tool,
+                            points = points,
+                            strokeWidth = width,
+                            roughness = roughness,
+                            fillStyle = fillStyle
+                        )
+
+                        // 1. Fill (if semi-transparent or solid)
+                        if (roughShape.fillPath != null) {
+                            when (fillStyle) {
+                                FillStyle.SEMI_TRANSPARENT -> {
+                                    drawPath(roughShape.fillPath, color.copy(alpha = 0.22f))
+                                }
+                                FillStyle.SOLID -> {
+                                    drawPath(roughShape.fillPath, color)
+                                }
+                                else -> {}
+                            }
+                        }
+
+                        // 2. Hachure Cross-Hatching
+                        if (fillStyle == FillStyle.HACHURE && roughShape.hachurePaths.isNotEmpty()) {
+                            roughShape.hachurePaths.forEach { hPath ->
+                                drawPath(
+                                    path = hPath,
+                                    color = color.copy(alpha = 0.70f),
+                                    style = CanvasStrokeStyle(
+                                        width = (width * 0.75f).coerceAtLeast(1f),
+                                        cap = StrokeCap.Round
+                                    )
+                                )
+                            }
+                        }
+
+                        // 3. Outlines
+                        roughShape.strokePaths.forEach { sPath ->
+                            drawPath(
+                                path = sPath,
+                                color = color,
+                                style = CanvasStrokeStyle(
+                                    width = width,
+                                    cap = StrokeCap.Round,
+                                    join = StrokeJoin.Round
+                                )
+                            )
+                        }
                     }
                 }
             }

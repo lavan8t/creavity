@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kd.creavity.domain.model.BoardNameGenerator
 import com.kd.creavity.domain.model.Point
 import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.presentation.canvas.CanvasColorUtils
@@ -99,6 +100,7 @@ import com.kd.creavity.presentation.ui.components.WhiteboardTopBar
 import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.PenCalloutCard
 import com.kd.creavity.presentation.ui.components.SelectCalloutCard
+import com.kd.creavity.presentation.ui.components.ShapeCalloutCard
 import com.kd.creavity.presentation.ui.components.UndoRedoCalloutCard
 import com.kd.creavity.presentation.ui.components.VersionHistorySheet
 import com.kd.creavity.presentation.ui.components.WhiteboardMinimap
@@ -971,6 +973,15 @@ fun CanvasViewportScreen(
                         activeCalloutTool = null
                     }
                 )
+
+                ShapeCalloutCard(
+                    visible = activeCalloutTool == "SHAPES",
+                    selectedTool = uiState.selectedTool,
+                    onSelectTool = { tool ->
+                        onAction(BoardAction.SelectTool(tool))
+                    },
+                    onDismiss = { activeCalloutTool = null }
+                )
             }
         }
 
@@ -1096,7 +1107,7 @@ fun CanvasViewportScreen(
             onTitleChange = { renameBoardInput = it },
             onDismiss = { showRenameBoardDialog = false },
             onConfirm = {
-                val newTitle = renameBoardInput.ifBlank { "Untitled" }
+                val newTitle = renameBoardInput.ifBlank { BoardNameGenerator.generate() }
                 onAction(BoardAction.RenameBoard(uiState.currentBoard.id, newTitle))
                 showRenameBoardDialog = false
             }

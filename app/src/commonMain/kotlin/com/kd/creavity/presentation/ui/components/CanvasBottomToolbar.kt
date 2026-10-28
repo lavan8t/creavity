@@ -113,6 +113,16 @@ fun CanvasBottomToolbar(
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
     val fabFocusRequester = remember { FocusRequester() }
 
+    val isShape = uiState.selectedTool in listOf(
+        DrawingTool.RECTANGLE,
+        DrawingTool.CIRCLE,
+        DrawingTool.TRIANGLE,
+        DrawingTool.STAR,
+        DrawingTool.CYLINDER,
+        DrawingTool.ARROW,
+        DrawingTool.LINE
+    )
+
     BackHandler(fabMenuExpanded) { fabMenuExpanded = false }
 
     LaunchedEffect(fabMenuExpanded) {
@@ -193,7 +203,33 @@ fun CanvasBottomToolbar(
                         }
                     )
 
-                    // 3. Select / Move button
+                    // 3. Shapes tool button
+                    val shapeIcon = when (uiState.selectedTool) {
+                        DrawingTool.CIRCLE -> "circle"
+                        DrawingTool.TRIANGLE -> "triangle"
+                        DrawingTool.STAR -> "star"
+                        DrawingTool.CYLINDER -> "cylinder"
+                        DrawingTool.ARROW -> "arrow_forward"
+                        DrawingTool.LINE -> "horizontal_rule"
+                        DrawingTool.RECTANGLE -> "rectangle"
+                        else -> "category"
+                    }
+                    ToolbarIconButton(
+                        icon = shapeIcon,
+                        tooltip = "Shapes (click or long-press for shapes)",
+                        isSelected = isShape,
+                        onClick = {
+                            if (!isShape) {
+                                onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
+                            }
+                            onToggleCallout("SHAPES")
+                        },
+                        onLongClick = {
+                            onToggleCallout("SHAPES")
+                        }
+                    )
+
+                    // 4. Select / Move button
                     val isSelect = uiState.selectedTool in listOf(
                         DrawingTool.SELECT_MOVE,
                         DrawingTool.RECT_SELECT,
@@ -286,55 +322,15 @@ fun CanvasBottomToolbar(
                                 }
                             )
                             FabMenuItem(
-                                icon = "circle",
-                                label = "Circle",
+                                icon = "category",
+                                label = "Shapes",
+                                filled = isShape,
                                 onClick = {
                                     fabMenuExpanded = false
-                                    onAction(BoardAction.SelectTool(DrawingTool.CIRCLE))
-                                }
-                            )
-                            FabMenuItem(
-                                icon = "rectangle",
-                                label = "Rectangle",
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
-                                }
-                            )
-                            FabMenuItem(
-                                icon = "diamond",
-                                label = "Diamond",
-                                filled = uiState.selectedTool == DrawingTool.DIAMOND,
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    onAction(BoardAction.SelectTool(DrawingTool.DIAMOND))
-                                }
-                            )
-                            FabMenuItem(
-                                icon = "cylinder",
-                                label = "Cylinder",
-                                filled = uiState.selectedTool == DrawingTool.CYLINDER,
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    onAction(BoardAction.SelectTool(DrawingTool.CYLINDER))
-                                }
-                            )
-                            FabMenuItem(
-                                icon = "star",
-                                label = "Star",
-                                filled = uiState.selectedTool == DrawingTool.STAR,
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    onAction(BoardAction.SelectTool(DrawingTool.STAR))
-                                }
-                            )
-                            FabMenuItem(
-                                icon = "triangle",
-                                label = "Triangle",
-                                filled = uiState.selectedTool == DrawingTool.TRIANGLE,
-                                onClick = {
-                                    fabMenuExpanded = false
-                                    onAction(BoardAction.SelectTool(DrawingTool.TRIANGLE))
+                                    if (!isShape) {
+                                        onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
+                                    }
+                                    onToggleCallout("SHAPES")
                                 }
                             )
                             FabMenuItem(

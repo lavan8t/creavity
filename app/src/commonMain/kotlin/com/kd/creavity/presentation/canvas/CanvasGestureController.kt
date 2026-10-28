@@ -77,6 +77,16 @@ class CanvasGestureController(
     val movingImages = mutableListOf<ImageElement>()
     val activeAlignmentGuides = mutableListOf<AlignmentGuide>()
 
+    // Office-grade 8-point handle resizing
+    var activeResizeHandle: ResizeHandle? = null
+    var isResizingSelection = false
+        private set
+    private var initialResizeBounds: Rect = Rect.Zero
+    private val initialStrokes = mutableListOf<Stroke>()
+    private val initialTexts = mutableListOf<TextElement>()
+    private val initialImages = mutableListOf<ImageElement>()
+    private var resizeDownPoint = Point(0f, 0f)
+
     // Stylus button state
     var isStylusButtonActive = false
         private set
@@ -486,6 +496,33 @@ class CanvasGestureController(
             when (event.action) {
                 CanvasPointerAction.DOWN -> {
                     lastMovePoint = worldPoint
+
+                    // Check for 8-point resize handle interaction on existing selection
+                    if (selectedStrokeIds.isNotEmpty() || selectedTextIds.isNotEmpty() || selectedImageIds.isNotEmpty()) {
+                        val currentBounds = computeSelectionBounds(strokes, textElements, imageElements, zoom)
+                        val handleHit = if (currentBounds != null) hitTestResizeHandle(worldPoint, currentBounds, 24f / zoom) else null
+                        if (handleHit != null) {
+                            isResizingSelection = true
+                            activeResizeHandle = handleHit
+                            initialResizeBounds = currentBounds!!
+                            resizeDownPoint = worldPoint
+                            initialStrokes.clear()
+                            initialStrokes.addAll(strokes.filter { selectedStrokeIds.contains(it.id) })
+                            initialTexts.clear()
+                            initialTexts.addAll(textElements.filter { selectedTextIds.contains(it.id) })
+                            initialImages.clear()
+                            initialImages.addAll(imageElements.filter { selectedImageIds.contains(it.id) })
+                            movingStrokes.clear()
+                            movingStrokes.addAll(initialStrokes)
+                            movingTexts.clear()
+                            movingTexts.addAll(initialTexts)
+                            movingImages.clear()
+                            movingImages.addAll(initialImages)
+                            requestInvalidate()
+                            return true
+                        }
+                    }
+
                     val hitStroke = strokes.findLast { s ->
                         s.points.any { p ->
                             val dx = p.x - worldPoint.x
@@ -550,6 +587,85 @@ class CanvasGestureController(
                     return true
                 }
                 CanvasPointerAction.MOVE -> {
+                    val handle = activeResizeHandle
+                    if (isResizingSelection && handle != null) {
+                        val dx = worldPoint.x - resizeDownPoint.x
+                        val dy = worldPoint.y - resizeDownPoint.y
+
+                        var newLeft = initialResizeBounds.left
+                        var newTop = initialResizeBounds.top
+                        var newRight = initialResizeBounds.right
+                        var newBottom = initialResizeBounds.bottom
+
+                        when (handle) {
+                            ResizeHandle.TOP_LEFT -> {
+                                newLeft = minOf(initialResizeBounds.left + dx, initialResizeBounds.right - 20f)
+                                newTop = minOf(initialResizeBounds.top + dy, initialResizeBounds.bottom - 20f)
+                            }
+                            ResizeHandle.TOP -> {
+                                newTop = minOf(initialResizeBounds.top + dy, initialResizeBounds.bottom - 20f)
+                            }
+                            ResizeHandle.TOP_RIGHT -> {
+                                newRight = maxOf(initialResizeBounds.right + dx, initialResizeBounds.left + 20f)
+                                newTop = minOf(initialResizeBounds.top + dy, initialResizeBounds.bottom - 20f)
+                            }
+                            ResizeHandle.RIGHT -> {
+                                newRight = maxOf(initialResizeBounds.right + dx, initialResizeBounds.left + 20f)
+                            }
+                            ResizeHandle.BOTTOM_RIGHT -> {
+                                newRight = maxOf(initialResizeBounds.right + dx, initialResizeBounds.left + 20f)
+                                newBottom = maxOf(initialResizeBounds.bottom + dy, initialResizeBounds.top + 20f)
+                            }
+                            ResizeHandle.BOTTOM -> {
+                                newBottom = maxOf(initialResizeBounds.bottom + dy, initialResizeBounds.top + 20f)
+                            }
+                            ResizeHandle.BOTTOM_LEFT -> {
+                                newLeft = minOf(initialResizeBounds.left + dx, initialResizeBounds.right - 20f)
+                                newBottom = maxOf(initialResizeBounds.bottom + dy, initialResizeBounds.top + 20f)
+                            }
+                            ResizeHandle.LEFT -> {
+                                newLeft = minOf(initialResizeBounds.left + dx, initialResizeBounds.right - 20f)
+                            }
+                        }
+
+                        val initW = initialResizeBounds.width.coerceAtLeast(1f)
+                        val initH = initialResizeBounds.height.coerceAtLeast(1f)
+                        val scaleX = (newRight - newLeft) / initW
+                        val scaleY = (newBottom - newTop) / initH
+
+                        for (i in initialStrokes.indices) {
+                            val orig = initialStrokes[i]
+                            val updatedPoints = orig.points.map { p ->
+                                val relX = p.x - initialResizeBounds.left
+                                val relY = p.y - initialResizeBounds.top
+                                Point(newLeft + relX * scaleX, newTop + relY * scaleY)
+                            }
+                            movingStrokes[i] = orig.copy(points = updatedPoints)
+                        }
+                        for (i in initialTexts.indices) {
+                            val orig = initialTexts[i]
+                            val relX = orig.x - initialResizeBounds.left
+                            val relY = orig.y - initialResizeBounds.top
+                            movingTexts[i] = orig.copy(
+                                x = newLeft + relX * scaleX,
+                                y = newTop + relY * scaleY,
+                                fontSize = (orig.fontSize * minOf(scaleX, scaleY)).coerceIn(8f, 140f)
+                            )
+                        }
+                        for (i in initialImages.indices) {
+                            val orig = initialImages[i]
+                            val relX = orig.x - initialResizeBounds.left
+                            val relY = orig.y - initialResizeBounds.top
+                            movingImages[i] = orig.copy(
+                                x = newLeft + relX * scaleX,
+                                y = newTop + relY * scaleY,
+                                width = (orig.width * scaleX).coerceAtLeast(20f),
+                                height = (orig.height * scaleY).coerceAtLeast(20f)
+                            )
+                        }
+                        requestInvalidate()
+                        return true
+                    }
                     if (isMovingSelection) {
                         val dx = worldPoint.x - lastMovePoint.x
                         val dy = worldPoint.y - lastMovePoint.y
@@ -647,6 +763,24 @@ class CanvasGestureController(
                     return true
                 }
                 CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
+                    if (isResizingSelection) {
+                        isResizingSelection = false
+                        activeResizeHandle = null
+                        onElementsMoved(
+                            movingStrokes.toList(),
+                            movingTexts.toList(),
+                            movingImages.toList()
+                        )
+                        movingStrokes.clear()
+                        movingTexts.clear()
+                        movingImages.clear()
+                        initialStrokes.clear()
+                        initialTexts.clear()
+                        initialImages.clear()
+                        notifySelectionChanged(strokes, textElements, imageElements)
+                        requestInvalidate()
+                        return true
+                    }
                     if (isMovingSelection) {
                         isMovingSelection = false
                         onElementsMoved(
@@ -820,4 +954,79 @@ class CanvasGestureController(
             onSelectionChanged(selectedStrokeIds.toList(), selectedTextIds.toList(), null)
         }
     }
+
+    fun computeSelectionBounds(
+        strokes: List<Stroke>,
+        textElements: List<TextElement>,
+        imageElements: List<ImageElement>,
+        zoom: Float
+    ): Rect? {
+        if (selectedStrokeIds.isEmpty() && selectedTextIds.isEmpty() && selectedImageIds.isEmpty()) return null
+        var minX = Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxX = Float.MIN_VALUE
+        var maxY = Float.MIN_VALUE
+
+        strokes.filter { selectedStrokeIds.contains(it.id) }.forEach { s ->
+            s.points.forEach { p ->
+                if (p.x < minX) minX = p.x
+                if (p.y < minY) minY = p.y
+                if (p.x > maxX) maxX = p.x
+                if (p.y > maxY) maxY = p.y
+            }
+        }
+        textElements.filter { selectedTextIds.contains(it.id) }.forEach { t ->
+            if (t.x < minX) minX = t.x
+            if (t.y < minY) minY = t.y
+            if (t.x + (t.fontSize * 6f) > maxX) maxX = t.x + (t.fontSize * 6f)
+            if (t.y + (t.fontSize * 1.5f) > maxY) maxY = t.y + (t.fontSize * 1.5f)
+        }
+        imageElements.filter { selectedImageIds.contains(it.id) }.forEach { im ->
+            if (im.x < minX) minX = im.x
+            if (im.y < minY) minY = im.y
+            if (im.x + im.width > maxX) maxX = im.x + im.width
+            if (im.y + im.height > maxY) maxY = im.y + im.height
+        }
+        if (minX <= maxX && minY <= maxY) {
+            val pad = 12f / zoom
+            return Rect(minX - pad, minY - pad, maxX + pad, maxY + pad)
+        }
+        return null
+    }
+
+    fun hitTestResizeHandle(point: Point, bounds: Rect, handleHitRadius: Float): ResizeHandle? {
+        val radiusSq = handleHitRadius * handleHitRadius
+        val midX = (bounds.left + bounds.right) / 2f
+        val midY = (bounds.top + bounds.bottom) / 2f
+
+        val handles = listOf(
+            ResizeHandle.TOP_LEFT to Point(bounds.left, bounds.top),
+            ResizeHandle.TOP to Point(midX, bounds.top),
+            ResizeHandle.TOP_RIGHT to Point(bounds.right, bounds.top),
+            ResizeHandle.RIGHT to Point(bounds.right, midY),
+            ResizeHandle.BOTTOM_RIGHT to Point(bounds.right, bounds.bottom),
+            ResizeHandle.BOTTOM to Point(midX, bounds.bottom),
+            ResizeHandle.BOTTOM_LEFT to Point(bounds.left, bounds.bottom),
+            ResizeHandle.LEFT to Point(bounds.left, midY)
+        )
+        for ((handle, pt) in handles) {
+            val dx = pt.x - point.x
+            val dy = pt.y - point.y
+            if ((dx * dx + dy * dy) <= radiusSq) {
+                return handle
+            }
+        }
+        return null
+    }
+}
+
+enum class ResizeHandle {
+    TOP_LEFT,
+    TOP,
+    TOP_RIGHT,
+    RIGHT,
+    BOTTOM_RIGHT,
+    BOTTOM,
+    BOTTOM_LEFT,
+    LEFT
 }

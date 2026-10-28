@@ -12,6 +12,7 @@ import com.kd.creavity.data.storage.AppSettingsManager
 import com.kd.creavity.data.storage.BoardManager
 import com.kd.creavity.domain.model.AppThemePreset
 import com.kd.creavity.domain.model.Board
+import com.kd.creavity.domain.model.BoardNameGenerator
 import com.kd.creavity.domain.model.BoardPage
 import com.kd.creavity.domain.model.BoardVersionSnapshot
 import com.kd.creavity.domain.model.CanvasModification
@@ -273,7 +274,7 @@ class WhiteboardViewModel(
         _uiState.update { it.copy(zoom = 1.0f, panOffset = Offset.Zero) }
     }
 
-    fun createNewBoard(title: String = "Untitled Board") {
+    fun createNewBoard(title: String = "") {
         if (_uiState.value.isBoardSwitchingLocked) return
         val current = _uiState.value.currentBoard
         if (current.id.isNotBlank()) {
@@ -281,8 +282,15 @@ class WhiteboardViewModel(
             viewModelScope.launch(Dispatchers.IO) { boardManager.saveBoard(current) }
         }
 
+        val effectiveTitle = if (title.isBlank() || title.equals("Untitled Board", ignoreCase = true) || title.equals("Untitled", ignoreCase = true)) {
+            val existing = _uiState.value.savedBoards.map { it.title }.toSet()
+            BoardNameGenerator.generate(existing)
+        } else {
+            title
+        }
+
         val newBoard = Board(
-            title = if (title.isBlank()) "Untitled Board" else title,
+            title = effectiveTitle,
             backgroundColor = _uiState.value.backgroundColor.toArgb().toLong(),
             createdBy = _uiState.value.displayName,
             ownerName = _uiState.value.displayName,
@@ -586,7 +594,7 @@ class WhiteboardViewModel(
         val state = _uiState.value
         val baseBoard = if (state.currentBoard.id.isBlank()) {
             Board(
-                title = "Untitled Board",
+                title = BoardNameGenerator.generate(),
                 createdBy = state.displayName,
                 ownerName = state.displayName
             )
@@ -630,7 +638,7 @@ class WhiteboardViewModel(
         val state = _uiState.value
         val baseBoard = if (state.currentBoard.id.isBlank()) {
             Board(
-                title = "Untitled Board",
+                title = BoardNameGenerator.generate(),
                 createdBy = state.displayName,
                 ownerName = state.displayName
             )

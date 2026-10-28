@@ -674,7 +674,7 @@ fun PeerConnectScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilledTonalButton(
-                                        onClick = { onAction(BoardAction.CreateNewBoard("Untitled Board")) },
+                                        onClick = { onAction(BoardAction.CreateNewBoard("")) },
                                         shape = RoundedCornerShape(50),
                                         modifier = Modifier.height(36.dp)
                                     ) {

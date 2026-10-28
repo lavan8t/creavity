@@ -643,7 +643,7 @@ fun BoardsLibraryScreen(
                     Button(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onAction(BoardAction.CreateNewBoard("Untitled Board"))
+                            onAction(BoardAction.CreateNewBoard(""))
                             onNavigateToCanvas()
                         },
                         modifier = Modifier.weight(1f).height(56.dp),

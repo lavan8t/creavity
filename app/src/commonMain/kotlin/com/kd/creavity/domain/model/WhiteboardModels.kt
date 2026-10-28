@@ -63,7 +63,7 @@ data class Stroke(
     val isEraser: Boolean = (tool == DrawingTool.ERASER),
     val author: String = "You",
     val createdAt: Long = System.currentTimeMillis(),
-    val roughness: RoughnessStyle = RoughnessStyle.SKETCHY,
+    val roughness: RoughnessStyle = RoughnessStyle.CLEAN,
     val fillStyle: FillStyle = FillStyle.TRANSPARENT,
     val embeddedText: String? = null,
     val embeddedTextColor: Long = 0L,
@@ -195,7 +195,7 @@ data class BoardPage(
 
 data class Board(
     val id: String = UUID.randomUUID().toString(),
-    val title: String = "Untitled Board",
+    val title: String = BoardNameGenerator.generate(),
     val pages: List<BoardPage> = listOf(BoardPage(name = "Page 1")),
     val activePageIndex: Int = 0,
     val backgroundColor: Long = 0xFF18181C,

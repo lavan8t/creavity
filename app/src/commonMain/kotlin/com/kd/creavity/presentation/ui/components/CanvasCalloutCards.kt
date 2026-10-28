@@ -503,6 +503,98 @@ fun SelectCalloutCard(
 }
 
 /**
+ * Compact Callout Card for Shape Tools (Rectangle, Circle/Oval, Triangle, Arrow, Line, Star, Cylinder).
+ * Opens on tap or long-press of Shapes tool in toolbar. Rounded rectangle shape (14dp).
+ */
+@Composable
+fun ShapeCalloutCard(
+    visible: Boolean,
+    selectedTool: DrawingTool,
+    onSelectTool: (DrawingTool) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = BrevityMotion.enterSlideUp(),
+        exit = BrevityMotion.exitSlideDown(),
+        modifier = modifier
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(14.dp),
+            shadowElevation = 8.dp,
+            modifier = Modifier.width(320.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Shapes",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        MaterialSymbol(name = "close", size = 16.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val shapes = listOf(
+                        DrawingTool.RECTANGLE to ("rectangle" to "Rectangle"),
+                        DrawingTool.CIRCLE to ("circle" to "Circle / Oval"),
+                        DrawingTool.TRIANGLE to ("triangle" to "Triangle"),
+                        DrawingTool.ARROW to ("arrow_forward" to "Arrow"),
+                        DrawingTool.LINE to ("horizontal_rule" to "Line"),
+                        DrawingTool.STAR to ("star" to "Star"),
+                        DrawingTool.CYLINDER to ("cylinder" to "Cylinder")
+                    )
+                    shapes.forEach { (tool, iconAndName) ->
+                        val isSelected = selectedTool == tool
+                        TooltipHint(text = iconAndName.second) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        onSelectTool(tool)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                MaterialSymbol(
+                                    name = iconAndName.first,
+                                    filled = isSelected,
+                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 20.dp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Compact Callout Card for Undo / Redo history actions.
  * Opens on long-press of Undo/Redo merged button. Rounded rectangle shape (14dp).
  */
