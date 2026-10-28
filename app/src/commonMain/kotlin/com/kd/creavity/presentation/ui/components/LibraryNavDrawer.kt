@@ -69,16 +69,23 @@ fun LibraryNavDrawer(
                     modifier = Modifier.fillMaxHeight(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     header = {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                         ) {
-                            Text(
-                                text = "CreaVITy",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                MaterialSymbol(
+                                    name = "draw",
+                                    size = 24.dp,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                     }
                 ) {
@@ -179,28 +186,7 @@ fun LibraryNavDrawer(
                                     MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        label = { Text("Settings") }
-                    )
-
-                    Spacer(Modifier.weight(1f))
-
-                    NavigationRailItem(
-                        selected = currentDestination == NavDestination.ABOUT,
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onNavigateToDestination(NavDestination.ABOUT)
-                        },
-                        icon = {
-                            MaterialSymbol(
-                                name = "info",
-                                size = 24.dp,
-                                tint = if (currentDestination == NavDestination.ABOUT)
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        label = { Text("About") },
+                        label = { Text("Settings") },
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
@@ -363,36 +349,6 @@ fun LibraryNavDrawer(
                                     scope.launch {
                                         drawerState.close()
                                         onNavigateToDestination(NavDestination.SETTINGS)
-                                    }
-                                },
-                                shape = RoundedCornerShape(50),
-                                colors = NavigationDrawerItemDefaults.colors(
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-
-                            // 5. About
-                            NavigationDrawerItem(
-                                icon = {
-                                    MaterialSymbol(
-                                        name = "info",
-                                        size = 22.dp,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = "About",
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                },
-                                selected = currentDestination == NavDestination.ABOUT,
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    scope.launch {
-                                        drawerState.close()
-                                        onNavigateToDestination(NavDestination.ABOUT)
                                     }
                                 },
                                 shape = RoundedCornerShape(50),

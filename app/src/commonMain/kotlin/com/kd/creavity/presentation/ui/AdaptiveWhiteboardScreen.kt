@@ -49,8 +49,7 @@ enum class NavDestination(val route: String, val icon: String, val label: String
     CANVAS("canvas", "draw", "Canvas"),
     PEERS("peers", "sensors", "Peers"),
     SETTINGS("settings", "settings", "Settings"),
-    BIN("bin", "delete", "Bin"),
-    ABOUT("about", "info", "About")
+    BIN("bin", "delete", "Bin")
 }
 
 private fun destinationOrder(route: String?): Int = when (route) {
@@ -58,7 +57,6 @@ private fun destinationOrder(route: String?): Int = when (route) {
     NavDestination.PEERS.name -> 1
     NavDestination.BIN.name -> 2
     NavDestination.SETTINGS.name -> 3
-    NavDestination.ABOUT.name -> 4
     NavDestination.CANVAS.name -> 99
     else -> 0
 }
@@ -308,12 +306,6 @@ fun AdaptiveWhiteboardScreen(
                     BinScreen(
                         uiState = latestUiState,
                         onAction = onAction,
-                        onBackPressed = { navigateBack() },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                composable(NavDestination.ABOUT.name) {
-                    AboutScreen(
                         onBackPressed = { navigateBack() },
                         modifier = Modifier.fillMaxSize()
                     )

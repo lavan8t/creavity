@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -37,6 +38,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.Board
@@ -178,36 +180,43 @@ fun BoardGridCard(
             }
         }
 
-        DesktopBoardCardContextMenu(
-            expanded = showContextMenu,
-            onDismissRequest = { showContextMenu = false },
-            screenOffset = contextMenuOffset,
-            board = board,
-            onOpenBoard = {
-                showContextMenu = false
-                onOpenBoard()
-            },
-            onDuplicateBoard = {
-                showContextMenu = false
-                onDuplicateBoard()
-            },
-            onToggleStar = {
-                showContextMenu = false
-                onToggleStar()
-            },
-            onEditMetadata = {
-                showContextMenu = false
-                onEditMetadata()
-            },
-            onExportBoard = {
-                showContextMenu = false
-                onExportBoard()
-            },
-            onDeleteBoard = {
-                showContextMenu = false
-                onDeleteBoard()
-            }
-        )
+        // Cursor anchor point for exact right-click dropdown positioning
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(contextMenuOffset.x.toInt(), contextMenuOffset.y.toInt()) }
+                .size(0.dp)
+        ) {
+            DesktopBoardCardContextMenu(
+                expanded = showContextMenu,
+                onDismissRequest = { showContextMenu = false },
+                screenOffset = Offset.Zero,
+                board = board,
+                onOpenBoard = {
+                    showContextMenu = false
+                    onOpenBoard()
+                },
+                onDuplicateBoard = {
+                    showContextMenu = false
+                    onDuplicateBoard()
+                },
+                onToggleStar = {
+                    showContextMenu = false
+                    onToggleStar()
+                },
+                onEditMetadata = {
+                    showContextMenu = false
+                    onEditMetadata()
+                },
+                onExportBoard = {
+                    showContextMenu = false
+                    onExportBoard()
+                },
+                onDeleteBoard = {
+                    showContextMenu = false
+                    onDeleteBoard()
+                }
+            )
+        }
     }
 }
 
@@ -346,36 +355,43 @@ fun BoardListRow(
             }
         }
 
-        DesktopBoardCardContextMenu(
-            expanded = showContextMenu,
-            onDismissRequest = { showContextMenu = false },
-            screenOffset = contextMenuOffset,
-            board = board,
-            onOpenBoard = {
-                showContextMenu = false
-                onOpenBoard()
-            },
-            onDuplicateBoard = {
-                showContextMenu = false
-                onDuplicateBoard()
-            },
-            onToggleStar = {
-                showContextMenu = false
-                onToggleStar()
-            },
-            onEditMetadata = {
-                showContextMenu = false
-                onEditMetadata()
-            },
-            onExportBoard = {
-                showContextMenu = false
-                onExportBoard()
-            },
-            onDeleteBoard = {
-                showContextMenu = false
-                onDeleteBoard()
-            }
-        )
+        // Cursor anchor point for exact right-click dropdown positioning
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(contextMenuOffset.x.toInt(), contextMenuOffset.y.toInt()) }
+                .size(0.dp)
+        ) {
+            DesktopBoardCardContextMenu(
+                expanded = showContextMenu,
+                onDismissRequest = { showContextMenu = false },
+                screenOffset = Offset.Zero,
+                board = board,
+                onOpenBoard = {
+                    showContextMenu = false
+                    onOpenBoard()
+                },
+                onDuplicateBoard = {
+                    showContextMenu = false
+                    onDuplicateBoard()
+                },
+                onToggleStar = {
+                    showContextMenu = false
+                    onToggleStar()
+                },
+                onEditMetadata = {
+                    showContextMenu = false
+                    onEditMetadata()
+                },
+                onExportBoard = {
+                    showContextMenu = false
+                    onExportBoard()
+                },
+                onDeleteBoard = {
+                    showContextMenu = false
+                    onDeleteBoard()
+                }
+            )
+        }
     }
 }
 

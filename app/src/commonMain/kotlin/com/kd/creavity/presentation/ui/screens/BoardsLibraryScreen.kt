@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -72,6 +73,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.util.shareBoard
@@ -742,21 +744,27 @@ fun BoardsLibraryScreen(
             }
 
             if (backgroundContextMenuOffset != null) {
-                DesktopDashboardBackgroundContextMenu(
-                    expanded = true,
-                    onDismissRequest = { backgroundContextMenuOffset = null },
-                    screenOffset = backgroundContextMenuOffset!!,
-                    currentViewMode = viewMode,
-                    currentSortOrder = sortOrder,
-                    currentOwnershipFilter = ownershipFilter,
-                    onCreateBoard = {
-                        onAction(BoardAction.CreateNewBoard(""))
-                        onNavigateToCanvas()
-                    },
-                    onSetViewMode = { mode -> viewMode = mode },
-                    onSetSortOrder = { order -> sortOrder = order },
-                    onSetOwnershipFilter = { filter -> ownershipFilter = filter }
-                )
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(backgroundContextMenuOffset!!.x.toInt(), backgroundContextMenuOffset!!.y.toInt()) }
+                        .size(0.dp)
+                ) {
+                    DesktopDashboardBackgroundContextMenu(
+                        expanded = true,
+                        onDismissRequest = { backgroundContextMenuOffset = null },
+                        screenOffset = Offset.Zero,
+                        currentViewMode = viewMode,
+                        currentSortOrder = sortOrder,
+                        currentOwnershipFilter = ownershipFilter,
+                        onCreateBoard = {
+                            onAction(BoardAction.CreateNewBoard(""))
+                            onNavigateToCanvas()
+                        },
+                        onSetViewMode = { mode -> viewMode = mode },
+                        onSetSortOrder = { order -> sortOrder = order },
+                        onSetOwnershipFilter = { filter -> ownershipFilter = filter }
+                    )
+                }
             }
         }
 }
