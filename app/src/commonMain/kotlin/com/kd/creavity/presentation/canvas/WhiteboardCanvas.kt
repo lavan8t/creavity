@@ -163,11 +163,8 @@ fun WhiteboardCanvas(
         MaterialTheme.colorScheme.tertiaryContainer
     )
 
-    val canvasHoverIcon = when (selectedTool) {
-        DrawingTool.PEN, DrawingTool.HIGHLIGHTER, DrawingTool.ERASER -> PointerIcon.Crosshair
-        DrawingTool.TEXT -> PointerIcon.Text
-        DrawingTool.SELECT -> PointerIcon.Hand
-        else -> PointerIcon.Default
+    val canvasHoverIcon = remember(selectedTool) {
+        getToolPointerIcon(selectedTool)
     }
 
     Canvas(

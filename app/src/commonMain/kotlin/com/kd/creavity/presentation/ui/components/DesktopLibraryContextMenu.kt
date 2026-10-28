@@ -32,14 +32,15 @@ import com.kd.creavity.presentation.ui.screens.OwnershipFilter
 
 /**
  * Reusable modifier that detects secondary pointer click (right-click on Desktop/Mouse)
- * using [PointerEventPass.Initial] without interfering with primary tap or long-press gestures.
+ * using [PointerEventPass.Main] so child cards evaluate and consume right-clicks before
+ * the background container.
  */
 fun Modifier.onDesktopRightClick(
     onRightClick: (Offset) -> Unit
 ): Modifier = this.pointerInput(Unit) {
     awaitPointerEventScope {
         while (true) {
-            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val event = awaitPointerEvent(PointerEventPass.Main)
             if (event.type == PointerEventType.Press &&
                 event.buttons.isSecondaryPressed &&
                 !event.changes.any { it.isConsumed }

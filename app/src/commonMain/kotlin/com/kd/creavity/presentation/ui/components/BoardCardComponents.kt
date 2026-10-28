@@ -23,6 +23,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.Board
+import com.kd.creavity.util.isDesktopPlatform
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -54,107 +59,155 @@ fun BoardGridCard(
     onToggleStar: () -> Unit,
     onOptionsClick: () -> Unit,
     onCardRightClick: ((Offset) -> Unit)? = null,
+    onOpenBoard: () -> Unit = onCardClick,
+    onDuplicateBoard: () -> Unit = {},
+    onEditMetadata: () -> Unit = {},
+    onExportBoard: () -> Unit = {},
+    onDeleteBoard: () -> Unit = {},
     modifier: Modifier = Modifier,
     thumbnailModifier: Modifier = Modifier
 ) {
-    val rightClickModifier = if (onCardRightClick != null) {
-        Modifier.onDesktopRightClick(onCardRightClick)
-    } else Modifier
+    var showContextMenu by remember { mutableStateOf(false) }
+    var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerHigh
-        ),
-        shape = RoundedCornerShape(14.dp),
-        border = null,
-        modifier = modifier
-            .fillMaxWidth()
-            .then(rightClickModifier)
-            .clip(RoundedCornerShape(14.dp))
-            .combinedClickable(
-                onClick = onCardClick,
-                onLongClick = onCardLongClick
-            )
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Thumbnail Preview (16:9)
-            Box(
-                modifier = thumbnailModifier
-                    .fillMaxWidth()
-                    .height(110.dp)
-                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
-            ) {
-                BoardThumbnailPreview(
-                    board = board,
-                    modifier = Modifier.fillMaxSize()
+    Box(modifier = modifier) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+                else MaterialTheme.colorScheme.surfaceContainerHigh
+            ),
+            shape = RoundedCornerShape(14.dp),
+            border = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onDesktopRightClick { offset ->
+                    contextMenuOffset = offset
+                    showContextMenu = true
+                    onCardRightClick?.invoke(offset)
+                }
+                .clip(RoundedCornerShape(14.dp))
+                .combinedClickable(
+                    onClick = onCardClick,
+                    onLongClick = onCardLongClick
                 )
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Thumbnail Preview (16:9)
+                Box(
+                    modifier = thumbnailModifier
+                        .fillMaxWidth()
+                        .height(110.dp)
+                        .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
+                ) {
+                    BoardThumbnailPreview(
+                        board = board,
+                        modifier = Modifier.fillMaxSize()
+                    )
 
-                if (isSelectionMode) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(6.dp)
-                            .size(24.dp)
-                            .background(
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            MaterialSymbol(name = "check", size = 16.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                    if (isSelectionMode) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(6.dp)
+                                .size(24.dp)
+                                .background(
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                MaterialSymbol(name = "check", size = 16.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                            }
+                        }
+                    }
+                }
+
+                // Card Footer: Title + Favourite + 3-dots
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = board.title.ifBlank { "Untitled Board" },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        BoardMetadataBadges(board = board)
+                    }
+
+                    // Favourite Star Button
+                    TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
+                        IconButton(
+                            onClick = onToggleStar,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            MaterialSymbol(
+                                name = if (board.isStarred) "star" else "star_outline",
+                                filled = board.isStarred,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                size = 18.dp
+                            )
+                        }
+                    }
+
+                    // 3-dots overflow to open action sheet or desktop menu
+                    TooltipHint(text = "Board options") {
+                        IconButton(
+                            onClick = {
+                                if (isDesktopPlatform()) {
+                                    contextMenuOffset = Offset.Zero
+                                    showContextMenu = true
+                                } else {
+                                    onOptionsClick()
+                                }
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            MaterialSymbol(name = "more_vert", size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
-
-            // Card Footer: Title + Favourite + 3-dots
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = board.title.ifBlank { "Untitled Board" },
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    BoardMetadataBadges(board = board)
-                }
-
-                // Favourite Star Button
-                TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
-                    IconButton(
-                        onClick = onToggleStar,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        MaterialSymbol(
-                            name = if (board.isStarred) "star" else "star_outline",
-                            filled = board.isStarred,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            size = 18.dp
-                        )
-                    }
-                }
-
-                // 3-dots overflow to open action sheet
-                TooltipHint(text = "Board options") {
-                    IconButton(
-                        onClick = onOptionsClick,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        MaterialSymbol(name = "more_vert", size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
         }
+
+        DesktopBoardCardContextMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+            screenOffset = contextMenuOffset,
+            board = board,
+            onOpenBoard = {
+                showContextMenu = false
+                onOpenBoard()
+            },
+            onDuplicateBoard = {
+                showContextMenu = false
+                onDuplicateBoard()
+            },
+            onToggleStar = {
+                showContextMenu = false
+                onToggleStar()
+            },
+            onEditMetadata = {
+                showContextMenu = false
+                onEditMetadata()
+            },
+            onExportBoard = {
+                showContextMenu = false
+                onExportBoard()
+            },
+            onDeleteBoard = {
+                showContextMenu = false
+                onDeleteBoard()
+            }
+        )
     }
 }
 
@@ -174,107 +227,155 @@ fun BoardListRow(
     onToggleStar: () -> Unit,
     onOptionsClick: () -> Unit,
     onRowRightClick: ((Offset) -> Unit)? = null,
+    onOpenBoard: () -> Unit = onRowClick,
+    onDuplicateBoard: () -> Unit = {},
+    onEditMetadata: () -> Unit = {},
+    onExportBoard: () -> Unit = {},
+    onDeleteBoard: () -> Unit = {},
     modifier: Modifier = Modifier,
     thumbnailModifier: Modifier = Modifier
 ) {
-    val rightClickModifier = if (onRowRightClick != null) {
-        Modifier.onDesktopRightClick(onRowRightClick)
-    } else Modifier
+    var showContextMenu by remember { mutableStateOf(false) }
+    var contextMenuOffset by remember { mutableStateOf(Offset.Zero) }
 
-    Surface(
-        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f) else Color.Transparent,
-        shape = RoundedCornerShape(12.dp),
-        border = null,
-        modifier = modifier
-            .fillMaxWidth()
-            .then(rightClickModifier)
-            .clip(RoundedCornerShape(12.dp))
-            .combinedClickable(
-                onClick = onRowClick,
-                onLongClick = onRowLongClick
-            )
-            .padding(vertical = 6.dp, horizontal = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    Box(modifier = modifier) {
+        Surface(
+            color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f) else Color.Transparent,
+            shape = RoundedCornerShape(12.dp),
+            border = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onDesktopRightClick { offset ->
+                    contextMenuOffset = offset
+                    showContextMenu = true
+                    onRowRightClick?.invoke(offset)
+                }
+                .clip(RoundedCornerShape(12.dp))
+                .combinedClickable(
+                    onClick = onRowClick,
+                    onLongClick = onRowLongClick
+                )
+                .padding(vertical = 6.dp, horizontal = 4.dp)
         ) {
-            if (isSelectionMode) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (isSelectionMode) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = if (isSelected) 0.dp else 1.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            MaterialSymbol(name = "check", size = 16.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                }
+
                 Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            shape = CircleShape
-                        )
-                        .border(
-                            width = if (isSelected) 0.dp else 1.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
+                    modifier = thumbnailModifier
+                        .size(width = 54.dp, height = 36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
                 ) {
-                    if (isSelected) {
-                        MaterialSymbol(name = "check", size = 16.dp, tint = MaterialTheme.colorScheme.onPrimary)
+                    BoardThumbnailPreview(
+                        board = board,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = board.title.ifBlank { "Untitled Board" },
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Opened by me ${dateFormat.format(Date(board.modifiedAt))}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    BoardMetadataBadges(board = board)
+                }
+
+                // Favourite Star Button
+                TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
+                    IconButton(
+                        onClick = onToggleStar,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        MaterialSymbol(
+                            name = if (board.isStarred) "star" else "star_outline",
+                            filled = board.isStarred,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            size = 20.dp
+                        )
+                    }
+                }
+
+                // 3-dots Menu to open action sheet or desktop menu
+                TooltipHint(text = "Board options") {
+                    IconButton(
+                        onClick = {
+                            if (isDesktopPlatform()) {
+                                contextMenuOffset = Offset.Zero
+                                showContextMenu = true
+                            } else {
+                                onOptionsClick()
+                            }
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        MaterialSymbol(name = "more_vert", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
                     }
                 }
             }
-
-            Box(
-                modifier = thumbnailModifier
-                    .size(width = 54.dp, height = 36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-            ) {
-                BoardThumbnailPreview(
-                    board = board,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = board.title.ifBlank { "Untitled Board" },
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "Opened by me ${dateFormat.format(Date(board.modifiedAt))}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                BoardMetadataBadges(board = board)
-            }
-
-            // Favourite Star Button
-            TooltipHint(text = if (board.isStarred) "Remove favourite" else "Add to favourites") {
-                IconButton(
-                    onClick = onToggleStar,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    MaterialSymbol(
-                        name = if (board.isStarred) "star" else "star_outline",
-                        filled = board.isStarred,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        size = 20.dp
-                    )
-                }
-            }
-
-            // 3-dots Menu to open action sheet
-            TooltipHint(text = "Board options") {
-                IconButton(
-                    onClick = onOptionsClick,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    MaterialSymbol(name = "more_vert", tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 20.dp)
-                }
-            }
         }
+
+        DesktopBoardCardContextMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+            screenOffset = contextMenuOffset,
+            board = board,
+            onOpenBoard = {
+                showContextMenu = false
+                onOpenBoard()
+            },
+            onDuplicateBoard = {
+                showContextMenu = false
+                onDuplicateBoard()
+            },
+            onToggleStar = {
+                showContextMenu = false
+                onToggleStar()
+            },
+            onEditMetadata = {
+                showContextMenu = false
+                onEditMetadata()
+            },
+            onExportBoard = {
+                showContextMenu = false
+                onExportBoard()
+            },
+            onDeleteBoard = {
+                showContextMenu = false
+                onDeleteBoard()
+            }
+        )
     }
 }
 

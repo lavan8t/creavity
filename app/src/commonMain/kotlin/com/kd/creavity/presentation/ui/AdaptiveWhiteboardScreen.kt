@@ -1,16 +1,21 @@
 package com.kd.creavity.presentation.ui
 
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -27,6 +32,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.kd.creavity.domain.model.DrawingTool
+import com.kd.creavity.presentation.ui.components.LibraryNavDrawer
+import com.kd.creavity.presentation.ui.motion.BrevityMotion
 import com.kd.creavity.presentation.ui.screens.AboutScreen
 import com.kd.creavity.presentation.ui.screens.BinScreen
 import com.kd.creavity.presentation.ui.screens.BoardsLibraryScreen
@@ -35,6 +42,7 @@ import com.kd.creavity.presentation.ui.screens.PeerConnectScreen
 import com.kd.creavity.presentation.ui.screens.SettingsScreen
 import com.kd.creavity.presentation.viewmodel.WhiteboardUiState
 import com.kd.creavity.util.PlatformSystemBarsEffect
+import kotlinx.coroutines.launch
 
 enum class NavDestination(val route: String, val icon: String, val label: String) {
     BOARDS("boards", "folder", "Boards"),
@@ -43,6 +51,16 @@ enum class NavDestination(val route: String, val icon: String, val label: String
     SETTINGS("settings", "settings", "Settings"),
     BIN("bin", "delete", "Bin"),
     ABOUT("about", "info", "About")
+}
+
+private fun destinationOrder(route: String?): Int = when (route) {
+    NavDestination.BOARDS.name -> 0
+    NavDestination.PEERS.name -> 1
+    NavDestination.BIN.name -> 2
+    NavDestination.SETTINGS.name -> 3
+    NavDestination.ABOUT.name -> 4
+    NavDestination.CANVAS.name -> 99
+    else -> 0
 }
 
 @Composable
@@ -59,12 +77,22 @@ fun AdaptiveWhiteboardScreen(
         runCatching { NavDestination.valueOf(route) }.getOrNull()
     } ?: NavDestination.BOARDS
 
+    val binnedCount = remember(uiState.savedBoards) {
+        uiState.savedBoards.count { it.isInBin }
+    }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
     fun navigateTo(dest: NavDestination) {
         if (dest == NavDestination.BOARDS) {
             navController.popBackStack(NavDestination.BOARDS.name, inclusive = false)
         } else {
             navController.navigate(dest.name) {
+                popUpTo(NavDestination.BOARDS.name) {
+                    saveState = true
+                }
                 launchSingleTop = true
+                restoreState = true
             }
         }
     }
@@ -173,91 +201,123 @@ fun AdaptiveWhiteboardScreen(
                 }
             }
     ) {
-        val slideSpring = androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(
-            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
-            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-        )
-        val fadeSpring = androidx.compose.animation.core.spring<Float>(
-            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-        )
-
         androidx.compose.runtime.LaunchedEffect(latestUiState.isBoardSwitchingLocked) {
             if (latestUiState.isBoardSwitchingLocked && currentRoute == NavDestination.BOARDS) {
                 navigateTo(NavDestination.CANVAS)
             }
         }
 
-        NavHost(
-            navController = navController,
-            startDestination = NavDestination.BOARDS.name,
-            enterTransition = {
-                slideInHorizontally(initialOffsetX = { it }, animationSpec = slideSpring) + androidx.compose.animation.fadeIn(animationSpec = fadeSpring)
-            },
-            exitTransition = {
-                slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = slideSpring) + androidx.compose.animation.fadeOut(animationSpec = fadeSpring)
-            },
-            popEnterTransition = {
-                slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = slideSpring) + androidx.compose.animation.fadeIn(animationSpec = fadeSpring)
-            },
-            popExitTransition = {
-                slideOutHorizontally(targetOffsetX = { it }, animationSpec = slideSpring) + androidx.compose.animation.fadeOut(animationSpec = fadeSpring)
-            },
-            modifier = Modifier.fillMaxSize()
+        LibraryNavDrawer(
+            drawerState = drawerState,
+            binnedCount = binnedCount,
+            onNavigateToDestination = { dest -> navigateTo(dest) },
+            currentDestination = currentRoute
         ) {
-            composable(NavDestination.BOARDS.name) {
-                BoardsLibraryScreen(
-                    uiState = latestUiState,
-                    onAction = onAction,
-                    onNavigateToCanvas = { navigateTo(NavDestination.CANVAS) },
-                    onNavigateToDestination = { dest -> navigateTo(dest) },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            composable(NavDestination.CANVAS.name) {
-                CanvasViewportScreen(
-                    uiState = latestUiState,
-                    onAction = onAction,
-                    onNavigateToDestination = { dest ->
-                        if (dest == NavDestination.BOARDS) {
-                            if (!latestUiState.isBoardSwitchingLocked) {
-                                navigateBack()
+            NavHost(
+                navController = navController,
+                startDestination = NavDestination.BOARDS.name,
+                enterTransition = {
+                    val from = destinationOrder(initialState.destination.route)
+                    val to = destinationOrder(targetState.destination.route)
+                    if (targetState.destination.route == NavDestination.CANVAS.name || initialState.destination.route == NavDestination.CANVAS.name) {
+                        fadeIn(animationSpec = BrevityMotion.springEffects()) + scaleIn(initialScale = 0.96f, animationSpec = BrevityMotion.springSpatial())
+                    } else if (to >= from) {
+                        BrevityMotion.enterSlideUp()
+                    } else {
+                        BrevityMotion.enterSlideDown()
+                    }
+                },
+                exitTransition = {
+                    val from = destinationOrder(initialState.destination.route)
+                    val to = destinationOrder(targetState.destination.route)
+                    if (targetState.destination.route == NavDestination.CANVAS.name || initialState.destination.route == NavDestination.CANVAS.name) {
+                        fadeOut(animationSpec = BrevityMotion.springEffects()) + scaleOut(targetScale = 0.96f, animationSpec = BrevityMotion.springSpatial())
+                    } else if (to >= from) {
+                        BrevityMotion.exitSlideUp()
+                    } else {
+                        BrevityMotion.exitSlideDown()
+                    }
+                },
+                popEnterTransition = {
+                    val from = destinationOrder(initialState.destination.route)
+                    val to = destinationOrder(targetState.destination.route)
+                    if (targetState.destination.route == NavDestination.CANVAS.name || initialState.destination.route == NavDestination.CANVAS.name) {
+                        fadeIn(animationSpec = BrevityMotion.springEffects())
+                    } else if (to <= from) {
+                        BrevityMotion.enterSlideDown()
+                    } else {
+                        BrevityMotion.enterSlideUp()
+                    }
+                },
+                popExitTransition = {
+                    val from = destinationOrder(initialState.destination.route)
+                    val to = destinationOrder(targetState.destination.route)
+                    if (targetState.destination.route == NavDestination.CANVAS.name || initialState.destination.route == NavDestination.CANVAS.name) {
+                        fadeOut(animationSpec = BrevityMotion.springEffects())
+                    } else if (to <= from) {
+                        BrevityMotion.exitSlideDown()
+                    } else {
+                        BrevityMotion.exitSlideUp()
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                composable(NavDestination.BOARDS.name) {
+                    BoardsLibraryScreen(
+                        uiState = latestUiState,
+                        onAction = onAction,
+                        onNavigateToCanvas = { navigateTo(NavDestination.CANVAS) },
+                        onNavigateToDestination = { dest -> navigateTo(dest) },
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                composable(NavDestination.CANVAS.name) {
+                    CanvasViewportScreen(
+                        uiState = latestUiState,
+                        onAction = onAction,
+                        onNavigateToDestination = { dest ->
+                            if (dest == NavDestination.BOARDS) {
+                                if (!latestUiState.isBoardSwitchingLocked) {
+                                    navigateBack()
+                                }
+                            } else {
+                                navigateTo(dest)
                             }
-                        } else {
-                            navigateTo(dest)
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            composable(NavDestination.PEERS.name) {
-                PeerConnectScreen(
-                    uiState = latestUiState,
-                    onAction = onAction,
-                    onNavigateToCanvas = { navigateBack() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            composable(NavDestination.SETTINGS.name) {
-                SettingsScreen(
-                    uiState = latestUiState,
-                    onAction = onAction,
-                    onNavigateToCanvas = { navigateBack() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            composable(NavDestination.BIN.name) {
-                BinScreen(
-                    uiState = latestUiState,
-                    onAction = onAction,
-                    onBackPressed = { navigateBack() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            composable(NavDestination.ABOUT.name) {
-                AboutScreen(
-                    onBackPressed = { navigateBack() },
-                    modifier = Modifier.fillMaxSize()
-                )
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                composable(NavDestination.PEERS.name) {
+                    PeerConnectScreen(
+                        uiState = latestUiState,
+                        onAction = onAction,
+                        onNavigateToCanvas = { navigateBack() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                composable(NavDestination.SETTINGS.name) {
+                    SettingsScreen(
+                        uiState = latestUiState,
+                        onAction = onAction,
+                        onNavigateToCanvas = { navigateBack() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                composable(NavDestination.BIN.name) {
+                    BinScreen(
+                        uiState = latestUiState,
+                        onAction = onAction,
+                        onBackPressed = { navigateBack() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                composable(NavDestination.ABOUT.name) {
+                    AboutScreen(
+                        onBackPressed = { navigateBack() },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }

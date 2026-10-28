@@ -86,7 +86,6 @@ import com.kd.creavity.presentation.ui.components.BoardListRow
 import com.kd.creavity.presentation.ui.components.drawGridScrollbar
 import com.kd.creavity.presentation.ui.components.drawListScrollbar
 import com.kd.creavity.presentation.ui.components.DeleteConfirmDialog
-import com.kd.creavity.presentation.ui.components.DesktopBoardCardContextMenu
 import com.kd.creavity.presentation.ui.components.DesktopDashboardBackgroundContextMenu
 import com.kd.creavity.presentation.ui.components.onDesktopRightClick
 import androidx.compose.foundation.horizontalScroll
@@ -128,10 +127,10 @@ fun BoardsLibraryScreen(
     onAction: (BoardAction) -> Unit,
     onNavigateToCanvas: () -> Unit,
     onNavigateToDestination: (NavDestination) -> Unit = {},
+    onOpenDrawer: () -> Unit = {},
 ) {
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     var viewMode by rememberSaveable { mutableStateOf(LibraryViewMode.GRID) }
     var ownershipFilter by rememberSaveable { mutableStateOf(OwnershipFilter.ALL) }
@@ -147,7 +146,6 @@ fun BoardsLibraryScreen(
     var selectedBoardIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     var boardIdToDeleteWithConfirm by remember { mutableStateOf<String?>(null) }
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
-    var cardContextMenuTarget by remember { mutableStateOf<Pair<Board, Offset>?>(null) }
     var backgroundContextMenuOffset by remember { mutableStateOf<Offset?>(null) }
 
     BackHandler(enabled = isSelectionMode) {
@@ -227,16 +225,11 @@ fun BoardsLibraryScreen(
         }
     }
 
-    LibraryNavDrawer(
-        drawerState = drawerState,
-        binnedCount = binnedCount,
-        onNavigateToDestination = onNavigateToDestination
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .onDesktopRightClick { offset -> backgroundContextMenuOffset = offset }
     ) {
-        BoxWithConstraints(
-            modifier = modifier
-                .fillMaxSize()
-                .onDesktopRightClick { offset -> backgroundContextMenuOffset = offset }
-        ) {
             val isWideScreen = maxWidth >= 720.dp
             Column(
                 modifier = Modifier
@@ -301,7 +294,7 @@ fun BoardsLibraryScreen(
                         LibrarySearchBar(
                             searchQuery = searchQuery,
                             onSearchQueryChange = { searchQuery = it },
-                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                            onOpenDrawer = onOpenDrawer,
                             showMenuButton = !isWideScreen
                         )
                     }
@@ -531,9 +524,15 @@ fun BoardsLibraryScreen(
                                         },
                                         onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
                                         onOptionsClick = { selectedBoardForActions = board },
-                                        onCardRightClick = { offset ->
-                                            cardContextMenuTarget = board to offset
-                                        }
+                                        onOpenBoard = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                            onNavigateToCanvas()
+                                        },
+                                        onDuplicateBoard = { onAction(BoardAction.DuplicateBoard(board.id)) },
+                                        onEditMetadata = { boardToEditMetadata = board },
+                                        onExportBoard = { boardToExport = board },
+                                        onDeleteBoard = { boardIdToDeleteWithConfirm = board.id }
                                     )
                                 }
                             }
@@ -606,9 +605,15 @@ fun BoardsLibraryScreen(
                                         },
                                         onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
                                         onOptionsClick = { selectedBoardForActions = board },
-                                        onRowRightClick = { offset ->
-                                            cardContextMenuTarget = board to offset
-                                        }
+                                        onOpenBoard = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            onAction(BoardAction.SwitchBoard(board.copy(lastAccessedAt = System.currentTimeMillis())))
+                                            onNavigateToCanvas()
+                                        },
+                                        onDuplicateBoard = { onAction(BoardAction.DuplicateBoard(board.id)) },
+                                        onEditMetadata = { boardToEditMetadata = board },
+                                        onExportBoard = { boardToExport = board },
+                                        onDeleteBoard = { boardIdToDeleteWithConfirm = board.id }
                                     )
                                 }
                             }
@@ -736,36 +741,6 @@ fun BoardsLibraryScreen(
                 )
             }
 
-            // Desktop Right-Click Context Menus
-            if (cardContextMenuTarget != null) {
-                val (targetBoard, offset) = cardContextMenuTarget!!
-                DesktopBoardCardContextMenu(
-                    expanded = true,
-                    onDismissRequest = { cardContextMenuTarget = null },
-                    screenOffset = offset,
-                    board = targetBoard,
-                    onOpenBoard = {
-                        onAction(BoardAction.SwitchBoard(targetBoard.copy(lastAccessedAt = System.currentTimeMillis())))
-                        onNavigateToCanvas()
-                    },
-                    onDuplicateBoard = {
-                        onAction(BoardAction.DuplicateBoard(targetBoard.id))
-                    },
-                    onToggleStar = {
-                        onAction(BoardAction.ToggleStarBoard(targetBoard.id))
-                    },
-                    onEditMetadata = {
-                        boardToEditMetadata = targetBoard
-                    },
-                    onExportBoard = {
-                        boardToExport = targetBoard
-                    },
-                    onDeleteBoard = {
-                        boardIdToDeleteWithConfirm = targetBoard.id
-                    }
-                )
-            }
-
             if (backgroundContextMenuOffset != null) {
                 DesktopDashboardBackgroundContextMenu(
                     expanded = true,
@@ -784,5 +759,4 @@ fun BoardsLibraryScreen(
                 )
             }
         }
-    }
 }

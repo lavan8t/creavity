@@ -52,6 +52,14 @@ fun LibraryNavDrawer(
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
+    // Whiteboard Canvas is full screen: never show navigation rail or modal drawer
+    if (currentDestination == NavDestination.CANVAS) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            content()
+        }
+        return
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isWideScreen = maxWidth >= 720.dp
 
