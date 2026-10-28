@@ -69,6 +69,7 @@ compose.desktop {
                 perUserInstall = true
             }
             linux {
+                iconFile.set(project.file("../creavity_logo.png"))
                 shortcut = true
                 menuGroup = "Graphics"
             }

@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -55,6 +56,7 @@ fun main() {
         Window(
             onCloseRequest = ::exitApplication,
             title = "CreaVITy",
+            icon = painterResource("icon.png"),
             state = windowState
         ) {
             val uiState by viewModel.uiState.collectAsState()
