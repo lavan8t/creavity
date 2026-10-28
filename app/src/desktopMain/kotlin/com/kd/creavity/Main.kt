@@ -1,10 +1,14 @@
 package com.kd.creavity
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Density
@@ -16,6 +20,7 @@ import com.kd.creavity.presentation.ui.AdaptiveWhiteboardScreen
 import com.kd.creavity.presentation.viewmodel.ThemeMode
 import com.kd.creavity.presentation.viewmodel.WhiteboardViewModel
 import com.kd.creavity.presentation.viewmodel.dispatch
+import com.kd.creavity.ui.components.DesktopLaunchSplash
 import com.kd.creavity.ui.theme.boardTheme
 import java.awt.GraphicsEnvironment
 import java.awt.Toolkit
@@ -86,10 +91,23 @@ fun main() {
 
             CompositionLocalProvider(LocalDensity provides density) {
                 boardTheme(darkTheme = isDark) {
-                    AdaptiveWhiteboardScreen(
-                        uiState = uiState,
-                        onAction = { action -> viewModel.dispatch(action) }
-                    )
+                    var isLaunching by remember { mutableStateOf(true) }
+
+                    Crossfade(
+                        targetState = isLaunching,
+                        animationSpec = tween(durationMillis = 400)
+                    ) { launching ->
+                        if (launching) {
+                            DesktopLaunchSplash(
+                                onSplashFinished = { isLaunching = false }
+                            )
+                        } else {
+                            AdaptiveWhiteboardScreen(
+                                uiState = uiState,
+                                onAction = { action -> viewModel.dispatch(action) }
+                            )
+                        }
+                    }
                 }
             }
         }

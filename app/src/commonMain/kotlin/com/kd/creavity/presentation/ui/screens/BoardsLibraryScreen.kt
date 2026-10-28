@@ -86,6 +86,9 @@ import com.kd.creavity.presentation.ui.components.BoardListRow
 import com.kd.creavity.presentation.ui.components.drawGridScrollbar
 import com.kd.creavity.presentation.ui.components.drawListScrollbar
 import com.kd.creavity.presentation.ui.components.DeleteConfirmDialog
+import com.kd.creavity.presentation.ui.components.DesktopBoardCardContextMenu
+import com.kd.creavity.presentation.ui.components.DesktopDashboardBackgroundContextMenu
+import com.kd.creavity.presentation.ui.components.onDesktopRightClick
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -144,6 +147,8 @@ fun BoardsLibraryScreen(
     var selectedBoardIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     var boardIdToDeleteWithConfirm by remember { mutableStateOf<String?>(null) }
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
+    var cardContextMenuTarget by remember { mutableStateOf<Pair<Board, Offset>?>(null) }
+    var backgroundContextMenuOffset by remember { mutableStateOf<Offset?>(null) }
 
     BackHandler(enabled = isSelectionMode) {
         isSelectionMode = false
@@ -227,7 +232,11 @@ fun BoardsLibraryScreen(
         binnedCount = binnedCount,
         onNavigateToDestination = onNavigateToDestination
     ) {
-        BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        BoxWithConstraints(
+            modifier = modifier
+                .fillMaxSize()
+                .onDesktopRightClick { offset -> backgroundContextMenuOffset = offset }
+        ) {
             val isWideScreen = maxWidth >= 720.dp
             Column(
                 modifier = Modifier
@@ -521,7 +530,10 @@ fun BoardsLibraryScreen(
                                             }
                                         },
                                         onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
-                                        onOptionsClick = { selectedBoardForActions = board }
+                                        onOptionsClick = { selectedBoardForActions = board },
+                                        onCardRightClick = { offset ->
+                                            cardContextMenuTarget = board to offset
+                                        }
                                     )
                                 }
                             }
@@ -593,7 +605,10 @@ fun BoardsLibraryScreen(
                                             }
                                         },
                                         onToggleStar = { onAction(BoardAction.ToggleStarBoard(board.id)) },
-                                        onOptionsClick = { selectedBoardForActions = board }
+                                        onOptionsClick = { selectedBoardForActions = board },
+                                        onRowRightClick = { offset ->
+                                            cardContextMenuTarget = board to offset
+                                        }
                                     )
                                 }
                             }
@@ -718,6 +733,54 @@ fun BoardsLibraryScreen(
                         boardIdToDeleteWithConfirm = null
                     },
                     onDismiss = { boardIdToDeleteWithConfirm = null }
+                )
+            }
+
+            // Desktop Right-Click Context Menus
+            if (cardContextMenuTarget != null) {
+                val (targetBoard, offset) = cardContextMenuTarget!!
+                DesktopBoardCardContextMenu(
+                    expanded = true,
+                    onDismissRequest = { cardContextMenuTarget = null },
+                    screenOffset = offset,
+                    board = targetBoard,
+                    onOpenBoard = {
+                        onAction(BoardAction.SwitchBoard(targetBoard.copy(lastAccessedAt = System.currentTimeMillis())))
+                        onNavigateToCanvas()
+                    },
+                    onDuplicateBoard = {
+                        onAction(BoardAction.DuplicateBoard(targetBoard.id))
+                    },
+                    onToggleStar = {
+                        onAction(BoardAction.ToggleStarBoard(targetBoard.id))
+                    },
+                    onEditMetadata = {
+                        boardToEditMetadata = targetBoard
+                    },
+                    onExportBoard = {
+                        boardToExport = targetBoard
+                    },
+                    onDeleteBoard = {
+                        boardIdToDeleteWithConfirm = targetBoard.id
+                    }
+                )
+            }
+
+            if (backgroundContextMenuOffset != null) {
+                DesktopDashboardBackgroundContextMenu(
+                    expanded = true,
+                    onDismissRequest = { backgroundContextMenuOffset = null },
+                    screenOffset = backgroundContextMenuOffset!!,
+                    currentViewMode = viewMode,
+                    currentSortOrder = sortOrder,
+                    currentOwnershipFilter = ownershipFilter,
+                    onCreateBoard = {
+                        onAction(BoardAction.CreateNewBoard(""))
+                        onNavigateToCanvas()
+                    },
+                    onSetViewMode = { mode -> viewMode = mode },
+                    onSetSortOrder = { order -> sortOrder = order },
+                    onSetOwnershipFilter = { filter -> ownershipFilter = filter }
                 )
             }
         }

@@ -56,6 +56,9 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Cubic Bézier Ellipse Geometry**: 4-quadrant cubic Bézier curve generation ($k = 0.55228475f$) ensuring smooth $C^1$ circular curvature across all roughness settings, eliminating decagon and polygonal segment artifacts.
 - **Draggable Desktop Toolbar**: Material 3 Expressive vertical drawing dock docked to the left canvas margin by default with an interactive drag handle pill, freely repositionable anywhere within desktop screen boundaries with anchored flyout callouts.
 - **Contextual Selection Dock Positioning**: Dynamic positioning engine transforming canvas world selection bounds into viewport coordinates, placing the action dock directly centered above or below the active selection with screen margin clamping, eliminating detached static screen-top toolbars.
+- **Desktop Launch Splash Animation**: Expressive entrance sequence featuring animated brand icon scaling, ambient radial glow pulsing, typography reveal, and progressive loading sweep with instant interactive skip capability.
+- **Desktop Dashboard Context Menu**: Secondary-click context menu architecture on the main dashboard supporting card-level management (Open, Duplicate, Star, Edit, Export, Move to Bin) and empty grid management (New Board, View Mode toggles, Sorting orders, Ownership filters).
+
 
 
 

@@ -53,9 +53,14 @@ fun BoardGridCard(
     onCardLongClick: () -> Unit,
     onToggleStar: () -> Unit,
     onOptionsClick: () -> Unit,
+    onCardRightClick: ((Offset) -> Unit)? = null,
     modifier: Modifier = Modifier,
     thumbnailModifier: Modifier = Modifier
 ) {
+    val rightClickModifier = if (onCardRightClick != null) {
+        Modifier.onDesktopRightClick(onCardRightClick)
+    } else Modifier
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
@@ -65,6 +70,7 @@ fun BoardGridCard(
         border = null,
         modifier = modifier
             .fillMaxWidth()
+            .then(rightClickModifier)
             .clip(RoundedCornerShape(14.dp))
             .combinedClickable(
                 onClick = onCardClick,
@@ -167,15 +173,21 @@ fun BoardListRow(
     onRowLongClick: () -> Unit,
     onToggleStar: () -> Unit,
     onOptionsClick: () -> Unit,
+    onRowRightClick: ((Offset) -> Unit)? = null,
     modifier: Modifier = Modifier,
     thumbnailModifier: Modifier = Modifier
 ) {
+    val rightClickModifier = if (onRowRightClick != null) {
+        Modifier.onDesktopRightClick(onRowRightClick)
+    } else Modifier
+
     Surface(
         color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f) else Color.Transparent,
         shape = RoundedCornerShape(12.dp),
         border = null,
         modifier = modifier
             .fillMaxWidth()
+            .then(rightClickModifier)
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onRowClick,
