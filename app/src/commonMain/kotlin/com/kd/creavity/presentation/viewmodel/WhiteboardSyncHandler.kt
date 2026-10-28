@@ -26,9 +26,15 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
     }
     when (packet) {
         is WhiteboardPacket.StrokeStart -> {
-            val peerName = uiState.value.connectedPeers.firstOrNull { it.endpointId == packet.strokeId }?.name
+            val peerKey = if (packet.strokeId.contains('_')) {
+                packet.strokeId.substringBefore('_')
+            } else {
+                uiState.value.connectedPeers.firstOrNull()?.endpointId ?: packet.strokeId
+            }
+            val peerName = uiState.value.connectedPeers.firstOrNull { it.endpointId == peerKey }?.name
                 ?: uiState.value.connectedPeers.firstOrNull()?.name ?: "Peer"
             val validColor = if (packet.color == 0L || (packet.color and 0xFF000000L) == 0L) 0xFF1B1B1FL else packet.color
+            val assignedColor = getPermanentUserColor(peerKey.ifBlank { peerName })
             val stroke = Stroke(
                 id = packet.strokeId,
                 points = listOf(packet.point),
@@ -44,12 +50,12 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
             _uiState.update { state ->
                 val presences = state.livePeerPresences.toMutableMap()
                 presences[packet.strokeId] = PeerPresence(
-                    peerId = packet.strokeId,
+                    peerId = peerKey,
                     name = peerName,
                     currentPoint = packet.point,
                     isDrawing = true,
                     activeTool = if (packet.isEraser) DrawingTool.ERASER else packet.tool,
-                    color = validColor,
+                    color = assignedColor,
                     viewport = ViewportBounds(
                         left = packet.point.x - 960f,
                         top = packet.point.y - 540f,
@@ -69,13 +75,15 @@ internal fun WhiteboardViewModel.handleIncomingPacket(packet: WhiteboardPacket) 
                 _uiState.update { state ->
                     val presences = state.livePeerPresences.toMutableMap()
                     val existing = presences[packet.strokeId]
+                    val peerKey = existing?.peerId ?: if (packet.strokeId.contains('_')) packet.strokeId.substringBefore('_') else packet.strokeId
+                    val assignedColor = existing?.color ?: getPermanentUserColor(peerKey)
                     presences[packet.strokeId] = PeerPresence(
-                        peerId = packet.strokeId,
+                        peerId = peerKey,
                         name = existing?.name ?: "Peer",
                         currentPoint = packet.point,
                         isDrawing = true,
                         activeTool = existing?.activeTool ?: DrawingTool.PEN,
-                        color = existing?.color ?: 0xFF1B1B1FL,
+                        color = assignedColor,
                         viewport = ViewportBounds(
                             left = packet.point.x - 960f,
                             top = packet.point.y - 540f,

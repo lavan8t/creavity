@@ -59,7 +59,26 @@ class WhiteboardViewModel(
     val uiState: StateFlow<WhiteboardUiState> = _uiState.asStateFlow()
 
     internal val remoteStrokesMap = mutableMapOf<String, Stroke>()
+    internal val userSessionColors = mutableMapOf<String, Long>()
     var hostOwnedBoardId: String? = null
+
+    fun getPermanentUserColor(peerKey: String): Long {
+        return userSessionColors.getOrPut(peerKey) {
+            val palette = listOf(
+                0xFFE53935L, // Vivid Red
+                0xFF1E88E5L, // Vivid Blue
+                0xFF43A047L, // Vivid Green
+                0xFFFB8C00L, // Vivid Orange
+                0xFF8E24AAL, // Vivid Purple
+                0xFF00ACC1L, // Cyan
+                0xFFD81B60L, // Vivid Pink
+                0xFF00897BL, // Teal
+                0xFF5E35B1L, // Deep Violet
+                0xFF6D4C41L  // Brown
+            )
+            palette[userSessionColors.size % palette.size]
+        }
+    }
 
     fun canBroadcastSessionEdits(): Boolean {
         val host = hostOwnedBoardId ?: return true

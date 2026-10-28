@@ -44,7 +44,7 @@ jobs:
           path: app/build/reports/tests/testDebugUnitTest
 
   release-linux:
-    name: Build & Release Linux RPM
+    name: Build & Release Linux RPM & Universal Tarball
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -62,16 +62,27 @@ jobs:
       - name: Install RPM packaging tools
         run: sudo apt-get update && sudo apt-get install -y rpm
 
-      - name: Package Release RPM
-        run: ./gradlew :app:packageReleaseRpm --console=plain
+      - name: Package Release RPM & Distributable
+        run: ./gradlew :app:packageReleaseRpm :app:createReleaseDistributable --console=plain
 
-      - name: Upload Linux Artifact
+      - name: Package Universal Tarball
+        run: |
+          mkdir -p build/package-tar/creavity-1.2.0
+          cp -r app/build/compose/binaries/main-release/app/CreaVITy/* build/package-tar/creavity-1.2.0/
+          cp scripts/install.sh build/package-tar/creavity-1.2.0/install.sh
+          cp app/src/desktopMain/resources/icon.png build/package-tar/creavity-1.2.0/icon.png
+          chmod +x build/package-tar/creavity-1.2.0/install.sh build/package-tar/creavity-1.2.0/bin/CreaVITy
+          tar -czf app/build/compose/binaries/main-release/creavity-1.2.0-linux-x86_64.tar.gz -C build/package-tar creavity-1.2.0
+
+      - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CreaVITy-linux-rpm
-          path: app/build/compose/binaries/**/rpm/*.rpm
+          name: CreaVITy-linux-packages
+          path: |
+            app/build/compose/binaries/**/rpm/*.rpm
+            app/build/compose/binaries/**/*.tar.gz
 
-      - name: Upload RPM to GitHub Release
+      - name: Upload Packages to GitHub Release
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -90,13 +101,14 @@ jobs:
 
           echo "Target GitHub release tag: $TARGET_TAG"
           RPM_FILE=$(find app/build/compose/binaries -name "*.rpm" | head -n 1)
-          if [ -z "$RPM_FILE" ]; then
-            echo "Error: No .rpm found in app/build/compose/binaries/**/rpm/"
+          TAR_FILE=$(find app/build/compose/binaries -name "*.tar.gz" | head -n 1)
+          if [ -z "$RPM_FILE" ] || [ -z "$TAR_FILE" ]; then
+            echo "Error: Linux package files not found"
             exit 1
           fi
 
-          echo "Uploading $RPM_FILE to release $TARGET_TAG"
-          gh release upload -R ${{ github.repository }} "$TARGET_TAG" "$RPM_FILE" --clobber
+          echo "Uploading $RPM_FILE and $TAR_FILE to release $TARGET_TAG"
+          gh release upload -R ${{ github.repository }} "$TARGET_TAG" "$RPM_FILE" "$TAR_FILE" --clobber
 
   release-desktop:
     name: Build & Release Windows EXE

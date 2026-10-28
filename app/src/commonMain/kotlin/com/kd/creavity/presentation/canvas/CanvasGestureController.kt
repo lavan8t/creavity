@@ -42,6 +42,7 @@ class CanvasGestureController(
     private var lastDist = 0f
 
     // Drawing in-progress state
+    val userSessionId = UUID.randomUUID().toString().take(8)
     val activePath = Path()
     val activePoints = mutableListOf<Point>()
     var activeStrokeId = ""
@@ -620,7 +621,7 @@ class CanvasGestureController(
                 activeStrokeIsStylus = hasStylusPointer
 
                 activeToolUsed = effectiveTool
-                activeStrokeId = UUID.randomUUID().toString()
+                activeStrokeId = "${userSessionId}_${UUID.randomUUID()}"
                 activePoints.clear()
                 activePoints.add(worldPoint)
                 activePath.reset()

@@ -297,23 +297,25 @@ fun WhiteboardCanvas(
                 val baseColor = CanvasColorUtils.getAdaptiveStrokeColor(Color(activeStroke.color.toInt()), isDark)
                 val drawColor = if (activeStroke.isEraser) effectiveBg else baseColor
 
-                // Luminous radiant glow for active in-flight peer strokes based on their chosen color
-                val isPeerInFlight = peerPresences[activeStroke.id]?.isDrawing == true
+                // Luminous radiant glow for active in-flight peer strokes based on their assigned collaborator color
+                val peerPresence = peerPresences[activeStroke.id]
+                val isPeerInFlight = peerPresence?.isDrawing == true
                 if (isPeerInFlight && !activeStroke.isEraser && activeStroke.points.size > 1) {
+                    val glowColor = Color(peerPresence.color)
                     drawPath(
                         path = path,
-                        color = drawColor.copy(alpha = 0.22f),
+                        color = glowColor.copy(alpha = 0.28f),
                         style = CanvasStrokeStyle(
-                            width = (activeStroke.strokeWidth * 3.8f).coerceAtLeast(12f),
+                            width = (activeStroke.strokeWidth * 3.8f).coerceAtLeast(14f),
                             cap = StrokeCap.Round,
                             join = StrokeJoin.Round
                         )
                     )
                     drawPath(
                         path = path,
-                        color = drawColor.copy(alpha = 0.48f),
+                        color = glowColor.copy(alpha = 0.55f),
                         style = CanvasStrokeStyle(
-                            width = (activeStroke.strokeWidth * 2.0f).coerceAtLeast(6f),
+                            width = (activeStroke.strokeWidth * 2.0f).coerceAtLeast(7f),
                             cap = StrokeCap.Round,
                             join = StrokeJoin.Round
                         )
@@ -568,8 +570,9 @@ fun WhiteboardCanvas(
                         if (!point.x.isFinite() || !point.y.isFinite()) return@let
 
                         val peerSeed = abs((peer.peerId.ifBlank { peer.name }).hashCode())
-                        val badgeColor = vibrantBadgePalette[peerSeed % vibrantBadgePalette.size]
-                        val cursorColor = if (peer.color != 0L) Color(peer.color) else badgeColor
+                        val fallbackBadgeColor = vibrantBadgePalette[peerSeed % vibrantBadgePalette.size]
+                        val cursorColor = if (peer.color != 0L) Color(peer.color) else fallbackBadgeColor
+                        val badgeColor = cursorColor
                         val center = Offset(point.x, point.y)
                         val r = 11f / zoom
                         val shapeType = peerSeed % 5 // 0: Circle, 1: Rounded Square, 2: Diamond, 3: Triangle, 4: 8-Point Star

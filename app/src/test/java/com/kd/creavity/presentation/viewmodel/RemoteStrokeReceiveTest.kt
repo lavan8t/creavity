@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -260,5 +261,29 @@ class RemoteStrokeReceiveTest {
             )
         )
         assertTrue(replay.vm.uiState.value.strokes.none { it.id == "rejected-stroke" })
+    }
+
+    @Test
+    fun `peer assigned permanent color is consistent across multiple strokes in session`() {
+        val replay = Replay(tmp)
+        val userSessionId = "user-alice"
+        val stroke1 = "${userSessionId}_stroke-1"
+        val stroke2 = "${userSessionId}_stroke-2"
+
+        replay.start(stroke1, Point(10f, 10f, 1f, 1000L))
+        val presence1 = replay.vm.uiState.value.livePeerPresences[stroke1]
+        assertNotNull("presence must exist for active stroke 1", presence1)
+        val color1 = presence1!!.color
+
+        replay.end(stroke1)
+
+        // Second stroke from same user
+        replay.start(stroke2, Point(50f, 50f, 1f, 2000L))
+        val presence2 = replay.vm.uiState.value.livePeerPresences[stroke2]
+        assertNotNull("presence must exist for active stroke 2", presence2)
+        val color2 = presence2!!.color
+
+        assertEquals("same user must have identical permanent color across strokes", color1, color2)
+        assertEquals("user session color map retains the assigned color", color1, replay.vm.getPermanentUserColor(userSessionId))
     }
 }
