@@ -211,12 +211,13 @@ class WhiteboardViewModel(
         val boards = boardManager.loadAllBoards()
         val allFolders = (boardManager.getCustomFolders() + boards.map { it.group.trim() }.filter { it.isNotBlank() })
         val initial = boards.firstOrNull() ?: Board(id = "", title = "")
-        _uiState.update {
-            it.copy(
-                currentBoard = initial,
+        _uiState.update { state ->
+            val keepCurrent = state.currentBoard.id.isNotBlank()
+            state.copy(
+                currentBoard = if (keepCurrent) state.currentBoard else initial,
                 savedBoards = boards,
                 userFolders = allFolders,
-                backgroundColor = if (boards.isNotEmpty()) Color(initial.backgroundColor) else it.backgroundColor
+                backgroundColor = if (keepCurrent) state.backgroundColor else if (boards.isNotEmpty()) Color(initial.backgroundColor) else state.backgroundColor
             )
         }
     }
@@ -237,7 +238,7 @@ class WhiteboardViewModel(
         _uiState.update { it.copy(selectedThemePreset = preset) }
     }
 
-    private val boardViewportMap = mutableMapOf<String, Pair<Float, Offset>>()
+    private val boardViewportMap = java.util.concurrent.ConcurrentHashMap<String, Pair<Float, Offset>>()
 
     fun onTransform(zoomChange: Float, focal: Offset = Offset.Zero, panChange: Offset = Offset.Zero) {
         _uiState.update { state ->
