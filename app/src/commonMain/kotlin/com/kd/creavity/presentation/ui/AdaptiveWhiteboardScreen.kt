@@ -104,6 +104,24 @@ fun AdaptiveWhiteboardScreen(
                             onAction(BoardAction.Redo)
                             true
                         }
+                        Key.Equals, Key.Plus, Key.NumPadAdd -> {
+                            val newZoom = (latestUiState.zoom * 1.25f).coerceAtMost(5.0f)
+                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
+                            true
+                        }
+                        Key.Minus, Key.NumPadSubtract -> {
+                            val newZoom = (latestUiState.zoom / 1.25f).coerceAtLeast(0.1f)
+                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
+                            true
+                        }
+                        Key.Zero, Key.NumPad0 -> {
+                            onAction(BoardAction.SetCanvasTransform(1.0f, androidx.compose.ui.geometry.Offset.Zero))
+                            true
+                        }
+                        Key.A -> {
+                            onAction(BoardAction.SelectTool(DrawingTool.SELECT))
+                            true
+                        }
                         else -> false
                     }
                 } else {
@@ -143,6 +161,12 @@ fun AdaptiveWhiteboardScreen(
                         Key.Escape -> {
                             onAction(BoardAction.SelectTool(DrawingTool.PEN))
                             true
+                        }
+                        Key.Spacebar -> {
+                            if (latestUiState.selectedTool != DrawingTool.SELECT) {
+                                onAction(BoardAction.SelectTool(DrawingTool.SELECT))
+                                true
+                            } else false
                         }
                         else -> false
                     }

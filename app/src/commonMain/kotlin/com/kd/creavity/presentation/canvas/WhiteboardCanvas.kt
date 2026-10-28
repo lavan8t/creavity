@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -161,9 +163,17 @@ fun WhiteboardCanvas(
         MaterialTheme.colorScheme.tertiaryContainer
     )
 
+    val canvasHoverIcon = when (selectedTool) {
+        DrawingTool.PEN, DrawingTool.HIGHLIGHTER, DrawingTool.ERASER -> PointerIcon.Crosshair
+        DrawingTool.TEXT -> PointerIcon.Text
+        DrawingTool.SELECT -> PointerIcon.Hand
+        else -> PointerIcon.Default
+    }
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
+            .pointerHoverIcon(canvasHoverIcon)
             .graphicsLayer {
                 // Hardware acceleration GPU backing
                 clip = true

@@ -58,6 +58,9 @@ Canonical vocabulary for CreaVITy domain concepts.
 - **Contextual Selection Dock Positioning**: Dynamic positioning engine transforming canvas world selection bounds into viewport coordinates, placing the action dock directly centered above or below the active selection with screen margin clamping, eliminating detached static screen-top toolbars.
 - **Desktop Launch Splash Animation**: Expressive entrance sequence featuring animated brand icon scaling, ambient radial glow pulsing, typography reveal, and progressive loading sweep with instant interactive skip capability.
 - **Desktop Dashboard Context Menu**: Secondary-click context menu architecture on the main dashboard supporting card-level management (Open, Duplicate, Star, Edit, Export, Move to Bin) and empty grid management (New Board, View Mode toggles, Sorting orders, Ownership filters).
+- **Material Symbols Rounded (700 Bold Filled)**: Official Google vector iconography standardized to 24dp optical size, weight 700 (bold), fill 1 (solid filled), and round 50 geometry, delivering unified visual weight and high contrast.
+- **Desktop Application MenuBar**: Top-level native OS application menu integration (`File`, `Edit`, `View`, `Tools`) providing keyboard accelerators and platform HIG conformity for desktop workstation workflows.
+
 
 
 
