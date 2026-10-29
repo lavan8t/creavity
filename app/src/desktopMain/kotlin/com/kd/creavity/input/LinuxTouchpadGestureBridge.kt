@@ -26,7 +26,12 @@ object LinuxTouchpadGestureBridge {
     private val isRunning = AtomicBoolean(false)
     private var process: Process? = null
     private var workerThread: Thread? = null
-    var logToFile: Boolean = true
+    var logToFile: Boolean = false
+
+    private val dispatchLock = Any()
+    private var pendingScaleDelta = 1.0f
+    private var isDispatchPending = false
+    private var latestFocal: Offset = Offset.Zero
 
     // Universal matcher for GESTURE_PINCH_UPDATE across all libinput versions:
     // Handles format 1: 'event7 GESTURE_PINCH_UPDATE +1.234s 2 0.00/ 0.00 ( 0.00/ 0.00mm)  1.05 @  0.00'
@@ -127,6 +132,10 @@ object LinuxTouchpadGestureBridge {
 
                         if (line.contains("GESTURE_PINCH_BEGIN")) {
                             lastScale = 1.0f
+                            synchronized(dispatchLock) {
+                                pendingScaleDelta = 1.0f
+                                isDispatchPending = false
+                            }
                             log("Pinch begin")
                         } else if (line.contains("GESTURE_PINCH_UPDATE")) {
                             val currentScale = parsePinchScale(line)
@@ -139,9 +148,25 @@ object LinuxTouchpadGestureBridge {
                                 if (abs(deltaFactor - 1.0f) > 0.0001f) {
                                     if (isWindowEligible(window)) {
                                         val focal = getWindowFocalOffset(window, density)
-                                        log("Pinch update: scale=$currentScale, deltaFactor=$deltaFactor, focal=$focal")
-                                        SwingUtilities.invokeLater {
-                                            onAction(BoardAction.TransformCanvas(deltaFactor, focal, Offset.Zero))
+                                        synchronized(dispatchLock) {
+                                            pendingScaleDelta *= deltaFactor
+                                            latestFocal = focal
+                                            if (!isDispatchPending) {
+                                                isDispatchPending = true
+                                                SwingUtilities.invokeLater {
+                                                    val factor: Float
+                                                    val focalPoint: Offset
+                                                    synchronized(dispatchLock) {
+                                                        factor = pendingScaleDelta
+                                                        focalPoint = latestFocal
+                                                        pendingScaleDelta = 1.0f
+                                                        isDispatchPending = false
+                                                    }
+                                                    if (abs(factor - 1.0f) > 0.0001f) {
+                                                        onAction(BoardAction.TransformCanvas(factor, focalPoint, Offset.Zero))
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -149,6 +174,17 @@ object LinuxTouchpadGestureBridge {
                         } else if (line.contains("GESTURE_PINCH_END")) {
                             lastScale = 1.0f
                             log("Pinch end")
+                            synchronized(dispatchLock) {
+                                val remainingDelta = pendingScaleDelta
+                                val focalPoint = latestFocal
+                                pendingScaleDelta = 1.0f
+                                isDispatchPending = false
+                                if (abs(remainingDelta - 1.0f) > 0.0001f && isWindowEligible(window)) {
+                                    SwingUtilities.invokeLater {
+                                        onAction(BoardAction.TransformCanvas(remainingDelta, focalPoint, Offset.Zero))
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (e: Throwable) {

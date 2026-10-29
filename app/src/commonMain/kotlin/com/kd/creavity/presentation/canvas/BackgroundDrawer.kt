@@ -2,8 +2,12 @@ package com.kd.creavity.presentation.canvas
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.luminance
+import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.floor
 
 enum class CanvasBackgroundPattern {
@@ -50,17 +54,27 @@ object BackgroundDrawer {
         val endX = startX + size.width / zoom
         val endY = startY + size.height / zoom
 
-        val gridStartX = floor(startX / spacing) * spacing
-        val gridStartY = floor(startY / spacing) * spacing
+        val startCol = floor(startX / spacing).toInt()
+        val endCol = ceil(endX / spacing).toInt()
+        val startRow = floor(startY / spacing).toInt()
+        val endRow = ceil(endY / spacing).toInt()
 
-        var y = gridStartY
-        while (y <= endY) {
-            var x = gridStartX
-            while (x <= endX) {
-                drawCircle(color = dotColor, radius = dotRadius, center = Offset(x, y))
-                x += spacing
+        val points = ArrayList<Offset>((endCol - startCol + 1) * (endRow - startRow + 1))
+        for (r in startRow..endRow) {
+            val y = r * spacing
+            for (c in startCol..endCol) {
+                points.add(Offset(c * spacing, y))
             }
-            y += spacing
+        }
+
+        if (points.isNotEmpty()) {
+            drawPoints(
+                points = points,
+                pointMode = PointMode.Points,
+                color = dotColor,
+                strokeWidth = dotRadius * 2f,
+                cap = StrokeCap.Round
+            )
         }
     }
 
@@ -82,12 +96,17 @@ object BackgroundDrawer {
         val endX = startX + size.width / zoom
         val endY = startY + size.height / zoom
 
-        val gridStartY = floor(startY / spacing) * spacing
+        val startRow = floor(startY / spacing).toInt()
+        val endRow = ceil(endY / spacing).toInt()
 
-        var y = gridStartY
-        while (y <= endY) {
-            drawLine(color = lineColor, start = Offset(startX, y), end = Offset(endX, y), strokeWidth = strokeW)
-            y += spacing
+        for (r in startRow..endRow) {
+            val y = r * spacing
+            drawLine(
+                color = lineColor,
+                start = Offset(startX, y),
+                end = Offset(endX, y),
+                strokeWidth = strokeW
+            )
         }
     }
 
@@ -110,20 +129,28 @@ object BackgroundDrawer {
         val endY = startY + size.height / zoom
 
         val rowHeight = spacing * 0.8660254f // sqrt(3)/2
-        val gridStartY = floor(startY / rowHeight) * rowHeight
-        val gridStartX = floor(startX / spacing) * spacing
+        val startRow = floor(startY / rowHeight).toInt()
+        val endRow = ceil(endY / rowHeight).toInt()
 
-        var y = gridStartY
-        var rowIndex = 0
-        while (y <= endY) {
-            val offsetX = if (rowIndex % 2 != 0) spacing * 0.5f else 0f
-            var x = gridStartX + offsetX
-            while (x <= endX) {
-                drawCircle(color = dotColor, radius = dotRadius, center = Offset(x, y))
-                x += spacing
+        val points = ArrayList<Offset>()
+        for (r in startRow..endRow) {
+            val y = r * rowHeight
+            val offsetX = if (abs(r % 2) != 0) spacing * 0.5f else 0f
+            val startCol = floor((startX - offsetX) / spacing).toInt()
+            val endCol = ceil((endX - offsetX) / spacing).toInt()
+            for (c in startCol..endCol) {
+                points.add(Offset(c * spacing + offsetX, y))
             }
-            y += rowHeight
-            rowIndex++
+        }
+
+        if (points.isNotEmpty()) {
+            drawPoints(
+                points = points,
+                pointMode = PointMode.Points,
+                color = dotColor,
+                strokeWidth = dotRadius * 2f,
+                cap = StrokeCap.Round
+            )
         }
     }
 }

@@ -185,8 +185,6 @@ class CanvasGestureController(
                 val panY = -vScroll * 48f
                 onTransform(1.0f, Offset.Zero, Offset(panX, panY))
             }
-            onTransformStateChanged(true, listOf(focal))
-            onTransformStateChanged(false, emptyList())
             requestInvalidate()
             return true
         }
