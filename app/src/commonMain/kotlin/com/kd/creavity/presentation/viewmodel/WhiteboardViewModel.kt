@@ -1143,9 +1143,9 @@ class WhiteboardViewModel(
         val roomCode = generateRoomCode()
         hostOwnedBoardId = _uiState.value.currentBoard.id
         (peerTransport as? com.kd.creavity.data.nearby.LanDiscoveryTransport)?.activeBoardId = hostOwnedBoardId ?: ""
-        _uiState.update { it.copy(roomCode = roomCode, isAdvertising = true, isDiscovering = false) }
         val nameToUse = deviceName.ifBlank { _uiState.value.displayName }
         peerTransport.startAdvertising(nameToUse, roomCode)
+        _uiState.update { it.copy(roomCode = roomCode, isAdvertising = true, isDiscovering = false) }
     }
 
     fun stopAdvertising() {
@@ -1159,8 +1159,8 @@ class WhiteboardViewModel(
         if (_uiState.value.isAdvertising) {
             stopAdvertising()
         }
-        _uiState.update { it.copy(isDiscovering = true, isAdvertising = false) }
         peerTransport.startDiscovery()
+        _uiState.update { it.copy(isDiscovering = true, isAdvertising = false) }
     }
     fun stopDiscovery() {
         peerTransport.stopDiscovery()

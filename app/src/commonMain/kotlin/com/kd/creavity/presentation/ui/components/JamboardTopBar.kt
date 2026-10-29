@@ -158,50 +158,6 @@ fun WhiteboardTopBar(
                 }
             }
 
-            // Zoom indicator & controls pill
-            if (onZoomIn != null && onZoomOut != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.height(32.dp).padding(horizontal = 4.dp)
-                    ) {
-                        TooltipHint(text = "Zoom out (Ctrl + -)") {
-                            IconButton(
-                                onClick = onZoomOut,
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-
-                        TooltipHint(text = "Reset zoom to 100% (Ctrl + 0)") {
-                            Text(
-                                text = "${kotlin.math.round(zoom * 100).toInt()}%",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .clickable { onResetZoom?.invoke() }
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
-                            )
-                        }
-
-                        TooltipHint(text = "Zoom in (Ctrl + +)") {
-                            IconButton(
-                                onClick = onZoomIn,
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    }
-                }
-            }
-
             // Collaborative Chat Toggle Button
             if (onToggleChat != null) {
                 TooltipHint(text = if (isChatOpen) "Close Chat" else "Open Classroom Chat") {

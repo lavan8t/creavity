@@ -53,6 +53,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -975,6 +976,73 @@ fun CanvasViewportScreen(
                                     }
                                 )
                             }
+
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            // Canvas Zoom Controls
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Zoom: ${(uiState.zoom * 100).roundToInt()}%",
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 14.sp
+                                        )
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    val center = if (canvasSize.width > 0 && canvasSize.height > 0) {
+                                                        Offset(canvasSize.width / 2f, canvasSize.height / 2f)
+                                                    } else Offset.Zero
+                                                    onAction(BoardAction.TransformCanvas(0.85f, center, Offset.Zero))
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            }
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .clickable { onAction(BoardAction.ResetCanvasTransform) }
+                                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Reset",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    val center = if (canvasSize.width > 0 && canvasSize.height > 0) {
+                                                        Offset(canvasSize.width / 2f, canvasSize.height / 2f)
+                                                    } else Offset.Zero
+                                                    onAction(BoardAction.TransformCanvas(1.15f, center, Offset.Zero))
+                                                },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            }
+                                        }
+                                    }
+                                },
+                                leadingIcon = {
+                                    MaterialSymbol(name = "zoom_in", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
+                                },
+                                onClick = {
+                                    onAction(BoardAction.ResetCanvasTransform)
+                                }
+                            )
 
                             // Infinite Canvas Toggle
                             DropdownMenuItem(

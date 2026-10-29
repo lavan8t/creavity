@@ -641,4 +641,125 @@ class ChatAndGesturesTest {
         assertTrue("Context menu must NOT open when dragging right click", !contextMenuOpened)
         assertTrue("Transforming state must reset to false on release", !isTransforming)
     }
+
+    @Test
+    fun testTouchpadHorizontalSlideLeftPressMapsToScrollAction() {
+        val dummyPointer = androidx.compose.ui.input.pointer.PointerInputChange(
+            id = androidx.compose.ui.input.pointer.PointerId(1L),
+            uptimeMillis = 100L,
+            position = Offset(200f, 200f),
+            pressed = true,
+            pressure = 1f,
+            previousUptimeMillis = 90L,
+            previousPosition = Offset(200f, 200f),
+            previousPressed = false,
+            isInitiallyConsumed = false,
+            type = androidx.compose.ui.input.pointer.PointerType.Mouse,
+            scrollDelta = Offset.Zero
+        )
+        val pointerButtons = androidx.compose.ui.input.pointer.PointerButtons(isBackPressed = true)
+        val constructor = androidx.compose.ui.input.pointer.PointerEvent::class.java.declaredConstructors.first { it.parameterCount == 6 }
+        constructor.isAccessible = true
+        // constructor: (List, int buttons, int keyboardModifiers, int type, Object nativeEvent, PointerButton button)
+        val pointerEvent = constructor.newInstance(
+            listOf(dummyPointer),
+            (pointerButtons as Any).let { it.javaClass.getMethod("unbox-impl").invoke(it) as Int },
+            0,
+            1, // PointerEventType.Press
+            null,
+            null
+        ) as androidx.compose.ui.input.pointer.PointerEvent
+
+        val canvasEvent = pointerEvent.toCanvasInputEvent()
+        assertEquals("Touchpad horizontal slide left should map to SCROLL", CanvasPointerAction.SCROLL, canvasEvent.action)
+        assertTrue("scrollDeltaX should be negative for left slide", canvasEvent.scrollDeltaX < 0f)
+    }
+
+    @Test
+    fun testTouchpadHorizontalSlideRightPressMapsToScrollAction() {
+        val dummyPointer = androidx.compose.ui.input.pointer.PointerInputChange(
+            id = androidx.compose.ui.input.pointer.PointerId(1L),
+            uptimeMillis = 100L,
+            position = Offset(200f, 200f),
+            pressed = true,
+            pressure = 1f,
+            previousUptimeMillis = 90L,
+            previousPosition = Offset(200f, 200f),
+            previousPressed = false,
+            isInitiallyConsumed = false,
+            type = androidx.compose.ui.input.pointer.PointerType.Mouse,
+            scrollDelta = Offset.Zero
+        )
+        val pointerButtons = androidx.compose.ui.input.pointer.PointerButtons(isForwardPressed = true)
+        val constructor = androidx.compose.ui.input.pointer.PointerEvent::class.java.declaredConstructors.first { it.parameterCount == 6 }
+        constructor.isAccessible = true
+        val pointerEvent = constructor.newInstance(
+            listOf(dummyPointer),
+            (pointerButtons as Any).let { it.javaClass.getMethod("unbox-impl").invoke(it) as Int },
+            0,
+            1, // PointerEventType.Press
+            null,
+            null
+        ) as androidx.compose.ui.input.pointer.PointerEvent
+
+        val canvasEvent = pointerEvent.toCanvasInputEvent()
+        assertEquals("Touchpad horizontal slide right should map to SCROLL", CanvasPointerAction.SCROLL, canvasEvent.action)
+        assertTrue("scrollDeltaX should be positive for right slide", canvasEvent.scrollDeltaX > 0f)
+    }
+
+    @Test
+    fun testTouchpadHorizontalSlidePansCanvasCorrectly() {
+        var totalPan = Offset.Zero
+        val controller = createTestController { _, _, pan ->
+            totalPan += pan
+        }
+
+        // Left slide: scrollDeltaX = -1.2f -> panX = -(-1.2) * 48 = +57.6
+        val leftSlideEvent = CanvasInputEvent(
+            action = CanvasPointerAction.SCROLL,
+            pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 300f, type = CanvasPointerType.MOUSE)),
+            scrollDeltaX = -1.2f,
+            scrollDeltaY = 0f
+        )
+        controller.handleInputEvent(
+            event = leftSlideEvent,
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertTrue("Left slide should pan canvas right (positive panX)", totalPan.x > 0f)
+
+        // Right slide: scrollDeltaX = +1.2f -> panX = -(1.2) * 48 = -57.6
+        val rightSlideEvent = CanvasInputEvent(
+            action = CanvasPointerAction.SCROLL,
+            pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 300f, type = CanvasPointerType.MOUSE)),
+            scrollDeltaX = 1.2f,
+            scrollDeltaY = 0f
+        )
+        controller.handleInputEvent(
+            event = rightSlideEvent,
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertEquals("Net pan should return to ~0 after opposite slide", 0f, totalPan.x, 0.001f)
+    }
 }

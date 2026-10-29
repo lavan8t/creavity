@@ -120,11 +120,20 @@ fun main() {
         val viewModel = remember { WhiteboardViewModel() }
 
         Window(
-            onCloseRequest = ::exitApplication,
+            onCloseRequest = {
+                com.kd.creavity.input.LinuxTouchpadGestureBridge.stop()
+                exitApplication()
+            },
             title = "CreaVITy",
             icon = painterResource("icon.png"),
             state = windowState
         ) {
+            LaunchedEffect(window) {
+                com.kd.creavity.input.LinuxTouchpadGestureBridge.start(window) { action ->
+                    viewModel.dispatch(action)
+                }
+            }
+
             val uiState by viewModel.uiState.collectAsState()
 
             val isDark = when (uiState.themeMode) {

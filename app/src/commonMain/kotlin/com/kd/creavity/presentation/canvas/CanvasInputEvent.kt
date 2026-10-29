@@ -6,7 +6,9 @@ import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isAltPressed
+import androidx.compose.ui.input.pointer.isBackPressed
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isForwardPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
@@ -66,14 +68,34 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
     val isAnyMouseDown = buttons.isPrimaryPressed || buttons.isSecondaryPressed || buttons.isTertiaryPressed
     val isDown = if (hasMouse) isAnyMouseDown else changes.any { it.pressed }
 
+    val isHScrollLeft = buttons.isBackPressed
+    val isHScrollRight = buttons.isForwardPressed
+
+    val rawScrollDelta = changes.firstOrNull()?.scrollDelta ?: Offset.Zero
+    val scrollDeltaX = if (isHScrollLeft) -1.2f else if (isHScrollRight) 1.2f else rawScrollDelta.x
+    val scrollDeltaY = if (isHScrollLeft || isHScrollRight) 0f else rawScrollDelta.y
+
     val action = when (type) {
-        PointerEventType.Press -> if (isDown) CanvasPointerAction.DOWN else CanvasPointerAction.CANCEL
+        PointerEventType.Press -> {
+            if (isHScrollLeft || isHScrollRight) {
+                CanvasPointerAction.SCROLL
+            } else if (isDown) {
+                CanvasPointerAction.DOWN
+            } else {
+                CanvasPointerAction.CANCEL
+            }
+        }
         PointerEventType.Move -> if (isDown) CanvasPointerAction.MOVE else CanvasPointerAction.CANCEL
-        PointerEventType.Release -> CanvasPointerAction.UP
+        PointerEventType.Release -> {
+            if (isHScrollLeft || isHScrollRight) {
+                CanvasPointerAction.CANCEL
+            } else {
+                CanvasPointerAction.UP
+            }
+        }
         PointerEventType.Scroll -> CanvasPointerAction.SCROLL
         else -> CanvasPointerAction.CANCEL
     }
-    val scrollDelta = changes.firstOrNull()?.scrollDelta ?: Offset.Zero
     val isCtrl = keyboardModifiers.isCtrlPressed
     val isShift = keyboardModifiers.isShiftPressed
     val isAlt = keyboardModifiers.isAltPressed
@@ -114,8 +136,8 @@ fun PointerEvent.toCanvasInputEvent(): CanvasInputEvent {
         action = action,
         pointers = if (pointers.isEmpty()) listOf(CanvasPointer(0L, 0f, 0f)) else pointers,
         targetIndex = 0,
-        scrollDeltaX = scrollDelta.x,
-        scrollDeltaY = scrollDelta.y,
+        scrollDeltaX = scrollDeltaX,
+        scrollDeltaY = scrollDeltaY,
         isCtrlPressed = isCtrl,
         isShiftPressed = isShift,
         isAltPressed = isAlt,
