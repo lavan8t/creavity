@@ -196,9 +196,9 @@ fun WhiteboardTopBar(
                 }
             }
 
-            // Host Quick Actions (only visible when a collab is active with online participants)
-            if (isHost && connectedPeersCount > 0) {
-                if (onToggleCommandCenter != null) {
+            // Host Quick Actions
+            if (isHost) {
+                if (connectedPeersCount > 0 && onToggleCommandCenter != null) {
                     TooltipHint(text = if (isCommandCenterOpen) "Hide Classroom Cockpit" else "Show Classroom Cockpit") {
                         IconButton(
                             onClick = onToggleCommandCenter,

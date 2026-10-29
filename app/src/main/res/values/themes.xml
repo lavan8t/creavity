@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.OutofTheBox" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.OutofTheBox" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/avd_creavity_splash_logo</item>
+        <item name="android:windowSplashScreenAnimationDuration">1600</item>
+        <item name="android:windowSplashScreenBackground">#F4F5F7</item>
+    </style>
 </resources>

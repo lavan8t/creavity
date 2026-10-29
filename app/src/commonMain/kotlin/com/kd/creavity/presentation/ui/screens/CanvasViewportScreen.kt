@@ -936,8 +936,8 @@ fun CanvasViewportScreen(
                             )
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                            // Bird's Eye View (Shown only to host when collab is connected)
-                            if (uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
+                            // Bird's Eye View & Host Classroom Controls (Host only)
+                            if (uiState.isHost) {
                                 DropdownMenuItem(
                                     text = { Text("Bird's eye view") },
                                     leadingIcon = {
@@ -948,10 +948,6 @@ fun CanvasViewportScreen(
                                         showBirdsEyeSheet = true
                                     }
                                 )
-                            }
-
-                            // Classroom Omniview Matrix & Quiz Deck (Host only when peers are connected)
-                            if (uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
                                 DropdownMenuItem(
                                     text = { Text("Omniview Matrix (Student Sheets)") },
                                     leadingIcon = {
