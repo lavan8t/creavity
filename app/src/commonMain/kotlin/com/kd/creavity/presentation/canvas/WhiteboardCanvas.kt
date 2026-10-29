@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -180,6 +181,16 @@ fun WhiteboardCanvas(
     val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
     val currentIsReadOnly by rememberUpdatedState(isReadOnly)
     val currentIsSpacePressed by rememberUpdatedState(isSpacePressed)
+
+    LaunchedEffect(selectedTool, isSpacePressed) {
+        applyToolCursor(if (isSpacePressed) DrawingTool.PAN else selectedTool)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            resetToolCursor()
+        }
+    }
 
     Canvas(
         modifier = modifier
