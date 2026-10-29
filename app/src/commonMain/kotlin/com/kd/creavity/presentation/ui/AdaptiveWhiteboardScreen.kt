@@ -14,9 +14,11 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -101,6 +103,7 @@ fun AdaptiveWhiteboardScreen(
 
     val latestUiState by rememberUpdatedState(uiState)
     val focusRequester = remember { FocusRequester() }
+    var toolBeforeSpacebar by remember { mutableStateOf<DrawingTool?>(null) }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -114,6 +117,24 @@ fun AdaptiveWhiteboardScreen(
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
+                // Spacebar hold-to-pan: KeyDown switches to PAN tool, KeyUp restores previous tool
+                if (keyEvent.key == Key.Spacebar) {
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        if (toolBeforeSpacebar == null && latestUiState.selectedTool != DrawingTool.PAN) {
+                            toolBeforeSpacebar = latestUiState.selectedTool
+                            onAction(BoardAction.SelectTool(DrawingTool.PAN))
+                        }
+                        return@onKeyEvent true
+                    } else if (keyEvent.type == KeyEventType.KeyUp) {
+                        val prev = toolBeforeSpacebar
+                        if (prev != null) {
+                            onAction(BoardAction.SelectTool(prev))
+                            toolBeforeSpacebar = null
+                        }
+                        return@onKeyEvent true
+                    }
+                }
+
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
 
                 if (keyEvent.isCtrlPressed) {
@@ -188,11 +209,19 @@ fun AdaptiveWhiteboardScreen(
                             onAction(BoardAction.SelectTool(DrawingTool.PEN))
                             true
                         }
-                        Key.Spacebar -> {
-                            if (latestUiState.selectedTool != DrawingTool.PAN) {
-                                onAction(BoardAction.SelectTool(DrawingTool.PAN))
-                                true
-                            } else false
+                        Key.Equals, Key.Plus, Key.NumPadAdd -> {
+                            val newZoom = (latestUiState.zoom * 1.20f).coerceAtMost(5.0f)
+                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
+                            true
+                        }
+                        Key.Minus, Key.NumPadSubtract -> {
+                            val newZoom = (latestUiState.zoom / 1.20f).coerceAtLeast(0.1f)
+                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
+                            true
+                        }
+                        Key.Zero, Key.NumPad0 -> {
+                            onAction(BoardAction.SetCanvasTransform(1.0f, androidx.compose.ui.geometry.Offset.Zero))
+                            true
                         }
                         Key.DirectionUp -> {
                             onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, 60f)))

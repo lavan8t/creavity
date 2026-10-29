@@ -336,4 +336,256 @@ class ChatAndGesturesTest {
         assertEquals("Pan tool drag dx must be 80", 80f, totalPan.x, 0.001f)
         assertEquals("Pan tool drag dy must be 40", 40f, totalPan.y, 0.001f)
     }
+
+    @Test
+    fun testMiddleMouseButtonDragAndReleaseCleanEnd() {
+        var totalPan = Offset.Zero
+        var isTransforming = false
+        val controller = CanvasGestureController(
+            onTransform = { _, _, pan -> totalPan += pan },
+            onTransformStateChanged = { transforming, _ -> isTransforming = transforming },
+            onStrokeCompleted = {},
+            onStrokeBroadcastStart = { _, _, _, _, _, _ -> },
+            onStrokeBroadcastPoint = { _, _ -> },
+            onStrokeBroadcastEnd = {},
+            onDeleteStroke = {},
+            onDeleteText = {},
+            onDeleteImage = {},
+            onDeleteStickyNote = {},
+            onElementsMoved = { _, _, _ -> },
+            onSelectionChanged = { _, _, _ -> },
+            onTapForText = {},
+            requestInvalidate = {}
+        )
+
+        // 1. Middle mouse down
+        val downHandled = controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.DOWN,
+                pointers = listOf(CanvasPointer(id = 1L, x = 100f, y = 100f, isPrimaryButton = false, isTertiaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertTrue(downHandled)
+        assertTrue("Transforming state should be true during drag", isTransforming)
+
+        // 2. Middle mouse move
+        val moveHandled = controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.MOVE,
+                pointers = listOf(CanvasPointer(id = 1L, x = 150f, y = 130f, isPrimaryButton = false, isTertiaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertTrue(moveHandled)
+        assertEquals(50f, totalPan.x, 0.001f)
+        assertEquals(30f, totalPan.y, 0.001f)
+
+        // 3. Middle mouse release (UP): In Compose Desktop, buttons.isTertiaryPressed is FALSE on release
+        val upHandled = controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.UP,
+                pointers = listOf(CanvasPointer(id = 1L, x = 150f, y = 130f, isPrimaryButton = false, isTertiaryButton = false, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertTrue("UP event for middle mouse drag should be handled by gesture controller", upHandled)
+        assertTrue("Transforming state should be reset to false on release", !isTransforming)
+    }
+
+    @Test
+    fun testRightMouseButtonClickOpensContextMenuOnRelease() {
+        var contextMenuOpened = false
+        var menuScreenOffset = Offset.Zero
+        val controller = CanvasGestureController(
+            onTransform = { _, _, _ -> },
+            onTransformStateChanged = { _, _ -> },
+            onStrokeCompleted = {},
+            onStrokeBroadcastStart = { _, _, _, _, _, _ -> },
+            onStrokeBroadcastPoint = { _, _ -> },
+            onStrokeBroadcastEnd = {},
+            onDeleteStroke = {},
+            onDeleteText = {},
+            onDeleteImage = {},
+            onDeleteStickyNote = {},
+            onElementsMoved = { _, _, _ -> },
+            onSelectionChanged = { _, _, _ -> },
+            onTapForText = {},
+            requestInvalidate = {}
+        ).apply {
+            onContextMenu = { screenOffset, _, _ ->
+                contextMenuOpened = true
+                menuScreenOffset = screenOffset
+            }
+        }
+
+        // 1. Right click down at (200, 300)
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.DOWN,
+                pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 300f, isPrimaryButton = false, isSecondaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        // 2. Right click release at (200, 300) without movement (isSecondaryButton is FALSE on release)
+        val handled = controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.UP,
+                pointers = listOf(CanvasPointer(id = 1L, x = 200f, y = 300f, isPrimaryButton = false, isSecondaryButton = false, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertTrue("Right click UP should be handled", handled)
+        assertTrue("Context menu should open on right click release", contextMenuOpened)
+        assertEquals(200f, menuScreenOffset.x, 0.001f)
+        assertEquals(300f, menuScreenOffset.y, 0.001f)
+    }
+
+    @Test
+    fun testRightMouseButtonDragPanAndRelease() {
+        var totalPan = Offset.Zero
+        var isTransforming = false
+        var contextMenuOpened = false
+        val controller = CanvasGestureController(
+            onTransform = { _, _, pan -> totalPan += pan },
+            onTransformStateChanged = { transforming, _ -> isTransforming = transforming },
+            onStrokeCompleted = {},
+            onStrokeBroadcastStart = { _, _, _, _, _, _ -> },
+            onStrokeBroadcastPoint = { _, _ -> },
+            onStrokeBroadcastEnd = {},
+            onDeleteStroke = {},
+            onDeleteText = {},
+            onDeleteImage = {},
+            onDeleteStickyNote = {},
+            onElementsMoved = { _, _, _ -> },
+            onSelectionChanged = { _, _, _ -> },
+            onTapForText = {},
+            requestInvalidate = {}
+        ).apply {
+            onContextMenu = { _, _, _ -> contextMenuOpened = true }
+        }
+
+        // 1. Right click down at (100, 100)
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.DOWN,
+                pointers = listOf(CanvasPointer(id = 1L, x = 100f, y = 100f, isPrimaryButton = false, isSecondaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        // 2. Right click drag to (170, 140) -> dist > 8f -> Pan by dx=70, dy=40
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.MOVE,
+                pointers = listOf(CanvasPointer(id = 1L, x = 170f, y = 140f, isPrimaryButton = false, isSecondaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertEquals(70f, totalPan.x, 0.001f)
+        assertEquals(40f, totalPan.y, 0.001f)
+        assertTrue("Transforming state should be true during drag", isTransforming)
+
+        // 3. Right click release: isSecondaryButton is false on release in Compose Desktop
+        val handled = controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.UP,
+                pointers = listOf(CanvasPointer(id = 1L, x = 170f, y = 140f, isPrimaryButton = false, isSecondaryButton = false, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PEN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+        assertTrue("UP event for right mouse drag should be handled", handled)
+        assertTrue("Context menu must NOT open when dragging right click", !contextMenuOpened)
+        assertTrue("Transforming state must reset to false on release", !isTransforming)
+    }
 }

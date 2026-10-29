@@ -1329,6 +1329,98 @@ fun CanvasViewportScreen(
             }
         }
 
+        // Floating Canvas Zoom & View Navigation Dock (Zoom Out, Zoom %, Zoom In, Pan Tool Toggle, Reset View)
+        ElevatedCard(
+            shape = CircleShape,
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(bottom = if (isDesktopPlatform()) 20.dp else 90.dp, end = 20.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                // Zoom Out
+                IconButton(
+                    onClick = {
+                        val newZoom = (uiState.zoom / 1.20f).coerceAtLeast(0.15f)
+                        onAction(BoardAction.SetCanvasTransform(newZoom, uiState.panOffset))
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    MaterialSymbol(name = "remove", size = 18.dp, tint = MaterialTheme.colorScheme.onSurface)
+                }
+
+                // Current Zoom % (Click to reset to 100%)
+                androidx.compose.material3.Surface(
+                    onClick = {
+                        onAction(BoardAction.SetCanvasTransform(1.0f, uiState.panOffset))
+                    },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier.height(26.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    ) {
+                        Text(
+                            text = "${(uiState.zoom * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Zoom In
+                IconButton(
+                    onClick = {
+                        val newZoom = (uiState.zoom * 1.20f).coerceAtMost(5.0f)
+                        onAction(BoardAction.SetCanvasTransform(newZoom, uiState.panOffset))
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    MaterialSymbol(name = "add", size = 18.dp, tint = MaterialTheme.colorScheme.onSurface)
+                }
+
+                // Hand / Pan Tool Toggle
+                IconButton(
+                    onClick = {
+                        if (uiState.selectedTool == DrawingTool.PAN) {
+                            onAction(BoardAction.SelectTool(DrawingTool.PEN))
+                        } else {
+                            onAction(BoardAction.SelectTool(DrawingTool.PAN))
+                        }
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    MaterialSymbol(
+                        name = "pan_tool_alt",
+                        size = 18.dp,
+                        tint = if (uiState.selectedTool == DrawingTool.PAN) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Reset viewport
+                IconButton(
+                    onClick = {
+                        onAction(BoardAction.SetCanvasTransform(1.0f, Offset.Zero))
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    MaterialSymbol(name = "fit_screen", size = 18.dp, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
         // 8. Sticky Note Creation Dialog
         WhiteboardStickyNoteDialog(
             visible = showStickyNoteDialog,

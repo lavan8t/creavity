@@ -42,6 +42,12 @@ class CanvasGestureController(
     private var lastMidY = 0f
     private var lastDist = 0f
 
+    // Active drag navigation states (stateful tracking surviving pointer UP bitmask drops)
+    private var isMiddleDragging = false
+    private var isSecondaryDragging = false
+    private var isPanToolDragging = false
+    private var isAltPanDragging = false
+
     // Secondary click / context menu tracking
     private var secondaryDownScreenX = 0f
     private var secondaryDownScreenY = 0f
@@ -184,18 +190,17 @@ class CanvasGestureController(
             return true
         }
 
-        // 1.4. Middle-Click, Alt+Left-Click, or Hand/Pan Tool drag handling (Canvas Pan in all directions)
-        val isAltPan = event.isAltPressed && event.activePointer.isPrimaryButton
-        val isMiddlePan = event.activePointer.isTertiaryButton
-        val isPanToolDrag = (selectedTool == DrawingTool.PAN) && (event.activePointer.isPrimaryButton || event.pointerCount == 1)
-        if (isMiddlePan || isAltPan || isPanToolDrag) {
+        // 1.4. Middle-Click Pan Drag (Canvas Pan in all directions)
+        if (event.action == CanvasPointerAction.DOWN && event.activePointer.isTertiaryButton) {
+            isMiddleDragging = true
+            lastMidX = event.x
+            lastMidY = event.y
             discardActiveStroke()
+            onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+            return true
+        }
+        if (isMiddleDragging) {
             when (event.action) {
-                CanvasPointerAction.DOWN -> {
-                    lastMidX = event.x
-                    lastMidY = event.y
-                    onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
-                }
                 CanvasPointerAction.MOVE -> {
                     val dx = event.x - lastMidX
                     val dy = event.y - lastMidY
@@ -206,6 +211,7 @@ class CanvasGestureController(
                     requestInvalidate()
                 }
                 CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
+                    isMiddleDragging = false
                     onTransformStateChanged(false, emptyList())
                     requestInvalidate()
                 }
@@ -214,17 +220,82 @@ class CanvasGestureController(
             return true
         }
 
-        // 1.5. Mouse Right-Click handling (Canvas Pan on drag, Context Menu on click)
-        if (event.activePointer.isSecondaryButton) {
+        // 1.5. Alt+Left-Click Pan Drag
+        val isAltPrimary = event.isAltPressed && event.activePointer.isPrimaryButton
+        if (event.action == CanvasPointerAction.DOWN && isAltPrimary) {
+            isAltPanDragging = true
+            lastMidX = event.x
+            lastMidY = event.y
             discardActiveStroke()
+            onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+            return true
+        }
+        if (isAltPanDragging) {
             when (event.action) {
-                CanvasPointerAction.DOWN -> {
-                    secondaryDownScreenX = event.x
-                    secondaryDownScreenY = event.y
-                    secondaryDragDist = 0f
+                CanvasPointerAction.MOVE -> {
+                    val dx = event.x - lastMidX
+                    val dy = event.y - lastMidY
+                    onTransform(1.0f, Offset.Zero, Offset(dx, dy))
                     lastMidX = event.x
                     lastMidY = event.y
+                    onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+                    requestInvalidate()
                 }
+                CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
+                    isAltPanDragging = false
+                    onTransformStateChanged(false, emptyList())
+                    requestInvalidate()
+                }
+                else -> {}
+            }
+            return true
+        }
+
+        // 1.6. Dedicated Hand/Pan Tool Drag
+        if (selectedTool == DrawingTool.PAN) {
+            if (event.action == CanvasPointerAction.DOWN && (event.activePointer.isPrimaryButton || event.pointerCount == 1)) {
+                isPanToolDragging = true
+                lastMidX = event.x
+                lastMidY = event.y
+                discardActiveStroke()
+                onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+                return true
+            }
+            if (isPanToolDragging) {
+                when (event.action) {
+                    CanvasPointerAction.MOVE -> {
+                        val dx = event.x - lastMidX
+                        val dy = event.y - lastMidY
+                        onTransform(1.0f, Offset.Zero, Offset(dx, dy))
+                        lastMidX = event.x
+                        lastMidY = event.y
+                        onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+                        requestInvalidate()
+                    }
+                    CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
+                        isPanToolDragging = false
+                        onTransformStateChanged(false, emptyList())
+                        requestInvalidate()
+                    }
+                    else -> {}
+                }
+                return true
+            }
+        }
+
+        // 1.7. Mouse Right-Click handling (Canvas Pan on drag, Context Menu on click)
+        if (event.action == CanvasPointerAction.DOWN && event.activePointer.isSecondaryButton) {
+            isSecondaryDragging = true
+            secondaryDownScreenX = event.x
+            secondaryDownScreenY = event.y
+            secondaryDragDist = 0f
+            lastMidX = event.x
+            lastMidY = event.y
+            discardActiveStroke()
+            return true
+        }
+        if (isSecondaryDragging) {
+            when (event.action) {
                 CanvasPointerAction.MOVE -> {
                     val dx = event.x - lastMidX
                     val dy = event.y - lastMidY
@@ -239,6 +310,7 @@ class CanvasGestureController(
                     lastMidY = event.y
                 }
                 CanvasPointerAction.UP -> {
+                    isSecondaryDragging = false
                     onTransformStateChanged(false, emptyList())
                     if (secondaryDragDist <= 8f) {
                         val clickScreen = Offset(event.x, event.y)
@@ -284,6 +356,12 @@ class CanvasGestureController(
                             onContextMenu?.invoke(clickScreen, clickWorld, hasExistingSelection)
                         }
                     }
+                    requestInvalidate()
+                }
+                CanvasPointerAction.CANCEL -> {
+                    isSecondaryDragging = false
+                    onTransformStateChanged(false, emptyList())
+                    requestInvalidate()
                 }
                 else -> {}
             }
