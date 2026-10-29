@@ -65,16 +65,6 @@ actual fun resetToolCursor() {
     }
 }
 
-private fun applyCursorRecursively(comp: java.awt.Component, cursor: java.awt.Cursor) {
-    comp.cursor = cursor
-    if (comp is java.awt.Container) {
-        val count = comp.componentCount
-        for (i in 0 until count) {
-            applyCursorRecursively(comp.getComponent(i), cursor)
-        }
-    }
-}
-
 private fun createMaterialAwtCursor(tool: DrawingTool): java.awt.Cursor? {
     return runCatching {
         val toolkit = Toolkit.getDefaultToolkit()

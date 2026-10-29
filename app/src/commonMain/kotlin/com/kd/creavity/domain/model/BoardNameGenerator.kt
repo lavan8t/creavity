@@ -30,17 +30,10 @@ object BoardNameGenerator {
      * Generates a unique 2-word title, attempting to avoid collisions with [existingTitles].
      */
     fun generate(existingTitles: Collection<String> = emptySet(), random: Random = Random): String {
-        for (i in 0 until 50) {
-            val adj = ADJECTIVES[random.nextInt(ADJECTIVES.size)]
-            val noun = NOUNS[random.nextInt(NOUNS.size)]
-            val candidate = "$adj $noun"
-            if (!existingTitles.contains(candidate)) {
-                return candidate
-            }
+        repeat(50) {
+            val candidate = "${ADJECTIVES.random(random)} ${NOUNS.random(random)}"
+            if (candidate !in existingTitles) return candidate
         }
-        // Fallback with random suffix if space exhausted
-        val adj = ADJECTIVES[random.nextInt(ADJECTIVES.size)]
-        val noun = NOUNS[random.nextInt(NOUNS.size)]
-        return "$adj $noun"
+        return "${ADJECTIVES.random(random)} ${NOUNS.random(random)}"
     }
 }
