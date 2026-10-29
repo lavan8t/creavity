@@ -57,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,6 +108,17 @@ import com.kd.creavity.presentation.ui.components.MaterialSymbol
 import com.kd.creavity.presentation.ui.components.TooltipHint
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
 import com.kd.creavity.presentation.viewmodel.WhiteboardUiState
+import com.kd.creavity.presentation.canvas.LibraryHotkeyEngine
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -152,6 +164,25 @@ fun BoardsLibraryScreen(
     var boardIdToDeleteWithConfirm by remember { mutableStateOf<String?>(null) }
     var showBatchDeleteConfirm by remember { mutableStateOf(false) }
     var backgroundContextMenuOffset by remember { mutableStateOf<Offset?>(null) }
+    var isSearchFocused by remember { mutableStateOf(false) }
+    val libraryFocusRequester = remember { FocusRequester() }
+
+    val hasOpenDialog = boardToEditMetadata != null ||
+        boardToExport != null ||
+        boardIdToDeleteWithConfirm != null ||
+        showBatchDeleteConfirm
+
+    val isTyping = isSearchFocused || hasOpenDialog
+
+    LaunchedEffect(Unit) {
+        libraryFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(isSearchFocused, hasOpenDialog) {
+        if (!isSearchFocused && !hasOpenDialog) {
+            libraryFocusRequester.requestFocus()
+        }
+    }
 
     BackHandler(enabled = isSelectionMode) {
         isSelectionMode = false
@@ -237,6 +268,42 @@ fun BoardsLibraryScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
+            .focusRequester(libraryFocusRequester)
+            .focusable()
+            .onKeyEvent { keyEvent ->
+                val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                val firstFilteredBoard = filteredBoards.firstOrNull()
+                LibraryHotkeyEngine.handleKeyEvent(
+                    key = keyEvent.key,
+                    keyEventType = keyEvent.type,
+                    isCtrlOrMeta = isCtrlOrMeta,
+                    isTyping = isTyping,
+                    isSelectionMode = isSelectionMode,
+                    selectedBoardIds = selectedBoardIds,
+                    firstBoard = firstFilteredBoard,
+                    onAction = onAction,
+                    onNavigateToCanvas = onNavigateToCanvas,
+                    onEditMetadata = { board -> boardToEditMetadata = board },
+                    onExportBoard = { board -> boardToExport = board },
+                    onDeleteSelected = { targetIds ->
+                        if (targetIds.size == 1) {
+                            boardIdToDeleteWithConfirm = targetIds.first()
+                        } else {
+                            showBatchDeleteConfirm = true
+                        }
+                    },
+                    onSelectAllBoards = {
+                        if (filteredBoards.isNotEmpty()) {
+                            isSelectionMode = true
+                            selectedBoardIds = filteredBoards.map { it.id }.toSet()
+                        }
+                    },
+                    onCancelSelection = {
+                        isSelectionMode = false
+                        selectedBoardIds = emptySet()
+                    }
+                )
+            }
             .onDesktopRightClick { offset -> backgroundContextMenuOffset = offset }
     ) {
         val isWideScreen = maxWidth >= 720.dp
@@ -318,7 +385,8 @@ fun BoardsLibraryScreen(
                             searchQuery = searchQuery,
                             onSearchQueryChange = { searchQuery = it },
                             onOpenDrawer = onOpenDrawer,
-                            showMenuButton = !isWideScreen
+                            showMenuButton = !isWideScreen,
+                            onFocusChanged = { isSearchFocused = it }
                         )
                     }
                 }

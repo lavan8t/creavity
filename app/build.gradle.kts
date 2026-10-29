@@ -100,8 +100,8 @@ android {
         applicationId = "com.kd.creavity"
         minSdk = 29
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.2.0"
+        versionCode = 3
+        versionName = "1.3.0-rc1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

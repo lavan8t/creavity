@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -117,115 +118,59 @@ fun AdaptiveWhiteboardScreen(
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
-                // Spacebar hold-to-pan: Spacebar activates pan dragging on mouse primary down without changing tool
-                if (keyEvent.key == Key.Spacebar) {
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        isSpacePressed = true
-                        return@onKeyEvent true
-                    } else if (keyEvent.type == KeyEventType.KeyUp) {
-                        isSpacePressed = false
-                        return@onKeyEvent true
+                // Spacebar hold-to-pan: active only on canvas viewport
+                if (currentRoute == NavDestination.CANVAS) {
+                    if (keyEvent.key == Key.Spacebar) {
+                        if (keyEvent.type == KeyEventType.KeyDown) {
+                            isSpacePressed = true
+                            return@onKeyEvent true
+                        } else if (keyEvent.type == KeyEventType.KeyUp) {
+                            isSpacePressed = false
+                            return@onKeyEvent true
+                        }
                     }
                 }
 
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
 
-                if (keyEvent.isCtrlPressed) {
-                    when (keyEvent.key) {
-                        Key.Z -> {
-                            if (keyEvent.isShiftPressed) {
-                                onAction(BoardAction.Redo)
-                            } else {
-                                onAction(BoardAction.Undo)
+                // Global fallback shortcuts only when on Canvas screen
+                if (currentRoute == NavDestination.CANVAS) {
+                    val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                    if (isCtrlOrMeta) {
+                        when (keyEvent.key) {
+                            Key.Z -> {
+                                if (keyEvent.isShiftPressed) {
+                                    onAction(BoardAction.Redo)
+                                } else {
+                                    onAction(BoardAction.Undo)
+                                }
+                                true
                             }
-                            true
+                            Key.Y -> {
+                                onAction(BoardAction.Redo)
+                                true
+                            }
+                            Key.Equals, Key.Plus, Key.NumPadAdd -> {
+                                val newZoom = (latestUiState.zoom * 1.25f).coerceAtMost(5.0f)
+                                onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
+                                true
+                            }
+                            Key.Minus, Key.NumPadSubtract -> {
+                                val newZoom = (latestUiState.zoom / 1.25f).coerceAtLeast(0.1f)
+                                onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
+                                true
+                            }
+                            Key.Zero, Key.NumPad0 -> {
+                                onAction(BoardAction.ResetCanvasTransform)
+                                true
+                            }
+                            else -> false
                         }
-                        Key.Y -> {
-                            onAction(BoardAction.Redo)
-                            true
-                        }
-                        Key.Equals, Key.Plus, Key.NumPadAdd -> {
-                            val newZoom = (latestUiState.zoom * 1.25f).coerceAtMost(5.0f)
-                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
-                            true
-                        }
-                        Key.Minus, Key.NumPadSubtract -> {
-                            val newZoom = (latestUiState.zoom / 1.25f).coerceAtLeast(0.1f)
-                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
-                            true
-                        }
-                        Key.Zero, Key.NumPad0 -> {
-                            onAction(BoardAction.SetCanvasTransform(1.0f, androidx.compose.ui.geometry.Offset.Zero))
-                            true
-                        }
-                        Key.A -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.SELECT))
-                            true
-                        }
-                        else -> false
+                    } else {
+                        false
                     }
                 } else {
-                    when (keyEvent.key) {
-                        Key.P -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.PEN))
-                            true
-                        }
-                        Key.E -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.ERASER))
-                            true
-                        }
-                        Key.T -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.TEXT))
-                            true
-                        }
-                        Key.V, Key.S -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.SELECT))
-                            true
-                        }
-                        Key.R -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.RECTANGLE))
-                            true
-                        }
-                        Key.C -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.CIRCLE))
-                            true
-                        }
-                        Key.Escape -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.PEN))
-                            true
-                        }
-                        Key.Equals, Key.Plus, Key.NumPadAdd -> {
-                            val newZoom = (latestUiState.zoom * 1.20f).coerceAtMost(5.0f)
-                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
-                            true
-                        }
-                        Key.Minus, Key.NumPadSubtract -> {
-                            val newZoom = (latestUiState.zoom / 1.20f).coerceAtLeast(0.1f)
-                            onAction(BoardAction.SetCanvasTransform(newZoom, latestUiState.panOffset))
-                            true
-                        }
-                        Key.Zero, Key.NumPad0 -> {
-                            onAction(BoardAction.SetCanvasTransform(1.0f, androidx.compose.ui.geometry.Offset.Zero))
-                            true
-                        }
-                        Key.DirectionUp -> {
-                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, 60f)))
-                            true
-                        }
-                        Key.DirectionDown -> {
-                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, -60f)))
-                            true
-                        }
-                        Key.DirectionLeft -> {
-                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(60f, 0f)))
-                            true
-                        }
-                        Key.DirectionRight -> {
-                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(-60f, 0f)))
-                            true
-                        }
-                        else -> false
-                    }
+                    false
                 }
             }
     ) {

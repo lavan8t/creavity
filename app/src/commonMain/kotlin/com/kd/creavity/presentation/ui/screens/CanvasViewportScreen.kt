@@ -66,6 +66,15 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -86,6 +95,7 @@ import com.kd.creavity.domain.model.BoardNameGenerator
 import com.kd.creavity.domain.model.Point
 import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.presentation.canvas.CanvasColorUtils
+import com.kd.creavity.presentation.canvas.CanvasHotkeyEngine
 import com.kd.creavity.presentation.canvas.WhiteboardCanvas
 import com.kd.creavity.presentation.ui.NavDestination
 import com.kd.creavity.presentation.ui.BoardAction
@@ -294,6 +304,39 @@ fun CanvasViewportScreen(
     var GoogleSlidesUrlInput by remember { mutableStateOf(uiState.presentationUrl ?: "") }
     var showExportDialog by remember { mutableStateOf(false) }
 
+    val canvasFocusRequester = remember { FocusRequester() }
+    var localSpacePressed by remember { mutableStateOf(false) }
+    val effectiveSpacePressed = isSpacePressed || localSpacePressed
+
+    LaunchedEffect(Unit) {
+        canvasFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(activeInlineTextPoint) {
+        if (activeInlineTextPoint == null) {
+            canvasFocusRequester.requestFocus()
+        }
+    }
+
+    val isTyping = activeInlineTextPoint != null ||
+        activeEditingTextId != null ||
+        showRenameBoardDialog ||
+        showGoogleSlidesDialog ||
+        showExportDialog ||
+        showStickyNoteDialog ||
+        showVersionHistorySheet ||
+        showBirdsEyeSheet
+
+    val viewportCenterX = if (uiState.zoom > 0f) {
+        (canvasSize.width / 2f - uiState.panOffset.x) / uiState.zoom
+    } else 0f
+    val viewportCenterY = if (uiState.zoom > 0f) {
+        (canvasSize.height / 2f - uiState.panOffset.y) / uiState.zoom
+    } else 0f
+    val viewportCenter = remember(canvasSize, uiState.panOffset, uiState.zoom) {
+        Point(viewportCenterX, viewportCenterY)
+    }
+
     val effectiveCanvasBg = if (uiState.backgroundColor == Color.Unspecified || uiState.backgroundColor == Color(0xFF18181C)) MaterialTheme.colorScheme.surface else uiState.backgroundColor
     val isDarkCanvas = effectiveCanvasBg.luminance() < 0.5f
     val effectivePenColor = CanvasColorUtils.getAdaptiveStrokeColor(
@@ -311,6 +354,53 @@ fun CanvasViewportScreen(
                     .fillMaxHeight()
                     .background(effectiveCanvasBg)
                     .onSizeChanged { canvasSize = it }
+                    .focusRequester(canvasFocusRequester)
+                    .focusable()
+                    .onKeyEvent { keyEvent ->
+                        val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                        val page = uiState.currentBoard.pages.getOrElse(uiState.currentBoard.activePageIndex) {
+                            uiState.currentBoard.pages.firstOrNull() ?: BoardPage()
+                        }
+                        CanvasHotkeyEngine.handleKeyEvent(
+                            key = keyEvent.key,
+                            keyEventType = keyEvent.type,
+                            isCtrlOrMeta = isCtrlOrMeta,
+                            isShift = keyEvent.isShiftPressed,
+                            isTyping = isTyping,
+                            hasSelection = selectedStrokes.isNotEmpty() || selectedTexts.isNotEmpty(),
+                            selectedStrokes = selectedStrokes,
+                            selectedTexts = selectedTexts,
+                            currentZoom = uiState.zoom,
+                            panOffset = uiState.panOffset,
+                            pageStrokes = page.strokes.map { it.id },
+                            pageTexts = page.textElements.map { it.id },
+                            viewportCenter = viewportCenter,
+                            onAction = onAction,
+                            onSelectAll = {
+                                selectedStrokes = page.strokes.map { it.id }
+                                selectedTexts = page.textElements.map { it.id }
+                                onAction(BoardAction.SelectTool(DrawingTool.SELECT))
+                            },
+                            onDeselect = {
+                                selectedStrokes = emptyList()
+                                selectedTexts = emptyList()
+                                selectionBounds = null
+                            },
+                            onDeleteSelection = {
+                                selectedStrokes.forEach { onAction(BoardAction.DeleteStroke(it)) }
+                                selectedTexts.forEach { onAction(BoardAction.DeleteText(it)) }
+                                selectedStrokes = emptyList()
+                                selectedTexts = emptyList()
+                                selectionBounds = null
+                            },
+                            onOpenExportDialog = {
+                                showExportDialog = true
+                            },
+                            onSpaceStateChanged = { pressed ->
+                                localSpacePressed = pressed
+                            }
+                        )
+                    }
             ) {
                 // 1. Drawing Canvas
                 WhiteboardCanvas(
@@ -412,7 +502,7 @@ fun CanvasViewportScreen(
                 contextMenuData = CanvasContextMenuData(screenOffset, worldPoint, hasSelection)
             },
             isReadOnly = uiState.isCanvasReadOnly,
-            isSpacePressed = isSpacePressed,
+            isSpacePressed = effectiveSpacePressed,
             modifier = Modifier.fillMaxSize()
         )
 

@@ -183,6 +183,7 @@ fun LibrarySearchBar(
     onSearchQueryChange: (String) -> Unit,
     onOpenDrawer: () -> Unit,
     showMenuButton: Boolean = true,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
@@ -190,6 +191,10 @@ fun LibrarySearchBar(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(isFocused) {
+        onFocusChanged?.invoke(isFocused)
+    }
 
     val isLeftAligned = isFocused || searchQuery.isNotEmpty()
     val textAlign = if (isLeftAligned) TextAlign.Start else TextAlign.Center
