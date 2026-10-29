@@ -91,11 +91,6 @@ import com.kd.creavity.presentation.ui.NavDestination
 import com.kd.creavity.presentation.ui.BoardAction
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
-import com.kd.creavity.presentation.ui.components.DesktopCommandCenter
-import com.kd.creavity.presentation.ui.components.HostOmniviewMatrixSheet
-import com.kd.creavity.presentation.ui.components.HostQuizControlDeck
-import com.kd.creavity.presentation.ui.components.StudentQuizOverlay
-import com.kd.creavity.presentation.ui.components.StudentWorksheetBanner
 import com.kd.creavity.presentation.ui.components.BirdsEyeViewSheet
 import com.kd.creavity.presentation.ui.components.CanvasBottomToolbar
 import com.kd.creavity.presentation.ui.components.CanvasPresentationOverlay
@@ -262,10 +257,6 @@ fun CanvasViewportScreen(
 
     // Host Classroom Sheets
     var showBirdsEyeSheet by remember { mutableStateOf(false) }
-    var showOmniviewSheet by remember { mutableStateOf(false) }
-    var showQuizDeckSheet by remember { mutableStateOf(false) }
-    var showDesktopCommandCenter by remember { mutableStateOf(true) }
-    var inspectedStudentId by remember { mutableStateOf<String?>(null) }
 
     // Selection state
     var selectedStrokes by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -323,11 +314,7 @@ fun CanvasViewportScreen(
             ) {
                 // 1. Drawing Canvas
                 WhiteboardCanvas(
-                    strokes = if (uiState.isWorksheetMode && uiState.activeWorksheet != null) {
-                        uiState.activeWorksheet.strokes
-                    } else {
-                        uiState.strokes
-                    },
+                    strokes = uiState.strokes,
                     textElements = uiState.textElements,
                     imageElements = uiState.imageElements,
                     stickyNotes = uiState.stickyNotes,
@@ -359,28 +346,10 @@ fun CanvasViewportScreen(
                             }
                         }
                     },
-                    onStrokeCompleted = { stroke ->
-                        if (uiState.isWorksheetMode && uiState.activeWorksheet != null) {
-                            onAction(BoardAction.AddStudentWorksheetStroke(stroke))
-                        } else {
-                            onAction(BoardAction.StrokeCompleted(stroke))
-                        }
-                    },
-                    onStrokeBroadcastStart = { id, c, w, e, pt, tool ->
-                        if (!uiState.isWorksheetMode) {
-                            onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool))
-                        }
-                    },
-                    onStrokeBroadcastPoint = { id, pt ->
-                        if (!uiState.isWorksheetMode) {
-                            onAction(BoardAction.StrokeBroadcastPoint(id, pt))
-                        }
-                    },
-                    onStrokeBroadcastEnd = { id ->
-                        if (!uiState.isWorksheetMode) {
-                            onAction(BoardAction.StrokeBroadcastEnd(id))
-                        }
-                    },
+                    onStrokeCompleted = { stroke -> onAction(BoardAction.StrokeCompleted(stroke)) },
+                    onStrokeBroadcastStart = { id, c, w, e, pt, tool -> onAction(BoardAction.StrokeBroadcastStart(id, c, w, e, pt, tool)) },
+                    onStrokeBroadcastPoint = { id, pt -> onAction(BoardAction.StrokeBroadcastPoint(id, pt)) },
+                    onStrokeBroadcastEnd = { id -> onAction(BoardAction.StrokeBroadcastEnd(id)) },
             onDeleteStroke = { onAction(BoardAction.DeleteStroke(it)) },
             onDeleteText = { onAction(BoardAction.DeleteText(it)) },
             onDeleteImage = { onAction(BoardAction.DeleteImage(it)) },
@@ -756,11 +725,7 @@ fun CanvasViewportScreen(
                         isHost = uiState.isHost,
                         connectedPeersCount = uiState.connectedPeers.size,
                         isBoardSwitchingLocked = uiState.isBoardSwitchingLocked,
-                        onBirdsEyeClick = { showBirdsEyeSheet = true },
-                        onOmniviewClick = { showOmniviewSheet = true },
-                        onQuizClick = { showQuizDeckSheet = true },
-                        onToggleCommandCenter = { showDesktopCommandCenter = !showDesktopCommandCenter },
-                        isCommandCenterOpen = showDesktopCommandCenter
+                        onBirdsEyeClick = { showBirdsEyeSheet = true }
                     )
 
                     // 3-dot overflow menu
@@ -946,26 +911,6 @@ fun CanvasViewportScreen(
                                     onClick = {
                                         showOptionsMenu = false
                                         showBirdsEyeSheet = true
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Omniview Matrix (Student Sheets)") },
-                                    leadingIcon = {
-                                        MaterialSymbol(name = "grid_view", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
-                                    },
-                                    onClick = {
-                                        showOptionsMenu = false
-                                        showOmniviewSheet = true
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Interactive Quiz & Poll Deck") },
-                                    leadingIcon = {
-                                        MaterialSymbol(name = "checklist", tint = MaterialTheme.colorScheme.primary, size = 20.dp)
-                                    },
-                                    onClick = {
-                                        showOptionsMenu = false
-                                        showQuizDeckSheet = true
                                     }
                                 )
                             }
@@ -1463,55 +1408,6 @@ fun CanvasViewportScreen(
             onAction = onAction
         )
 
-        // 13. Student Worksheet Pinned Top Banner
-        StudentWorksheetBanner(
-            worksheet = uiState.activeWorksheet,
-            visible = uiState.isWorksheetMode && uiState.activeWorksheet != null,
-            onSubmit = { onAction(BoardAction.SubmitWorksheet(it)) },
-            onCloseOrToggle = { onAction(BoardAction.SetWorksheetMode(!uiState.isWorksheetMode)) },
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 54.dp)
-        )
-
-        // 14. Student Interactive Quiz & Poll Overlay (Mentimeter style)
-        if (uiState.activeQuiz != null && !uiState.isHost) {
-            StudentQuizOverlay(
-                activeQuiz = uiState.activeQuiz,
-                userAnswer = uiState.userQuizAnswer,
-                submissions = uiState.quizSubmissions,
-                timeRemainingSeconds = uiState.quizTimeRemainingSeconds,
-                onAnswer = { qId, opt -> onAction(BoardAction.AnswerQuiz(qId, opt)) },
-                onDismiss = { onAction(BoardAction.DismissQuiz) },
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
-
-        // 15. Host Omniview Matrix Sheet (Mobile / Compact View)
-        HostOmniviewMatrixSheet(
-            visible = showOmniviewSheet,
-            isHost = uiState.isHost,
-            studentWorksheets = uiState.studentWorksheets,
-            connectedPeers = uiState.connectedPeers,
-            inspectedStudentId = inspectedStudentId,
-            onDismiss = { showOmniviewSheet = false; inspectedStudentId = null },
-            onDelegateWorksheet = { title, q, target ->
-                onAction(BoardAction.DelegateWorksheet(title, q, target))
-            },
-            onInspectStudent = { inspectedStudentId = it }
-        )
-
-        // 16. Host Quiz & Poll Control Deck (Mobile / Compact View)
-        HostQuizControlDeck(
-            visible = showQuizDeckSheet,
-            isHost = uiState.isHost,
-            activeQuiz = uiState.activeQuiz,
-            submissions = uiState.quizSubmissions,
-            timeRemainingSeconds = uiState.quizTimeRemainingSeconds,
-            connectedPeers = uiState.connectedPeers,
-            onLaunchQuiz = { onAction(BoardAction.StartQuiz(it)) },
-            onEndQuiz = { qId, key -> onAction(BoardAction.EndQuiz(qId, key)) },
-            onDismiss = { showQuizDeckSheet = false }
-        )
-
         // 17. High-Fidelity Canvas Export Dialog (SVG/PNG/Clipboard)
         if (showExportDialog) {
             CanvasExportDialog(
@@ -1554,18 +1450,6 @@ fun CanvasViewportScreen(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(top = 56.dp, bottom = 16.dp, end = 12.dp)
-        )
-    }
-
-    // Desktop Command Center Side-Deck (Expanded screens >= 840dp, only when collab is active)
-    if (isExpandedScreen && showDesktopCommandCenter && uiState.isHost && uiState.connectedPeers.isNotEmpty()) {
-        DesktopCommandCenter(
-            uiState = uiState,
-            onAction = onAction,
-            onClose = { showDesktopCommandCenter = false },
-            modifier = Modifier
-                .width(420.dp)
-                .fillMaxHeight()
         )
     }
 }

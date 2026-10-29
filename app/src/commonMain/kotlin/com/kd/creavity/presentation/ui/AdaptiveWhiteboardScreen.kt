@@ -178,10 +178,6 @@ fun AdaptiveWhiteboardScreen(
                             onAction(BoardAction.SelectTool(DrawingTool.TEXT))
                             true
                         }
-                        Key.W -> {
-                            onAction(BoardAction.SetWorksheetMode(!latestUiState.isWorksheetMode))
-                            true
-                        }
                         Key.V, Key.S -> {
                             onAction(BoardAction.SelectTool(DrawingTool.SELECT))
                             true

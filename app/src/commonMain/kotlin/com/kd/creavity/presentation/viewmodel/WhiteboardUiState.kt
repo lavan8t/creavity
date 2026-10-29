@@ -13,9 +13,6 @@ import com.kd.creavity.domain.model.PeerDevice
 import com.kd.creavity.domain.model.PeerPresence
 import com.kd.creavity.domain.model.StickyNote
 import com.kd.creavity.domain.model.Stroke
-import com.kd.creavity.domain.model.StudentWorksheet
-import com.kd.creavity.domain.model.ActiveQuiz
-import com.kd.creavity.domain.model.QuizSubmission
 import com.kd.creavity.domain.model.TextElement
 import com.kd.creavity.presentation.canvas.CanvasBackgroundPattern
 
@@ -52,14 +49,6 @@ data class WhiteboardUiState(
     val presentationCurrentSlide: Int = 0,
     val presentationTotalSlides: Int = 1,
     val isAppForeground: Boolean = true,
-    val activeWorksheet: StudentWorksheet? = null,
-    val studentWorksheets: Map<String, StudentWorksheet> = emptyMap(),
-    val isWorksheetMode: Boolean = false,
-    val inspectedStudentId: String? = null,
-    val activeQuiz: ActiveQuiz? = null,
-    val quizSubmissions: List<QuizSubmission> = emptyList(),
-    val userQuizAnswer: Int? = null,
-    val quizTimeRemainingSeconds: Int = 0,
     val chatMessages: List<ChatMessage> = emptyList(),
     val unreadChatCount: Int = 0,
     val isChatOpen: Boolean = false

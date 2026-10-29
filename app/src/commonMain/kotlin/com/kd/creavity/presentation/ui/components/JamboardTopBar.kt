@@ -60,10 +60,6 @@ fun WhiteboardTopBar(
     connectedPeersCount: Int = 0,
     isBoardSwitchingLocked: Boolean = false,
     onBirdsEyeClick: (() -> Unit)? = null,
-    onOmniviewClick: (() -> Unit)? = null,
-    onQuizClick: (() -> Unit)? = null,
-    onToggleCommandCenter: (() -> Unit)? = null,
-    isCommandCenterOpen: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -191,54 +187,6 @@ fun WhiteboardTopBar(
                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                 )
                             }
-                        }
-                    }
-                }
-            }
-
-            // Host Quick Actions
-            if (isHost) {
-                if (connectedPeersCount > 0 && onToggleCommandCenter != null) {
-                    TooltipHint(text = if (isCommandCenterOpen) "Hide Classroom Cockpit" else "Show Classroom Cockpit") {
-                        IconButton(
-                            onClick = onToggleCommandCenter,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "hub",
-                                tint = if (isCommandCenterOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 20.dp
-                            )
-                        }
-                    }
-                }
-
-                if (onOmniviewClick != null) {
-                    TooltipHint(text = "Omniview Student Matrix") {
-                        IconButton(
-                            onClick = onOmniviewClick,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "grid_view",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 20.dp
-                            )
-                        }
-                    }
-                }
-
-                if (onQuizClick != null) {
-                    TooltipHint(text = "Interactive Quiz & Poll Deck") {
-                        IconButton(
-                            onClick = onQuizClick,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            MaterialSymbol(
-                                name = "checklist",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                size = 20.dp
-                            )
                         }
                     }
                 }

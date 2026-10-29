@@ -249,39 +249,3 @@ data class RoomState(
     val stickyNotes: List<StickyNote> = emptyList()
 )
 
-data class StudentWorksheet(
-    val sheetId: String = UUID.randomUUID().toString(),
-    val studentId: String,
-    val studentName: String,
-    val title: String,
-    val questionText: String,
-    val strokes: List<Stroke> = emptyList(),
-    val isSubmitted: Boolean = false,
-    val submittedAtMs: Long? = null
-)
-
-enum class QuizType {
-    POLL,
-    TIMED_QUIZ
-}
-
-data class ActiveQuiz(
-    val quizId: String = UUID.randomUUID().toString(),
-    val questionText: String,
-    val options: List<String>,
-    val correctOptionIndex: Int = -1, // -1 for open poll
-    val durationSeconds: Int = 30,
-    val type: QuizType = QuizType.POLL,
-    val startedAtMs: Long = System.currentTimeMillis(),
-    val isEnded: Boolean = false
-)
-
-data class QuizSubmission(
-    val quizId: String,
-    val studentId: String,
-    val studentName: String,
-    val selectedOptionIndex: Int,
-    val responseTimeMs: Long,
-    val isCorrect: Boolean = false
-)
-

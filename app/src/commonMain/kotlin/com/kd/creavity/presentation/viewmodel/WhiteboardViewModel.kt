@@ -63,7 +63,6 @@ class WhiteboardViewModel(
     internal val remoteStrokesMap = mutableMapOf<String, Stroke>()
     internal val userSessionColors = mutableMapOf<String, Long>()
     var hostOwnedBoardId: String? = null
-    internal var quizTimerJob: kotlinx.coroutines.Job? = null
 
     fun getPermanentUserColor(peerKey: String): Long {
         return userSessionColors.getOrPut(peerKey) {
