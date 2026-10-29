@@ -128,8 +128,15 @@ fun main() {
             icon = painterResource("icon.png"),
             state = windowState
         ) {
-            LaunchedEffect(window) {
-                com.kd.creavity.input.LinuxTouchpadGestureBridge.start(window) { action ->
+            val baseDensity = LocalDensity.current
+            val detectedScale = remember { getSystemScale() }
+            val effectiveScale = maxOf(baseDensity.density, detectedScale)
+            val density = remember(effectiveScale, baseDensity.fontScale) {
+                Density(density = effectiveScale, fontScale = baseDensity.fontScale)
+            }
+
+            LaunchedEffect(window, effectiveScale) {
+                com.kd.creavity.input.LinuxTouchpadGestureBridge.start(window, effectiveScale) { action ->
                     viewModel.dispatch(action)
                 }
             }
@@ -140,13 +147,6 @@ fun main() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
-            }
-
-            val baseDensity = LocalDensity.current
-            val detectedScale = remember { getSystemScale() }
-            val effectiveScale = maxOf(baseDensity.density, detectedScale)
-            val density = remember(effectiveScale, baseDensity.fontScale) {
-                Density(density = effectiveScale, fontScale = baseDensity.fontScale)
             }
 
             CompositionLocalProvider(LocalDensity provides density) {
