@@ -285,4 +285,55 @@ class ChatAndGesturesTest {
         assertEquals("Alt+Left click pan dx must be 50", 50f, totalPan.x, 0.001f)
         assertEquals("Alt+Left click pan dy must be -20", -20f, totalPan.y, 0.001f)
     }
+
+    @Test
+    fun testPanToolDragTriggersCanvasTransform() {
+        var totalPan = Offset.Zero
+        val controller = createTestController { _, _, pan ->
+            totalPan += pan
+        }
+
+        // Primary button down at (100, 100) with DrawingTool.PAN
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.DOWN,
+                pointers = listOf(CanvasPointer(id = 1L, x = 100f, y = 100f, isPrimaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PAN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        // Drag to (180, 140) -> dx = +80, dy = +40
+        controller.handleInputEvent(
+            event = CanvasInputEvent(
+                action = CanvasPointerAction.MOVE,
+                pointers = listOf(CanvasPointer(id = 1L, x = 180f, y = 140f, isPrimaryButton = true, type = CanvasPointerType.MOUSE))
+            ),
+            panOffset = Offset.Zero,
+            zoom = 1.0f,
+            selectedTool = DrawingTool.PAN,
+            currentColor = Color.Black,
+            currentWidth = 4f,
+            strokes = emptyList(),
+            textElements = emptyList(),
+            imageElements = emptyList(),
+            hapticsEnabled = false,
+            drawingHaptics = DrawingHaptics(null),
+            isReadOnly = false,
+            geometryCache = StrokeGeometryCache()
+        )
+
+        assertEquals("Pan tool drag dx must be 80", 80f, totalPan.x, 0.001f)
+        assertEquals("Pan tool drag dy must be 40", 40f, totalPan.y, 0.001f)
+    }
 }

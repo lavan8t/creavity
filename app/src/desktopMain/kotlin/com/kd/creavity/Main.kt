@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import com.kd.creavity.presentation.canvas.applyToolCursor
 import com.kd.creavity.presentation.ui.AdaptiveWhiteboardScreen
 import com.kd.creavity.presentation.viewmodel.ThemeMode
 import com.kd.creavity.presentation.viewmodel.WhiteboardViewModel
@@ -127,10 +126,6 @@ fun main() {
             state = windowState
         ) {
             val uiState by viewModel.uiState.collectAsState()
-
-            LaunchedEffect(uiState.selectedTool) {
-                applyToolCursor(uiState.selectedTool)
-            }
 
             val isDark = when (uiState.themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()

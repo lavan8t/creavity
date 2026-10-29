@@ -161,7 +161,7 @@ fun AdaptiveWhiteboardScreen(
                             true
                         }
                         Key.H -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.HIGHLIGHTER))
+                            onAction(BoardAction.SelectTool(DrawingTool.PAN))
                             true
                         }
                         Key.T -> {
@@ -189,10 +189,26 @@ fun AdaptiveWhiteboardScreen(
                             true
                         }
                         Key.Spacebar -> {
-                            if (latestUiState.selectedTool != DrawingTool.SELECT) {
-                                onAction(BoardAction.SelectTool(DrawingTool.SELECT))
+                            if (latestUiState.selectedTool != DrawingTool.PAN) {
+                                onAction(BoardAction.SelectTool(DrawingTool.PAN))
                                 true
                             } else false
+                        }
+                        Key.DirectionUp -> {
+                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, 60f)))
+                            true
+                        }
+                        Key.DirectionDown -> {
+                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(0f, -60f)))
+                            true
+                        }
+                        Key.DirectionLeft -> {
+                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(60f, 0f)))
+                            true
+                        }
+                        Key.DirectionRight -> {
+                            onAction(BoardAction.TransformCanvas(1.0f, androidx.compose.ui.geometry.Offset.Zero, androidx.compose.ui.geometry.Offset(-60f, 0f)))
+                            true
                         }
                         else -> false
                     }
@@ -202,6 +218,12 @@ fun AdaptiveWhiteboardScreen(
         androidx.compose.runtime.LaunchedEffect(latestUiState.isBoardSwitchingLocked) {
             if (latestUiState.isBoardSwitchingLocked && currentRoute == NavDestination.BOARDS) {
                 navigateTo(NavDestination.CANVAS)
+            }
+        }
+
+        androidx.compose.runtime.LaunchedEffect(currentRoute) {
+            if (currentRoute != NavDestination.CANVAS) {
+                com.kd.creavity.presentation.canvas.resetToolCursor()
             }
         }
 
@@ -272,7 +294,7 @@ fun AdaptiveWhiteboardScreen(
                 }
                 composable(NavDestination.CANVAS.name) {
                     CanvasViewportScreen(
-                        uiState = uiState,
+                        uiState = latestUiState,
                         onAction = onAction,
                         onNavigateToDestination = { dest ->
                             if (dest == NavDestination.BOARDS) {

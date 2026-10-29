@@ -130,9 +130,11 @@ actual fun getAppStorageDir(): File {
 }
 
 actual fun getDeviceName(): String {
+    val hostEnv = runCatching { System.getenv("HOSTNAME") ?: System.getenv("HOST") }.getOrNull()
+    if (!hostEnv.isNullOrBlank()) return hostEnv
     return runCatching {
         InetAddress.getLocalHost().hostName
-    }.getOrNull()?.ifBlank { "Windows PC" } ?: "Windows PC"
+    }.getOrNull()?.ifBlank { "Desktop PC" } ?: "Desktop PC"
 }
 
 actual fun copyImageToAppStorage(sourcePathOrUri: String): String? {

@@ -180,13 +180,15 @@ class CanvasGestureController(
             }
             onTransformStateChanged(true, listOf(focal))
             onTransformStateChanged(false, emptyList())
+            requestInvalidate()
             return true
         }
 
-        // 1.4. Middle-Click or Alt+Left-Click drag handling (Canvas Pan in all directions)
+        // 1.4. Middle-Click, Alt+Left-Click, or Hand/Pan Tool drag handling (Canvas Pan in all directions)
         val isAltPan = event.isAltPressed && event.activePointer.isPrimaryButton
         val isMiddlePan = event.activePointer.isTertiaryButton
-        if (isMiddlePan || isAltPan) {
+        val isPanToolDrag = (selectedTool == DrawingTool.PAN) && (event.activePointer.isPrimaryButton || event.pointerCount == 1)
+        if (isMiddlePan || isAltPan || isPanToolDrag) {
             discardActiveStroke()
             when (event.action) {
                 CanvasPointerAction.DOWN -> {
@@ -201,9 +203,11 @@ class CanvasGestureController(
                     lastMidX = event.x
                     lastMidY = event.y
                     onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+                    requestInvalidate()
                 }
                 CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
                     onTransformStateChanged(false, emptyList())
+                    requestInvalidate()
                 }
                 else -> {}
             }
@@ -229,6 +233,7 @@ class CanvasGestureController(
                     if (secondaryDragDist > 8f) {
                         onTransform(1.0f, Offset.Zero, Offset(dx, dy))
                         onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
+                        requestInvalidate()
                     }
                     lastMidX = event.x
                     lastMidY = event.y
@@ -350,6 +355,7 @@ class CanvasGestureController(
                         val dy = midY - lastMidY
 
                         onTransform(scaleFactor, Offset(lastMidX, lastMidY), Offset(dx, dy))
+                        requestInvalidate()
                     }
                     lastMidX = midX
                     lastMidY = midY

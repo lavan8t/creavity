@@ -184,6 +184,7 @@ fun BoardsLibraryScreen(
 
         // 1. Ownership scope filter
         val myDevice = getDeviceName()
+        val hostEnv = runCatching { System.getenv("HOSTNAME") ?: System.getenv("HOST") }.getOrNull() ?: ""
         val systemUser = runCatching { System.getProperty("user.name") }.getOrNull() ?: ""
         val isOwnedByMe: (com.kd.creavity.domain.model.Board) -> Boolean = { b ->
             b.createdBy.isBlank() ||
@@ -193,6 +194,7 @@ fun BoardsLibraryScreen(
             b.createdBy.equals(uiState.displayName, ignoreCase = true) ||
             b.ownerName.equals(uiState.displayName, ignoreCase = true) ||
             (myDevice.isNotBlank() && (b.createdBy.equals(myDevice, ignoreCase = true) || b.ownerName.equals(myDevice, ignoreCase = true))) ||
+            (hostEnv.isNotBlank() && (b.createdBy.equals(hostEnv, ignoreCase = true) || b.ownerName.equals(hostEnv, ignoreCase = true))) ||
             (systemUser.isNotBlank() && (b.createdBy.equals(systemUser, ignoreCase = true) || b.ownerName.equals(systemUser, ignoreCase = true)))
         }
         base = when (ownershipFilter) {

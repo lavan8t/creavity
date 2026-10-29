@@ -215,7 +215,7 @@ fun DesktopDraggableToolbar(
             // 5. Select / Transform Tool
             DesktopToolButton(
                 icon = selectIcon,
-                label = "Select",
+                label = "Select (V)",
                 isSelected = isSelect,
                 onClick = {
                     if (isSelect) {
@@ -224,6 +224,14 @@ fun DesktopDraggableToolbar(
                         onAction(BoardAction.SelectTool(DrawingTool.SELECT))
                     }
                 }
+            )
+
+            // Pan / Hand Tool
+            DesktopToolButton(
+                icon = "pan_tool_alt",
+                label = "Pan Canvas (H / Space)",
+                isSelected = uiState.selectedTool == DrawingTool.PAN,
+                onClick = { onAction(BoardAction.SelectTool(DrawingTool.PAN)) }
             )
 
             // 6. Sticky Note

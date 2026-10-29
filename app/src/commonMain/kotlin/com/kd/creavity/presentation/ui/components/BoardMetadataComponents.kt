@@ -95,6 +95,9 @@ fun BoardMetadataBadges(
     currentUserName: String = "You"
 ) {
     val myDeviceName = remember { getDeviceName() }
+    val hostEnv = remember {
+        runCatching { System.getenv("HOSTNAME") ?: System.getenv("HOST") }.getOrNull() ?: ""
+    }
     val systemUserName = remember {
         runCatching { System.getProperty("user.name") }.getOrNull() ?: ""
     }
@@ -105,6 +108,10 @@ fun BoardMetadataBadges(
             (myDeviceName.isNotBlank() && (
                 board.ownerName.equals(myDeviceName, ignoreCase = true) ||
                 board.createdBy.equals(myDeviceName, ignoreCase = true)
+            )) ||
+            (hostEnv.isNotBlank() && (
+                board.ownerName.equals(hostEnv, ignoreCase = true) ||
+                board.createdBy.equals(hostEnv, ignoreCase = true)
             )) ||
             (systemUserName.isNotBlank() && (
                 board.ownerName.equals(systemUserName, ignoreCase = true) ||

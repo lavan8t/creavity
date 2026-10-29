@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kd.creavity.domain.model.BoardPage
+import com.kd.creavity.domain.model.DrawingTool
 import com.kd.creavity.presentation.ui.motion.BrevityMotion
 
 /**
@@ -50,6 +51,8 @@ fun WhiteboardTopBar(
     onZoomIn: (() -> Unit)? = null,
     onZoomOut: (() -> Unit)? = null,
     onResetZoom: (() -> Unit)? = null,
+    selectedTool: DrawingTool = DrawingTool.PEN,
+    onTogglePan: (() -> Unit)? = null,
     onToggleChat: (() -> Unit)? = null,
     unreadChatCount: Int = 0,
     isChatOpen: Boolean = false,
@@ -167,6 +170,22 @@ fun WhiteboardTopBar(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.height(32.dp).padding(horizontal = 4.dp)
                     ) {
+                        if (onTogglePan != null) {
+                            val isPanActive = selectedTool == DrawingTool.PAN
+                            TooltipHint(text = if (isPanActive) "Exit Pan mode (H)" else "Pan Canvas (H / Space)") {
+                                IconButton(
+                                    onClick = onTogglePan,
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    MaterialSymbol(
+                                        name = "pan_tool_alt",
+                                        size = 15.dp,
+                                        tint = if (isPanActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
                         TooltipHint(text = "Zoom out (Ctrl + -)") {
                             IconButton(
                                 onClick = onZoomOut,

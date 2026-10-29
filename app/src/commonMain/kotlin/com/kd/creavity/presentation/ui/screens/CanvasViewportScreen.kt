@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import com.kd.creavity.presentation.canvas.applyToolCursor
+import com.kd.creavity.presentation.canvas.resetToolCursor
 import com.kd.creavity.presentation.canvas.getToolPointerIcon
 import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.Column
@@ -310,8 +311,11 @@ fun CanvasViewportScreen(
         isDarkCanvas
     )
 
-    LaunchedEffect(uiState.selectedTool) {
+    androidx.compose.runtime.DisposableEffect(uiState.selectedTool) {
         applyToolCursor(uiState.selectedTool)
+        onDispose {
+            resetToolCursor()
+        }
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -753,6 +757,11 @@ fun CanvasViewportScreen(
                             onAction(BoardAction.TransformCanvas(0.85f, center, Offset.Zero))
                         },
                         onResetZoom = { onAction(BoardAction.ResetCanvasTransform) },
+                        selectedTool = uiState.selectedTool,
+                        onTogglePan = {
+                            val nextTool = if (uiState.selectedTool == DrawingTool.PAN) DrawingTool.PEN else DrawingTool.PAN
+                            onAction(BoardAction.SelectTool(nextTool))
+                        },
                         onToggleChat = { onAction(BoardAction.ToggleChat()) },
                         unreadChatCount = uiState.unreadChatCount,
                         isChatOpen = uiState.isChatOpen,

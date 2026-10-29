@@ -46,6 +46,18 @@ actual fun applyToolCursor(tool: DrawingTool) {
     }
 }
 
+actual fun resetToolCursor() {
+    if (GraphicsEnvironment.isHeadless()) return
+    runCatching {
+        val defaultCursor = java.awt.Cursor.getDefaultCursor()
+        for (w in java.awt.Window.getWindows()) {
+            if (w.isShowing) {
+                applyCursorRecursively(w, defaultCursor)
+            }
+        }
+    }
+}
+
 private fun applyCursorRecursively(comp: java.awt.Component, cursor: java.awt.Cursor) {
     comp.cursor = cursor
     if (comp is java.awt.Container) {
@@ -101,6 +113,8 @@ private fun createMaterialAwtCursor(tool: DrawingTool): java.awt.Cursor? {
                 CursorSpec(crop_free, Point(12, 12), Color(0xFF38BDF8), Color(0xFF0F172A))
             DrawingTool.LASSO_SELECT ->
                 CursorSpec(gesture, Point(12, 12), Color(0xFF38BDF8), Color(0xFF0F172A))
+            DrawingTool.PAN ->
+                CursorSpec(pan_tool_alt, Point(12, 12), Color.White, Color(0xFF0F172A))
         }
 
         val path = spec.icon.toComposePath()

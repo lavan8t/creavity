@@ -14,6 +14,7 @@ class ToolPointerIconTest {
             assertNotNull("ToolPointerIcon for $tool should not be null", icon)
             applyToolCursor(tool)
         }
+        resetToolCursor()
     }
 
     @Test

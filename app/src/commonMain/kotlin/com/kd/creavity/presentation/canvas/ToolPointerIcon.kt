@@ -13,3 +13,8 @@ expect fun getToolPointerIcon(tool: DrawingTool): PointerIcon
  * Platform-specific mechanism to dynamically enforce the active tool cursor at the OS / window level.
  */
 expect fun applyToolCursor(tool: DrawingTool)
+
+/**
+ * Resets the window / OS cursor back to default system arrow cursor when exiting canvas.
+ */
+expect fun resetToolCursor()

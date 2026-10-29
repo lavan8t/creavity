@@ -26,8 +26,13 @@ actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon = when (tool) {
     DrawingTool.RECT_SELECT,
     DrawingTool.LASSO_SELECT,
     DrawingTool.STICKY_NOTE -> PointerIcon.Default
+    DrawingTool.PAN -> PointerIcon.Hand
 }
 
 actual fun applyToolCursor(tool: DrawingTool) {
     // Android stylus / mouse hover is managed through Compose PointerIcon mapping
+}
+
+actual fun resetToolCursor() {
+    // Android manages touch and pointer icons automatically
 }

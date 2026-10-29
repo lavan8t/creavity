@@ -24,7 +24,8 @@ enum class DrawingTool {
     LASSO_SELECT,
     TRIANGLE,
     DIAMOND,
-    STAR
+    STAR,
+    PAN
 }
 
 enum class AppThemePreset(val displayName: String, val isDynamic: Boolean = true) {
