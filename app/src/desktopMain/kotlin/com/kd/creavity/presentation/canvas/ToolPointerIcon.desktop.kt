@@ -39,28 +39,52 @@ actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon {
 
 actual fun applyToolCursor(tool: DrawingTool) {
     if (GraphicsEnvironment.isHeadless()) return
-    runCatching {
-        val cursor = if (tool == DrawingTool.SELECT || tool == DrawingTool.SELECT_MOVE) {
-            java.awt.Cursor.getDefaultCursor()
-        } else {
-            getAwtToolCursor(tool) ?: java.awt.Cursor.getDefaultCursor()
-        }
-        for (w in java.awt.Window.getWindows()) {
-            if (w.isShowing) {
-                w.cursor = cursor
+    val runnable = Runnable {
+        runCatching {
+            val cursor = if (tool == DrawingTool.SELECT || tool == DrawingTool.SELECT_MOVE) {
+                java.awt.Cursor.getDefaultCursor()
+            } else {
+                getAwtToolCursor(tool) ?: java.awt.Cursor.getDefaultCursor()
+            }
+            for (w in java.awt.Window.getWindows()) {
+                if (w.isShowing) {
+                    applyCursorRecursively(w, cursor)
+                }
             }
         }
+    }
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        runnable.run()
+    } else {
+        javax.swing.SwingUtilities.invokeLater(runnable)
     }
 }
 
 actual fun resetToolCursor() {
     if (GraphicsEnvironment.isHeadless()) return
-    runCatching {
-        val defaultCursor = java.awt.Cursor.getDefaultCursor()
-        for (w in java.awt.Window.getWindows()) {
-            if (w.isShowing) {
-                w.cursor = defaultCursor
+    val runnable = Runnable {
+        runCatching {
+            val defaultCursor = java.awt.Cursor.getDefaultCursor()
+            for (w in java.awt.Window.getWindows()) {
+                if (w.isShowing) {
+                    applyCursorRecursively(w, defaultCursor)
+                }
             }
+        }
+    }
+    if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+        runnable.run()
+    } else {
+        javax.swing.SwingUtilities.invokeLater(runnable)
+    }
+}
+
+private fun applyCursorRecursively(comp: java.awt.Component, cursor: java.awt.Cursor) {
+    comp.cursor = cursor
+    if (comp is java.awt.Container) {
+        val count = comp.componentCount
+        for (i in 0 until count) {
+            applyCursorRecursively(comp.getComponent(i), cursor)
         }
     }
 }
