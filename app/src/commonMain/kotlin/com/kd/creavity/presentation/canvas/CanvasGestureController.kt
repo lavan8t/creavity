@@ -155,7 +155,8 @@ class CanvasGestureController(
         hapticsEnabled: Boolean,
         drawingHaptics: DrawingHaptics,
         isReadOnly: Boolean,
-        geometryCache: StrokeGeometryCache
+        geometryCache: StrokeGeometryCache,
+        isSpacePressed: Boolean = false
     ): Boolean {
         val pointerCount = event.pointerCount
 
@@ -220,9 +221,9 @@ class CanvasGestureController(
             return true
         }
 
-        // 1.5. Alt+Left-Click Pan Drag
-        val isAltPrimary = event.isAltPressed && event.activePointer.isPrimaryButton
-        if (event.action == CanvasPointerAction.DOWN && isAltPrimary) {
+        // 1.5. Spacebar or Alt+Left-Click Pan Drag (Canvas Pan in all directions with ANY tool)
+        val isModifierPrimaryPan = (event.isAltPressed || isSpacePressed || selectedTool == DrawingTool.PAN) && event.activePointer.isPrimaryButton
+        if (event.action == CanvasPointerAction.DOWN && isModifierPrimaryPan) {
             isAltPanDragging = true
             lastMidX = event.x
             lastMidY = event.y
@@ -249,38 +250,6 @@ class CanvasGestureController(
                 else -> {}
             }
             return true
-        }
-
-        // 1.6. Dedicated Hand/Pan Tool Drag
-        if (selectedTool == DrawingTool.PAN) {
-            if (event.action == CanvasPointerAction.DOWN && (event.activePointer.isPrimaryButton || event.pointerCount == 1)) {
-                isPanToolDragging = true
-                lastMidX = event.x
-                lastMidY = event.y
-                discardActiveStroke()
-                onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
-                return true
-            }
-            if (isPanToolDragging) {
-                when (event.action) {
-                    CanvasPointerAction.MOVE -> {
-                        val dx = event.x - lastMidX
-                        val dy = event.y - lastMidY
-                        onTransform(1.0f, Offset.Zero, Offset(dx, dy))
-                        lastMidX = event.x
-                        lastMidY = event.y
-                        onTransformStateChanged(true, listOf(Offset(event.x, event.y)))
-                        requestInvalidate()
-                    }
-                    CanvasPointerAction.UP, CanvasPointerAction.CANCEL -> {
-                        isPanToolDragging = false
-                        onTransformStateChanged(false, emptyList())
-                        requestInvalidate()
-                    }
-                    else -> {}
-                }
-                return true
-            }
         }
 
         // 1.7. Mouse Right-Click handling (Canvas Pan on drag, Context Menu on click)

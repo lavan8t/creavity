@@ -103,7 +103,7 @@ fun AdaptiveWhiteboardScreen(
 
     val latestUiState by rememberUpdatedState(uiState)
     val focusRequester = remember { FocusRequester() }
-    var toolBeforeSpacebar by remember { mutableStateOf<DrawingTool?>(null) }
+    var isSpacePressed by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -117,20 +117,13 @@ fun AdaptiveWhiteboardScreen(
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { keyEvent ->
-                // Spacebar hold-to-pan: KeyDown switches to PAN tool, KeyUp restores previous tool
+                // Spacebar hold-to-pan: Spacebar activates pan dragging on mouse primary down without changing tool
                 if (keyEvent.key == Key.Spacebar) {
                     if (keyEvent.type == KeyEventType.KeyDown) {
-                        if (toolBeforeSpacebar == null && latestUiState.selectedTool != DrawingTool.PAN) {
-                            toolBeforeSpacebar = latestUiState.selectedTool
-                            onAction(BoardAction.SelectTool(DrawingTool.PAN))
-                        }
+                        isSpacePressed = true
                         return@onKeyEvent true
                     } else if (keyEvent.type == KeyEventType.KeyUp) {
-                        val prev = toolBeforeSpacebar
-                        if (prev != null) {
-                            onAction(BoardAction.SelectTool(prev))
-                            toolBeforeSpacebar = null
-                        }
+                        isSpacePressed = false
                         return@onKeyEvent true
                     }
                 }
@@ -179,10 +172,6 @@ fun AdaptiveWhiteboardScreen(
                         }
                         Key.E -> {
                             onAction(BoardAction.SelectTool(DrawingTool.ERASER))
-                            true
-                        }
-                        Key.H -> {
-                            onAction(BoardAction.SelectTool(DrawingTool.PAN))
                             true
                         }
                         Key.T -> {
@@ -334,6 +323,7 @@ fun AdaptiveWhiteboardScreen(
                                 navigateTo(dest)
                             }
                         },
+                        isSpacePressed = isSpacePressed,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

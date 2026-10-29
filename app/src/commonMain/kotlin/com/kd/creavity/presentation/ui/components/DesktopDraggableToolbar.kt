@@ -226,14 +226,6 @@ fun DesktopDraggableToolbar(
                 }
             )
 
-            // Pan / Hand Tool
-            DesktopToolButton(
-                icon = "pan_tool_alt",
-                label = "Pan Canvas (H / Space)",
-                isSelected = uiState.selectedTool == DrawingTool.PAN,
-                onClick = { onAction(BoardAction.SelectTool(DrawingTool.PAN)) }
-            )
-
             // 6. Sticky Note
             DesktopToolButton(
                 icon = "sticky_note_2",

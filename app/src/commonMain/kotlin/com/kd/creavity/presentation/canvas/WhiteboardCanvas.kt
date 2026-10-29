@@ -94,6 +94,7 @@ fun WhiteboardCanvas(
     onTapForText: (Point) -> Unit = {},
     onContextMenu: ((screenOffset: Offset, worldPoint: Point, hasSelection: Boolean) -> Unit)? = null,
     isReadOnly: Boolean = false,
+    isSpacePressed: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -178,11 +179,12 @@ fun WhiteboardCanvas(
     val currentStickyNotes by rememberUpdatedState(stickyNotes)
     val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
     val currentIsReadOnly by rememberUpdatedState(isReadOnly)
+    val currentIsSpacePressed by rememberUpdatedState(isSpacePressed)
 
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerHoverIcon(getToolPointerIcon(selectedTool))
+            .pointerHoverIcon(if (currentIsSpacePressed) androidx.compose.ui.input.pointer.PointerIcon.Hand else getToolPointerIcon(selectedTool))
             .graphicsLayer {
                 // Hardware acceleration GPU backing
                 clip = true
@@ -210,7 +212,8 @@ fun WhiteboardCanvas(
                             hapticsEnabled = currentHapticsEnabled,
                             drawingHaptics = drawingHaptics,
                             isReadOnly = currentIsReadOnly,
-                            geometryCache = geometryCache
+                            geometryCache = geometryCache,
+                            isSpacePressed = currentIsSpacePressed
                         )
                         if (handled) {
                             event.changes.forEach { it.consume() }

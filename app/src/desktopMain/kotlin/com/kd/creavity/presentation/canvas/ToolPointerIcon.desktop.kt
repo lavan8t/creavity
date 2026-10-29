@@ -28,6 +28,9 @@ fun getAwtToolCursor(tool: DrawingTool): java.awt.Cursor? {
 }
 
 actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon {
+    if (tool == DrawingTool.SELECT || tool == DrawingTool.SELECT_MOVE) {
+        return PointerIcon.Default
+    }
     return cursorCache.getOrPut(tool) {
         val awtCursor = getAwtToolCursor(tool)
         if (awtCursor != null) PointerIcon(awtCursor) else PointerIcon.Default
@@ -35,27 +38,11 @@ actual fun getToolPointerIcon(tool: DrawingTool): PointerIcon {
 }
 
 actual fun applyToolCursor(tool: DrawingTool) {
-    if (GraphicsEnvironment.isHeadless()) return
-    runCatching {
-        val cursor = getAwtToolCursor(tool) ?: return
-        for (w in java.awt.Window.getWindows()) {
-            if (w.isShowing) {
-                applyCursorRecursively(w, cursor)
-            }
-        }
-    }
+    // Canvas pointerHoverIcon handles cursor natively on canvas hover.
 }
 
 actual fun resetToolCursor() {
-    if (GraphicsEnvironment.isHeadless()) return
-    runCatching {
-        val defaultCursor = java.awt.Cursor.getDefaultCursor()
-        for (w in java.awt.Window.getWindows()) {
-            if (w.isShowing) {
-                applyCursorRecursively(w, defaultCursor)
-            }
-        }
-    }
+    // Canvas pointerHoverIcon handles cursor natively on canvas hover.
 }
 
 private fun applyCursorRecursively(comp: java.awt.Component, cursor: java.awt.Cursor) {
