@@ -48,3 +48,35 @@ the `libs.*` alias.
 
 _Evidence: `kotlinx-coroutines-test` was added with a hardcoded version while the catalog already
 pinned `coroutines`._
+
+## Dynamic background patterns are anchored to world coordinates, not viewport bounds
+
+Any pattern rendered across an infinite or transformable canvas must compute column/row offsets from
+absolute world coordinates (e.g., `y = r * rowHeight`, `offsetX = if (abs(r % 2) != 0) spacing * 0.5f else 0f`),
+never from the visible viewport's top-left corner.
+
+_Evidence: isometric dot grid calculated row parity from the visible `gridStartY` instead of absolute
+world row. Panning vertically shifted `gridStartY` across row boundaries, flipping row parity and
+jumping all dots 24px horizontally on even/odd transitions, appearing to move at a different pace from
+whiteboard art._
+
+## Dense canvas patterns are batched into GPU primitive arrays
+
+Repetitive background or decorative canvas elements (dots, grid vertices, point clouds) must be
+batched and drawn via a single call (`DrawScope.drawPoints` with `PointMode.Points`) rather than
+thousands of per-element `drawCircle()` calls.
+
+_Evidence: whiteboard canvas dot grid called `drawCircle` up to 20,000 times per frame via JNI to
+Skia, causing 50–100ms frame times (10–15 FPS). Batching with `drawPoints` dropped render time to
+<0.2ms._
+
+## Hardware event bridges must coalesce updates before UI dispatch
+
+High-frequency background event producers running faster than display refresh (e.g., `libinput` at
+250 Hz) must coalesce delta factors and ensure at most one pending dispatch is queued in the UI event
+loop at any time.
+
+_Evidence: `LinuxTouchpadGestureBridge` dispatched `SwingUtilities.invokeLater` on every 4ms event tick,
+flooding the AWT EventQueue with hundreds of state recompositions that played back sequentially long
+after the gesture ended._
+

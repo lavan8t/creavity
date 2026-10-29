@@ -1,7 +1,21 @@
-# Architecture: collaboration pipeline
+# Architecture: canvas & collaboration pipelines
 
-Where a stroke travels, in hop order, so a bug can be localised instead of guessed at. Tests pin the
-seams named below.
+Where events and strokes travel, in hop order, so a bug can be localised instead of guessed at. Tests
+pin the seams named below.
+
+## Canvas & Input pipeline
+
+Flow from raw hardware/pointer events to pixels:
+
+1. Raw events: `presentation/canvas/CanvasInputEvent.kt` (maps mouse, stylus, touch, back/forward buttons). On Linux desktop, `desktopMain/.../input/LinuxTouchpadGestureBridge.kt` captures native libinput pinch gestures.
+2. Gesture controller: `presentation/canvas/CanvasGestureController.kt` (translates pointer actions into zoom/pan/stroke commands).
+3. Dispatcher & Actions: `presentation/ui/OotbAction.kt` (holds `BoardAction.TransformCanvas`, etc.) routed via `presentation/viewmodel/WhiteboardDispatcher.kt` to `WhiteboardViewModel.kt`.
+4. Canvas renderer: `presentation/canvas/WhiteboardCanvas.kt` executes Compose draw operations inside `DrawScope.withTransform`.
+5. Background & ink: `presentation/canvas/BackgroundDrawer.kt` (batched dot/grid patterns) and `presentation/canvas/StrokeDrawer.kt` (brush/ink paths).
+
+### Code search navigation
+
+Root package is `com.kd.creavity`. Grep in `app/src/` rather than root `app/` to avoid traversing `app/build/` artifacts.
 
 ## Write path (local ink, outbound)
 
@@ -43,5 +57,6 @@ Set `CREAVITY_PACKET_TRACE=1` (or `-Dcreavity.packetTrace=1`) to append one line
 ## Checks
 
 - `./gradlew :app:testDebugUnitTest` — JVM unit tests, the fast loop.
+- `./gradlew :app:desktopTest` — Desktop unit tests.
 - `./gradlew :app:compileKotlinDesktop` — desktop target compiles.
-- CI runs both: `.github/workflows/ci.yml`.
+- CI runs these: `.github/workflows/ci.yml`.

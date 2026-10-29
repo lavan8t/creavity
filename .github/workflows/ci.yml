@@ -33,6 +33,9 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --console=plain
 
+      - name: Desktop unit tests
+        run: ./gradlew :app:desktopTest --console=plain
+
       - name: Desktop target compiles
         run: ./gradlew :app:compileKotlinDesktop --console=plain
 
@@ -41,7 +44,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-report
-          path: app/build/reports/tests/testDebugUnitTest
+          path: |
+            app/build/reports/tests/testDebugUnitTest
+            app/build/reports/tests/desktopTest
 
   release-linux:
     name: Build & Release Linux RPM & Universal Tarball

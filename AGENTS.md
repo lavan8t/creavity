@@ -6,7 +6,7 @@ CreaVITy is a modern, high-performance offline collaborative digital whiteboard 
 
 ### Navigation
 
-Collaboration pipeline (packets → routing → transport → handler → canvas caches), what state lives where, and how to trace a sync bug: `docs/agents/architecture.md`.
+Canvas input pipeline (events → gestures → actions → renderer), collaboration pipeline (packets → routing → transport → handler → canvas caches), state lifetimes, sync debugging, and code search paths: `docs/agents/architecture.md`.
 
 ### Issue tracker
 
